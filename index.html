@@ -442,6 +442,78 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .lsmsg.ok{color:var(--ok)}
 .lsmsg.err{color:var(--err)}
 
+/* ---------------- 题型分类 ---------------- */
+/* 篇标签按题型配色，一眼分得出听力以外的四种题型 */
+.ptab .tk{display:inline-block;font-size:.66rem;font-weight:700;padding:1px 5px;border-radius:4px;margin-right:5px;background:rgba(255,255,255,.26);letter-spacing:.02em}
+.ptab.tk-read.on{background:#2b5fa8;border-color:#2b5fa8}
+.ptab.tk-cloze.on{background:#7a52b3;border-color:#7a52b3}
+.ptab.tk-seven.on{background:#1a9b7a;border-color:#1a9b7a}
+.ptab.tk-gram.on{background:#c96a12;border-color:#c96a12}
+.ptab.tk-read:hover{color:#2b5fa8;border-color:#2b5fa8}
+.ptab.tk-cloze:hover{color:#7a52b3;border-color:#7a52b3}
+.ptab.tk-seven:hover{color:#1a9b7a;border-color:#1a9b7a}
+.ptab.tk-gram:hover{color:#c96a12;border-color:#c96a12}
+
+/* 顶部导航分两组：题型切换 + 视图切换 */
+.navline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%}
+.navline+.navline{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border)}
+.navline .lb{font-size:.72rem;color:var(--text-3);font-weight:700;letter-spacing:.06em;flex:0 0 auto}
+.navline .vtabs{margin-left:auto}
+.ptab.overview{background:var(--accent-soft);color:var(--accent);border-color:#f0d49a}
+.ptab.overview:hover{background:#fde9cd;color:var(--accent);border-color:var(--accent)}
+.ptab.overview.on{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 6px rgba(224,123,27,.32)}
+
+/* 题型速览 */
+.ov-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.ov-sub{font-size:.78rem;color:var(--text-3);line-height:1.8;margin-bottom:16px}
+.ov-grid{display:flex;gap:12px;flex-wrap:wrap}
+.ov-card{flex:1 1 240px;min-width:200px;background:var(--panel);border:1px solid var(--border);border-left-width:4px;border-radius:11px;padding:15px 16px;cursor:pointer;transition:.16s;box-shadow:var(--shadow)}
+.ov-card:hover{transform:translateY(-2px);border-color:var(--primary);box-shadow:0 8px 22px rgba(43,95,168,.14)}
+.ov-card .tk{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-block}
+.ov-card h3{font-size:1rem;margin:9px 0 6px;color:var(--text)}
+.ov-card .nums{font-size:.8rem;color:var(--text-2);line-height:1.8}
+.ov-card .nums b{color:var(--primary);font-size:1.02rem}
+.ov-card .qs{font-size:.74rem;color:var(--text-3);margin-top:7px;line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-card .go{font-size:.75rem;color:var(--primary);font-weight:700;margin-top:10px;display:block}
+.ov-card.tk-read{border-left-color:#2b5fa8}.ov-card.tk-read .tk{background:#e8f0fb;color:#2b5fa8}
+.ov-card.tk-cloze{border-left-color:#7a52b3}.ov-card.tk-cloze .tk{background:#f1ebfa;color:#7a52b3}
+.ov-card.tk-seven{border-left-color:#1a9b7a}.ov-card.tk-seven .tk{background:#e4f6f1;color:#1a9b7a}
+.ov-card.tk-gram{border-left-color:#c96a12}.ov-card.tk-gram .tk{background:var(--accent-soft);color:#c96a12}
+.ov-card.warn{border-left-color:var(--err)}
+.ov-card.warn .nums{color:var(--err)}
+
+/* 题型徽章（正文标题里的那枚） */
+.chip.kchip{font-weight:800;letter-spacing:.02em}
+.chip.tk-read{background:#e8f0fb;color:#2b5fa8}
+.chip.tk-cloze{background:#f1ebfa;color:#7a52b3}
+.chip.tk-seven{background:#e4f6f1;color:#1a9b7a}
+.chip.tk-gram{background:var(--accent-soft);color:#c96a12}
+.qtype.tk-read{background:#e8f0fb;color:#2b5fa8}
+.qtype.tk-cloze{background:#f1ebfa;color:#7a52b3}
+.qtype.tk-seven{background:#e4f6f1;color:#1a9b7a}
+.qtype.tk-gram{background:var(--accent-soft);color:#c96a12}
+.mini-q .mhint{font-size:.76rem;color:var(--accent);font-weight:700;margin-left:6px}
+
+/* 语法填空的答案块：点一下显示，再点隐藏，方便上课先留白 */
+.gbody{display:flex;flex-direction:column;gap:8px;padding:2px 15px 4px 55px}
+.ghint{font-size:.78rem;color:var(--text-2)}
+.ghint b{color:var(--accent);font-family:Consolas,Monaco,monospace;font-size:.86rem}
+.gans{
+  display:inline-flex;align-items:center;gap:10px;align-self:flex-start;cursor:pointer;user-select:none;
+  border:1.5px dashed var(--border-2);border-radius:9px;padding:7px 14px;min-width:150px;
+  background:var(--panel-2);transition:.16s;
+}
+.gans:hover{border-color:var(--accent);background:#fff9ef}
+.gans .val{font-size:.86rem;color:var(--text-3);font-weight:600}
+.gans .tog{font-size:.7rem;color:var(--text-3);border:1px solid var(--border);border-radius:20px;padding:1px 7px;background:#fff}
+.gans.on{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+.gans.on .val{
+  color:var(--ok);font-weight:800;font-size:1rem;font-family:Consolas,Monaco,monospace;
+}
+.gans.on .tog{color:var(--ok);border-color:#b7e3ca}
+.gans.flash{animation:ganFlash 1.1s ease}
+@keyframes ganFlash{0%,100%{box-shadow:0 0 0 0 rgba(26,155,82,0)}40%{box-shadow:0 0 0 5px rgba(26,155,82,.2)}}
+
 .hidden{display:none !important}
 </style>
 </head>
@@ -460,6 +532,7 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
   </select>
   <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）">🔑 免费Key</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用">📚 课件库</button>
+  <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇">⇄ 合并同题型</button>
   <button class="tb-btn icon" id="btnFsMinus" title="减小字号">A－</button>
   <button class="tb-btn icon" id="btnFsPlus" title="放大字号">A＋</button>
   <button class="tb-btn" id="btnAddImg">＋ 上传图片</button>
@@ -468,13 +541,19 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 </header>
 
 <div class="subbar" id="subbar" style="display:none">
-  <div class="ptabs" id="ptabs"></div>
-  <div class="vtabs" id="vtabs">
-    <button class="vtab" data-view="split">整篇</button>
-    <button class="vtab" data-view="original">原文</button>
-    <button class="vtab" data-view="single">单段</button>
-    <button class="vtab" data-view="background">文化背景</button>
-    <button class="vtab" data-view="expressions">积累表达</button>
+  <div class="navline">
+    <span class="lb">题型</span>
+    <div class="ptabs" id="ptabs"></div>
+  </div>
+  <div class="navline">
+    <span class="lb">视图</span>
+    <div class="vtabs" id="vtabs">
+      <button class="vtab" data-view="split">整篇</button>
+      <button class="vtab" data-view="original">原文</button>
+      <button class="vtab" data-view="single">单段</button>
+      <button class="vtab" data-view="background">文化背景</button>
+      <button class="vtab" data-view="expressions">积累表达</button>
+    </div>
   </div>
 </div>
 
@@ -484,9 +563,9 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
   <div class="empty" id="emptyState">
     <div class="drop" id="drop">
       <div class="ic">📄</div>
-      <h3>上传英语阅读试卷图片</h3>
-      <p>把试卷拍照或截图拖进来，AI 自动识别文字、切分段落、定位题目答案，生成讲解页。<br>
-         支持一次上传多张（同一篇的多页 / A、B、C、D 多篇）。</p>
+      <h3>上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
+      <p>把试卷拍照或截图拖进来，AI 自动识别文字、<b>判断题型</b>、切分段落、定位题目答案，生成讲解页。<br>
+         支持一次上传多张；一张卷子里有几种题型都能自动分开归类。</p>
       <p style="margin-top:12px">也可以直接按 <span class="kbd">Ctrl</span> + <span class="kbd">V</span> 粘贴截图</p>
     </div>
 
@@ -500,7 +579,6 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
     <div style="margin-top:20px;text-align:center">
       <button class="linkbtn" id="btnPasteText">📋 没有图片？直接粘贴试卷文本解析 →</button>
     </div>
-
     <div class="model-row">
       <span>解析引擎：</span>
       <select id="modelSel">
@@ -579,32 +657,54 @@ const ENGINES = {
 
 /* ---------- 提示词 ---------- */
 const TRANSCRIBE_PROMPT = [
-'你是英语试卷数字化助手。请把这张英语试卷图片中的阅读文章和题目完整、准确地转写为纯文本。',
+'你是英语试卷数字化助手。请把这张英语试卷图片里的英文文章和题目完整、准确地转写为纯文本。',
 '',
 '要求：',
-'1) 文章部分：保留自然段落，每个段落单独成段（段与段之间空一行）；',
-'2) 题目部分：保留题号（如 21.）和四个选项（A. B. C. D.），每项单独一行；',
-'3) 题目中的下划线、括号等标记原样保留；',
-'4) 页眉页脚、页码、Logo 等无关内容不要输出；',
-'5) 只输出纯文本，不要输出任何坐标、JSON、表格或额外说明。',
+'1) 保留文章自然段落，每个段落单独成段（段与段之间空一行）；',
+'2) 题目保留题号（如 21.）和选项（A. B. C. D.），每项单独一行；',
+'   —— 七选五的 A～G 七个选项也要逐条列出，并保留题号区间（如 36～40 题）；',
+'3) 语法填空、完形填空的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
+'   ① 无提示词的空写成连续的六个下划线：______',
+'   ② 有提示词的空写成：______ (提示词)，括号里的原形词必须一字不改地保留，如 ______ (finish)；',
+'   ③ 空号（如 56、57、58）写在紧跟空格的括号里，如 ______ (56) 或 ______ (56) (finish)；',
+'4) 如果卷面上印了答案或答案解析，一并转写出来，放在该题后面；',
+'5) 页眉页脚、页码、Logo、听力部分等与本页题目无关的内容不要输出；',
+'6) 只输出纯文本，不要输出任何坐标、JSON、表格或额外说明。',
 '',
 '直接开始输出转写结果。'
 ].join('\n');
 
 const PARSE_PROMPT = [
-'你是一位资深高中英语教师，长期研究高考英语阅读命题。下面是一份英语试卷阅读部分的转录文本，请把它整理成结构化的讲解数据。',
+'你是一位资深高中英语教师，长期研究高考英语命题。下面是一份英语试卷的转录文本，请先判断每一部分属于哪种题型，再整理成结构化的讲解数据。',
 '',
 '【转录文本开始】',
 '{{TEXT}}',
 '【转录文本结束】',
 '',
+'【第一步：判断题型】',
+'高考英语笔试部分只有下面四种，每一部分必须归入其中一种，kind 字段只能取这四个值：',
+'1. kind = "reading"（阅读理解）：一段完整文章 + 若干单选，通常是 A/B/C/D 四篇，题号连续。',
+'2. kind = "cloze"（完形填空）：一段文章里挖了若干空，每空从 A/B/C/D 四个词或短语里选一个。',
+'3. kind = "seven"（七选五）：一段文章挖了 5 个空（题号形如 36～40），文后给出 A～G 七个选项句，选 5 句填回，有 2 句多余。',
+'4. kind = "grammar"（语法填空）：一段（或两小段）短文里挖了 10 个空，题号形如 56～65；有的空在括号里给了提示词（如 (finish)）要变形，有的空什么都没给要自己填虚词。没有 A/B/C/D 选项。',
+'判断要点：**有 A～G 七个选项句、文章里挖 5 个空 = seven**；**短文挖约 10 个空、部分空带括号提示词、完全没有选项 = grammar**；**文章挖空且每空有 A～D 选项 = cloze**；**整篇文章配若干独立单选 = reading**。',
+'',
+'【第二步：切分 passages】',
+'按「题型 + 独立篇目」切分，同一个 passages 项里的文章必须属于同一种题型：',
+'- 阅读理解 A、B、C、D 篇 → 四个 passages 项，kind 都是 "reading"，label 依次为 A、B、C、D。',
+'- 整段完形填空 → 一个 passages 项，kind = "cloze"，label 用「完形」。',
+'- 七选五 → 一个 passages 项，kind = "seven"，label 用「七选五」。',
+'- 语法填空 → 一个 passages 项，kind = "grammar"，label 用「语法填空」。',
+'**特别注意**：语法填空的短文常常分成两三个小段排版，但它仍然只是一道题、一个 passages 项，绝对不要把两小段拆成两篇。完形填空的短文跨页同样不要拆。',
+'',
 '【输出要求】',
 '只输出一个 JSON 对象，不要用 markdown 代码块包裹，不要输出任何解释文字。JSON 结构如下：',
 '',
 '{',
-'  "title": "这份材料的标题，例如「2025～2026学年武汉市九月调研考试 英语·阅读A篇」",',
+'  "title": "这份材料的标题，例如「2025～2026学年武汉市九月调研考试 英语」",',
 '  "passages": [',
 '    {',
+'      "kind": "reading",',
 '      "label": "A",',
 '      "genre": "体裁，如 应用文/记叙文/说明文/议论文",',
 '      "topic": "话题，6字以内",',
@@ -614,7 +714,7 @@ const PARSE_PROMPT = [
 '      "questions": [',
 '        {',
 '          "no": 21,',
-'          "stem": "题干英文原文",',
+'          "stem": "题干英文原文（语法填空就填含空的那一整句）",',
 '          "options": [',
 '            {"key": "A", "text": "选项A原文"},',
 '            {"key": "B", "text": "选项B原文"},',
@@ -622,9 +722,10 @@ const PARSE_PROMPT = [
 '            {"key": "D", "text": "选项D原文"}',
 '          ],',
 '          "answer": "C",',
+'          "hint": "语法填空专用：括号里的提示词原形，如 finish；没有提示词就填空串",',
 '          "evidence": "原文中直接支撑该答案的那一句（逐字摘自原文，含标点，不要改写、不要翻译）",',
-'          "explain": "中文解析：为什么选这个答案，其他选项为什么不对",',
-'          "type": "细节理解"',
+'          "explain": "中文解析",',
+'          "type": "考点类型"',
 '        }',
 '      ],',
 '      "background": "该材料的文化背景或话题背景介绍，中文，150字以内",',
@@ -636,15 +737,175 @@ const PARSE_PROMPT = [
 '}',
 '',
 '【硬性规则】',
-'1. 转录文本可能包含多篇阅读（A/B/C/D篇），分别放进不同的 passages 项，label 用 A、B、C、D。',
-'2. paragraphs 按自然段切分。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段。',
-'3. answer 字段：若转录文本中已包含答案就用它；若没有，请你作为资深教师判断最可能的答案。',
-'4. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致。',
-'5. explain 用中文，点明解题依据（定位到哪句话、如何排除干扰项）。',
-'6. type 从这些里选：细节理解、推理判断、主旨大意、词义猜测、观点态度、篇章结构。',
-'7. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
-'8. 若某篇没有配题，questions 给空数组。'
+'1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar 之一。这是最重要的一条，请先判断题型再动笔。',
+'2. paragraphs 按自然段切分。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
+'3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。',
+'4. 四种题型的字段差异照下面填：',
+'   · reading：options 四个选项齐全；type 从「细节理解 / 推理判断 / 主旨大意 / 词义猜测 / 观点态度 / 篇章结构」里选。',
+'   · cloze：options 是四个词或短语（A/B/C/D）；type 写该空考什么，如「动词辨析 / 名词辨析 / 形容词辨析 / 副词辨析 / 介词短语 / 上下文逻辑」；hint 填空串。',
+'   · seven：options 从 A 到 G 七个选项全部列出；answer 是选中的那一个字母；evidence 填原文中该空的**前一句 + 后一句**（逐字摘自 en）；type 写「段落主题句 / 逻辑衔接 / 代词指代 / 词汇复现 / 过渡句」。',
+'   · grammar：**options 必须是空数组 []**；hint 填括号里的提示词原形（没有就填空串）；answer 填正确的词形（有提示词的写变形结果，如 finished / to finish / increasingly；没提示词的写该填的虚词，如 whose / a / which）；type 从「谓语动词·时态 / 谓语动词·语态 / 主谓一致 / 非谓语动词 / 词性转换 / 名词单复数 / 形容词副词比较级 / 介词 / 冠词 / 连词 / 代词 / 从句引导词 / 虚拟语气 / 倒装」里选；explain 中文，先说考点再说判断依据。',
+'5. answer 字段：若转录文本中已包含答案或答案解析就用它；若没有，请你作为资深教师判断最可能的答案。语法填空的答案必须是完整的单词或词形，不要只写首字母。',
+'6. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致；实在找不到就填空串，不要编造。',
+'7. explain 用中文，点明解题依据。阅读题要说明如何排除干扰项；完形和语法填空要说清语法、搭配或上下文逻辑依据。',
+'8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
+'9. 若某篇没有配题，questions 给空数组。',
+'10. 绝对不要把听力、写作、读后续写的内容放进 passages；如果转录里有，直接忽略。'
 ].join('\n');
+
+/* =========================================================
+   题型分类（阅读 / 完形 / 七选五 / 语法填空）
+   高考笔试部分就这四种，前端的彩色标签、题型速览、合并功能全靠这张表
+   ========================================================= */
+const KIND_INFO = {
+  reading: { name: '阅读理解', short: '阅读',  cls: 'tk-read',  hint: '一篇完整文章 + 若干单选题，通常是 A/B/C/D 四篇' },
+  cloze:   { name: '完形填空', short: '完形',  cls: 'tk-cloze', hint: '文章中挖若干空，每空从 A/B/C/D 里选一个词' },
+  seven:   { name: '七选五',   short: '七选五', cls: 'tk-seven', hint: '文章挖 5 个空，从 A～G 七个选项句里选 5 句填回' },
+  grammar: { name: '语法填空', short: '语法',  cls: 'tk-gram',  hint: '短文挖 10 个空，有提示词的变形、没提示词的填虚词' }
+};
+const KIND_ORDER = ['reading', 'cloze', 'seven', 'grammar'];
+
+/* 兜底：AI 偶尔会漏写 kind，或写成近义词，这里统一归一化 */
+const KIND_ALIAS = {
+  'reading': 'reading', 'read': 'reading', 'comprehension': 'reading', '阅读理解': 'reading', '阅读': 'reading',
+  'cloze': 'cloze', 'clozetest': 'cloze', '完形': 'cloze', '完形填空': 'cloze',
+  'seven': 'seven', 'sevenfive': 'seven', '75': 'seven', '七选五': 'seven', '七选5': 'seven', '阅读七选五': 'seven',
+  'grammar': 'grammar', 'fill': 'grammar', 'blank': 'grammar', '语法填空': 'grammar', '语法': 'grammar', '填空': 'grammar'
+};
+
+function kindOf(p) {
+  const k = String((p && p.kind) || '').toLowerCase().replace(/[\s_\-()（）]/g, '');
+  const hit = KIND_ALIAS[k];
+  if (hit) return hit;
+  const lbl = String((p && p.label) || '');
+  for (const key of KIND_ORDER) {
+    if (KIND_ALIAS[key] === key && (lbl.indexOf(KIND_INFO[key].short) >= 0 || lbl.indexOf(KIND_INFO[key].name) >= 0)) return key;
+  }
+  return 'reading';
+}
+function kindName(k) { return (KIND_INFO[k] || KIND_INFO.reading).name; }
+function kindShort(k) { return (KIND_INFO[k] || KIND_INFO.reading).short; }
+function kindCls(k) { return (KIND_INFO[k] || KIND_INFO.reading).cls; }
+function kindDesc(k) { return (KIND_INFO[k] || KIND_INFO.reading).hint; }
+
+/* 按题型分组：返回 [{kind, items:[{p, pi}]}, ...]，顺序固定为 阅读→完形→七选五→语法 */
+function kindGroups() {
+  const bucket = {};
+  S.passages.forEach(function (p, pi) {
+    const k = kindOf(p);
+    (bucket[k] = bucket[k] || []).push({ p: p, pi: pi });
+  });
+  return KIND_ORDER.filter(function (k) { return bucket[k] && bucket[k].length; })
+    .map(function (k) { return { kind: k, items: bucket[k] }; });
+}
+
+/* 每个题型的统计：篇数、题数、考点分布 */
+function kindStats(kind) {
+  let n = 0, qn = 0;
+  const types = {};
+  S.passages.forEach(function (p) {
+    if (kindOf(p) !== kind) return;
+    n++;
+    qn += p.questions.length;
+    p.questions.forEach(function (q) {
+      const t = String(q.type || '').trim();
+      if (t) types[t] = (types[t] || 0) + 1;
+    });
+  });
+  const list = Object.keys(types).map(function (t) { return { t: t, n: types[t] }; })
+    .sort(function (a, b) { return b.n - a.n; });
+  return { articles: n, questions: qn, types: list };
+}
+
+/* 当前题型（由 S.cur 那一篇推出来）；分组里改了篇目顺序也不影响 */
+function curKind() {
+  const p = S.passages[S.cur];
+  return p ? kindOf(p) : 'reading';
+}
+
+/* 题型分组下的「上一篇 / 下一篇」，只在本题型内前后翻，讲课时不会串到别的题型 */
+function kindSiblings(kind) {
+  const out = [];
+  S.passages.forEach(function (p, pi) { if (kindOf(p) === kind) out.push(pi); });
+  return out;
+}
+
+/* =========================================================
+   题型归一化
+   被切碎的同类文章（如语法填空被拆成两小篇）合并成一个 passages 项：
+   - paragraphs 依原顺序拼接
+   - questions 按题号排序后合并，题号重复的后者丢弃（防重复解析出两遍）
+   ========================================================= */
+function uniqParas(list) {
+  const seen = {}, out = [];
+  list.forEach(function (x) {
+    const key = norm(String(x.en || '')).slice(0, 80);
+    if (!key || seen[key]) return;
+    seen[key] = 1;
+    out.push({ en: x.en, zh: x.zh || '' });
+  });
+  return out;
+}
+
+function uniqQuestions(list) {
+  const seen = {}, out = [];
+  list.forEach(function (q) {
+    const key = String(q.no);
+    if (seen[key]) return;
+    seen[key] = 1;
+    out.push(q);
+  });
+  return out;
+}
+
+/* 双保险：即便 AI 没标 kind，只要一篇自己就是语法填空的排版，也能认出来
+   （10 个左右连续题号、无选项、有空号标记 —— 只有语法填空长这样） */
+function looksLikeGrammar(p) {
+  const qs = p.questions || [];
+  if (qs.length < 8 || qs.length > 12) return false;
+  if (qs.some(function (q) { return q.options && q.options.length; })) return false;
+  const holes = (p.paragraphs || []).filter(function (x) { return /_{2,}|\(\s*\d{2}\s*\)/.test(x.en || ''); }).length;
+  return holes > 0;
+}
+
+function groupByKind(passages) {
+  const bucket = {};
+  passages.forEach(function (p) {
+    const k = kindOf(p);
+    (bucket[k] = bucket[k] || []).push(p);
+  });
+  const out = [];
+  KIND_ORDER.forEach(function (k) {
+    const arr = bucket[k];
+    if (!arr || !arr.length) return;
+    if (k === 'reading') { out.push.apply(out, arr); return; }   // A/B/C/D 各自独立，不合并
+    const merged = {
+      kind: k,
+      label: arr[0].label || KIND_INFO[k].name,
+      genre: arr[0].genre || '',
+      topic: arr[0].topic || '',
+      paragraphs: uniqParas(arr.flatMap(function (p) { return p.paragraphs; })),
+      questions: uniqQuestions(arr.flatMap(function (p) { return p.questions; })
+        .sort(function (a, b) { return (Number(a.no) || 0) - (Number(b.no) || 0); })),
+      background: arr.map(function (p) { return p.background; }).filter(Boolean).join(' '),
+      expressions: uniqParas(arr.flatMap(function (p) {
+        return (p.expressions || []).map(function (e) { return { en: String(e.term || ''), zh: e.cn, tip: e.tip }; });
+      })).map(function (x) { return { term: x.en, cn: x.zh, tip: x.tip }; })
+    };
+    out.push(merged);
+  });
+  return out;
+}
+
+/* 前端补正：把被拆碎的同类文章合并回去，主题不足 2 篇时不做任何改动 */
+function mergeSameKind(passages) {
+  if (!passages || passages.length < 2) return passages || [];
+  const keys = {};
+  passages.forEach(function (p) { const k = kindOf(p); keys[k] = (keys[k] || 0) + 1; });
+  const dup = Object.keys(keys).some(function (k) { return k !== 'reading' && keys[k] > 1; });
+  if (!dup) return passages;
+  return groupByKind(passages);
+}
 
 /* ---------- 状态 ---------- */
 const S = {
@@ -652,7 +913,7 @@ const S = {
   engine: 'free',
   passages: [],
   cur: 0,
-  view: 'split',
+  view: 'split',      // split / original / single / background / expressions / overview
   activeQ: null,
   picking: null,     // {pi, qi} 正在为该题指定对应句
   fs: 1,
@@ -1041,6 +1302,67 @@ function finishSteps() {
   renderProgress();
 }
 
+/* =========================================================
+   把转录文本切成若干「一批」
+   一张整卷（4 篇阅读 + 完形 + 七选五 + 语法填空）塞进一次请求，
+   输出 JSON 会超过代理的 max_tokens 上限被截断，末尾题型的解析就丢了。
+   这里按题型/大题标记切块，每块单独解析，最后合并 —— 既避开上限，
+   也顺带让 AI 每次只判一种题型，分类更准。
+   ========================================================= */
+/* 大题起始标记：完形/七选五/语法填空/阅读第一节…… 命中即视为新块开头 */
+const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]|Part\s+[ⅠⅡⅢⅣV]|[A-D]\s*$|完形填空|七选五|语法填空|阅读理解|阅读下列短文)/i;
+
+function splitTranscript(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  /* 整卷很小就别切，切了反而增加请求数 */
+  if (t.length < 1800) return [t];
+  const lines = t.split(/\n/);
+  const blocks = [];
+  let cur = [];
+  lines.forEach((ln) => {
+    /* 只在「行首 + 像大题标记 + 当前块已有较多内容」时断开，避免把正文误切 */
+    const isHead = SECTION_RE.test(ln) && ln.trim().length < 40;
+    if (isHead && cur.join('\n').trim().length > 400) {
+      blocks.push(cur.join('\n').trim());
+      cur = [];
+    }
+    cur.push(ln);
+  });
+  if (cur.join('\n').trim()) blocks.push(cur.join('\n').trim());
+  /* 切得太碎（>8 块）说明标记识别过度，退回整块 */
+  if (blocks.length > 8 || blocks.length < 2) return [t];
+  return blocks;
+}
+
+/* 分块解析：依次请求，任一块失败不拖垮全局（其余块照常出结果） */
+async function parseInChunks(transcript) {
+  const chunks = splitTranscript(transcript);
+  if (chunks.length === 1) {
+    const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[0]) }], 8192);
+    return jsonFromText(raw);
+  }
+  console.log('[分批解析] 共 ' + chunks.length + ' 块：' + chunks.map((c) => c.length + '字').join(' / '));
+  const merged = { title: '', passages: [] };
+  const fails = [];
+  for (let i = 0; i < chunks.length; i++) {
+    $('#topHint').textContent = '正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分…';
+    try {
+      const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i]) }], 8192);
+      const d = jsonFromText(raw);
+      if (!merged.title && d.title) merged.title = d.title;
+      (d.passages || []).forEach((p) => merged.passages.push(p));
+    } catch (err) {
+      console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + err.message);
+      fails.push(i + 1);
+    }
+    if (i < chunks.length - 1) await sleep(300);
+  }
+  if (!merged.passages.length) throw new Error('解析结果为空，请重试');
+  if (fails.length) toast('第 ' + fails.join('、') + ' 部分没解析出来，可单独再传一次', 'err');
+  return merged;
+}
+
 async function runPipeline() {
   if (!S.files.length) return;
   $('#btnRun').disabled = true;
@@ -1063,12 +1385,10 @@ async function runPipeline() {
     if (!texts.length) throw new Error('没有识别到任何文字，请换更清晰的图片');
     setStep(1);
 
-    /* --- 2~4. 结构化解析 --- */
+    /* --- 2~4. 结构化解析（整卷自动分批，避免输出被截断丢题型） --- */
     const transcript = texts.join('\n\n');
-    const prompt = PARSE_PROMPT.replace('{{TEXT}}', transcript);
     setStep(2);
-    const raw = await aiCallSmart('parse', [{ role: 'user', content: prompt }], 8192);
-    const data = jsonFromText(raw);
+    const data = await parseInChunks(transcript);
 
     if (!data.passages || !data.passages.length) throw new Error('解析结果为空，请重试');
 
@@ -1103,10 +1423,8 @@ async function runFromText() {
         renderProgress();
         $('#btnRun').disabled = true;
         try {
-          const prompt = PARSE_PROMPT.replace('{{TEXT}}', text);
           setStep(2);
-          const raw = await aiCallSmart('parse', [{ role: 'user', content: prompt }], 8192);
-          const data = jsonFromText(raw);
+          const data = await parseInChunks(text);
           if (!data.passages || !data.passages.length) throw new Error('解析结果为空，请重试');
           setStep(3);
           progressState.done = [0, 1, 2, 3];
@@ -1125,18 +1443,28 @@ async function runFromText() {
       }
     }
   ]);
-  $('#modalText').placeholder = '把阅读文章的原文和题目一起粘贴进来，例如：\n\nMany people believe that...\n\n21. What does the author suggest?\nA. ...\nB. ...\nC. ...\nD. ...';
+  $('#modalText').placeholder = '把整张卷子的文字直接粘进来（图片、文字都行）：\n\nMany people believe that...\n\n21. What does the author suggest?\nA. ...\nB. ...\nC. ...\nD. ...\n\n完形、七选五、语法填空也能一起粘，程序会自动分题型。';
   $('#modalText').focus();
 }
 
 /* ---------- 解析结果落地 ---------- */
 function commitResult(data) {
-  S.passages = data.passages.map(normalizePassage);
-  S.title = data.title || '英语阅读讲解';
+  const raw = (data.passages || []).map(normalizePassage);
+  /* 同类题型被拆成多篇的，先合并再落地，避免语法填空显示成两篇 */
+  const merged = mergeSameKind(raw);
+  if (merged.length < raw.length) {
+    const n = raw.length - merged.length;
+    console.log('[题型合并] ' + raw.length + ' 篇 → ' + merged.length + ' 篇（合并了 ' + n + ' 处同类碎片）');
+  }
+  S.passages = merged;
+  S.title = data.title || '英语试卷讲解';
   S.cur = 0;
   S.activeQ = null;
   S.picking = null;
-  S.view = 'split';
+  /* 超过一种题型就直接给「题型速览」页，省得手动切 */
+  const kinds = {};
+  S.passages.forEach((p) => { kinds[kindOf(p)] = 1; });
+  S.view = Object.keys(kinds).length > 1 ? 'overview' : 'split';
   $('#emptyState').classList.add('hidden');
   $('#subbar').style.display = '';
   S.files = [];
@@ -1149,7 +1477,8 @@ function commitResult(data) {
 }
 
 function normalizePassage(p) {
-  return {
+  const raw = {
+    kind: p.kind || '',
     label: p.label || 'A',
     genre: p.genre || '',
     topic: p.topic || '',
@@ -1161,7 +1490,8 @@ function normalizePassage(p) {
       no: q.no,
       stem: String(q.stem || '').trim(),
       options: (q.options || []).map((o) => ({ key: o.key, text: String(o.text || '').trim() })),
-      answer: String(q.answer || '').trim().toUpperCase().charAt(0),
+      answer: String(q.answer || '').trim(),
+      hint: String(q.hint || '').trim(),
       evidence: String(q.evidence || '').trim(),
       explain: String(q.explain || '').trim(),
       type: q.type || ''
@@ -1173,6 +1503,16 @@ function normalizePassage(p) {
       tip: String(e.tip || '').trim()
     }))
   };
+  /* 单选/完形/七选五的答案是大写字母；语法填空的答案是一个词，
+     不能再用 charAt(0) 截断（overflow → o 这种 bug），所以两种分开处理 */
+  if (raw.kind === 'grammar' || looksLikeGrammar(raw)) {
+    raw.kind = 'grammar';
+  }
+  raw.questions.forEach((q) => {
+    if (raw.kind === 'grammar') return;
+    q.answer = q.answer.toUpperCase().charAt(0);
+  });
+  return raw;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1236,21 +1576,83 @@ function render() {
 function renderTabs() {
   const box = $('#ptabs');
   if (!S.passages.length) { box.innerHTML = ''; return; }
-  box.innerHTML = S.passages.map((p, i) => {
-    const n = p.questions.length;
-    return '<button class="ptab' + (i === S.cur ? ' on' : '') + '" data-pi="' + i + '">'
-      + esc(p.label) + '篇'
-      + (n ? '<span class="meta">' + n + '题</span>' : '')
-      + '</button>';
-  }).join('');
+  const groups = kindGroups();
+  const ck = curKind();
+  let html = '';
+  /* 两种以上题型才显示「全部」总览，只有一种题型时它没意义 */
+  if (groups.length > 1) {
+    html += '<button class="ptab overview' + (S.view === 'overview' ? ' on' : '') + '" data-overview="1">'
+      + '全部<span class="meta">' + S.passages.length + '篇</span></button>';
+  }
+  groups.forEach(function (g) {
+    const qn = g.items.reduce(function (n, it) { return n + it.p.questions.length; }, 0);
+    html += '<span class="ptab ' + kindCls(g.kind) + (S.view !== 'overview' && g.kind === ck ? ' on' : '') + '"'
+      + ' data-kind="' + g.kind + '" data-pi="' + g.items[0].pi + '"'
+      + ' title="' + esc(kindDesc(g.kind)) + '">'
+      + '<span class="tk">' + esc(kindShort(g.kind)) + '</span>'
+      + g.items.map(function (it) { return esc(it.p.label || ''); }).join(' / ')
+      + '<span class="meta">' + (qn ? qn + '题' : g.items.length + '篇') + '</span>'
+      + '</span>';
+  });
+  box.innerHTML = html;
   $$('#vtabs .vtab').forEach((b) => b.classList.toggle('on', b.dataset.view === S.view));
 }
+
+/* 题型速览：一眼看清这份卷子收进来几种题型、各多少题、考了什么 */
+function viewOverview() {
+  const groups = kindGroups();
+  let html = '<div class="full-wrap"><div class="card">'
+    + '<div class="ov-head"><h2 style="margin:0">题型速览</h2>'
+    + '<span class="chip">共 ' + S.passages.length + ' 篇</span>'
+    + '<span class="chip orange">共 ' + S.passages.reduce(function (n, p) { return n + p.questions.length; }, 0) + ' 题</span>'
+    + '<span class="chip gray">' + groups.length + ' 种题型</span></div>'
+    + '<div class="ov-sub">点下面任意一张卡片，直接进入该题型的讲解。' +
+      '如果发现同一题型被拆成了几篇（比如语法填空显示成「语法填空 / 语法填空」两条），点右上角 <b>⇄ 合并同题型</b>。</div>'
+    + '<div class="ov-grid">';
+  groups.forEach(function (g) {
+    const st = kindStats(g.kind);
+    const labels = g.items.map(function (it) { return it.p.label || ''; }).filter(Boolean).join(' / ');
+    /* 考点分布取前 4 个，讲评课时最关心高频考点 */
+    const top = st.types.slice(0, 4).map(function (x) { return x.t + '×' + x.n; }).join('、');
+    html += '<div class="ov-card ' + kindCls(g.kind) + '" data-overview-go="' + g.kind + '" data-pi="' + g.items[0].pi + '">'
+      + '<span class="tk">' + esc(kindName(g.kind)) + '</span>'
+      + '<h3>' + esc(KIND_INFO[g.kind].name) + '</h3>'
+      + '<div class="nums">收进 <b>' + g.items.length + '</b> 篇' + (labels ? '（' + esc(labels) + '）' : '')
+      + ' · 共 <b>' + st.questions + '</b> 空/题</div>'
+      + (top ? '<div class="qs">考点：' + esc(top) + '</div>' : '<div class="qs">' + esc(kindDesc(g.kind)) + '</div>')
+      + '<span class="go">进入讲解 →</span></div>';
+  });
+  html += '</div>';
+
+  /* 每种题型都拆成好几篇 = 大概率被切碎了，提醒一句 */
+  const split = groups.filter(function (g) { return g.kind !== 'reading' && g.items.length > 1; });
+  if (split.length) {
+    html += '<div class="ov-grid" style="margin-top:14px"><div class="ov-card warn">'
+      + '<h3 style="color:var(--err);margin-top:0">发现可能被切碎的题型</h3>'
+      + '<div class="nums">' + split.map(function (g) { return kindName(g.kind) + ' ' + g.items.length + ' 篇'; }).join('、')
+      + '。同一题型（尤其语法填空、完形填空）本来应该是一整篇，点右上角 <b>⇄ 合并同题型</b> 合成一篇再讲。</div>'
+      + '<span class="go" data-overview-go="__merge__" style="cursor:pointer">立即合并 →</span></div></div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+/* 题型速览的点击：卡片 → 跳到该题型第一篇；合并卡片 → 直接合并 */
+$('#content').addEventListener('click', (e) => {
+  const go = e.target.closest('[data-overview-go]');
+  if (!go) return;
+  const k = go.dataset.overviewGo;
+  if (k === '__merge__') { runMergeKinds(); return; }
+  jumpToKind(k);
+});
 
 function renderView() {
   const c = $('#content');
   document.body.classList.toggle('show-zh', S.showZh);
   document.body.classList.toggle('picking', !!S.picking);
   document.documentElement.style.setProperty('--fs', S.fs);
+
+  if (S.view === 'overview') { c.innerHTML = viewOverview(); renderQNav(); return; }
 
   const p = S.passages[S.cur];
   if (!p) { c.innerHTML = ''; return; }
@@ -1313,12 +1715,29 @@ function evPartsListOf(q) {
   return q && q.evidence ? evidenceParts(q.evidence) : [];
 }
 
+/* 题型徽章：放在每个视图标题最前面，讲课时一眼知道现在讲的是哪种题 */
+function kindChip(p, colored) {
+  const k = kindOf(p);
+  return '<span class="chip ' + (colored || k !== 'reading' ? kindCls(k) : '') + ' kchip">'
+    + esc(kindName(k)) + '</span>';
+}
+
+/* 每种题型的讲解提示语不一样：完形/七选五要找前后句，语法填空要看提示词 */
+const VIEW_TIP = {
+  reading: '点任意一题：左侧自动滚动并高亮对应句。下方可显示原文、显示答案、修改对应句。',
+  cloze:   '完形填空重点看上下文。点任意一空：左侧高亮原文前后句，先读一遍再对答案。',
+  seven:   '七选五重点看逻辑衔接。点任意一空：左侧高亮原文前后句；右侧选项条对照 A～G。',
+  grammar: '语法填空重点看提示词和句子成分。点任意一空：右侧给出答案、考点和判断依据。'
+};
+
 /* ---------- 视图：整篇（左右分栏） ---------- */
 function viewSplit(p) {
+  const k = kindOf(p);
   const left = ''
     + '<div class="pane-head">'
-    + '  <span class="t"><i>◆</i>整篇 · 左右分栏清晰讲解</span>'
-    + (p.genre ? '<span class="chip">' + esc(p.genre) + '</span>' : '')
+    + '  <span class="t"><i>◆</i>' + esc(kindShort(k)) + ' · 左右分栏清晰讲解</span>'
+    + kindChip(p)
+    + (p.genre ? '<span class="chip gray">' + esc(p.genre) + '</span>' : '')
     + (p.topic ? '<span class="chip gray">' + esc(p.topic) + '</span>' : '')
     + '<span class="chip orange">共 ' + p.paragraphs.length + ' 段</span>'
     + '<button class="toggle' + (S.showZh ? ' on' : '') + '" id="zhToggle"><span class="dot"></span>显示译文</button>'
@@ -1328,8 +1747,8 @@ function viewSplit(p) {
   const right = ''
     + '<div class="pane-head"><span class="t"><i>◆</i>题目 · 点击查看原文对应句</span></div>'
     + '<div style="font-size:.76rem;color:var(--text-3);margin:-6px 0 14px;line-height:1.7">'
-    + '点任意一题：左侧自动滚动并高亮对应句。下方可显示原文、显示答案、修改对应句。</div>'
-    + (p.questions.length ? p.questions.map((q) => qHtml(q)).join('') : emptyQs());
+    + esc(VIEW_TIP[k] || VIEW_TIP.reading) + '</div>'
+    + (p.questions.length ? p.questions.map((q) => qHtml(q, k)).join('') : emptyQs(p));
 
   return '<div class="pane pane-left">' + left + '</div>'
        + '<div class="divider" id="divider"></div>'
@@ -1350,10 +1769,12 @@ function activeEvMap(p) {
 
 /* ---------- 视图：原文 ---------- */
 function viewOriginal(p) {
+  const k = kindOf(p);
   return '<div class="pane pane-left" style="flex:1;border-right:none">'
     + '<div class="pane-head">'
-    + '<span class="t"><i>◆</i>' + esc(p.label) + '篇原文</span>'
-    + (p.genre ? '<span class="chip">' + esc(p.genre) + '</span>' : '')
+    + '<span class="t"><i>◆</i>' + esc(p.label || '') + '原文</span>'
+    + kindChip(p)
+    + (p.genre ? '<span class="chip gray">' + esc(p.genre) + '</span>' : '')
     + '<button class="toggle' + (S.showZh ? ' on' : '') + '" id="zhToggle"><span class="dot"></span>显示译文</button>'
     + '</div>'
     + parasHtml(p, activeEvMap(p))
@@ -1363,7 +1784,11 @@ function viewOriginal(p) {
 /* ---------- 视图：单段精读 ---------- */
 function viewSingle(p) {
   const map = buildEvMap(p);
-  let html = '<div class="single-wrap">';
+  let html = '<div class="single-wrap">'
+    + '<div class="pane-head"><span class="t"><i>◆</i>单段精读</span>' + kindChip(p)
+    + (p.topic ? '<span class="chip gray">' + esc(p.topic) + '</span>' : '')
+    + '<button class="toggle' + (S.showZh ? ' on' : '') + '" id="zhToggle"><span class="dot"></span>显示译文</button>'
+    + '</div>';
   const used = {};
   p.paragraphs.forEach((para, pi) => {
     const hits = map[pi] || [];
@@ -1403,7 +1828,8 @@ function miniQ(q) {
   const ans = q.answer || '—';
   return '<div class="mini-q">'
     + '<span class="no">' + esc(q.no) + '</span><span class="st">' + esc(q.stem) + '</span>'
-    + (q.options.length ? '<div style="margin-top:7px;font-size:.84rem;color:#4d5c6d;line-height:1.7">'
+    + (q.hint ? '<span class="mhint">(' + esc(q.hint) + ')</span>' : '')
+    + (q.options && q.options.length ? '<div style="margin-top:7px;font-size:.84rem;color:#4d5c6d;line-height:1.7">'
         + q.options.map((o) => esc(o.key) + '. ' + esc(o.text)).join('　') + '</div>' : '')
     + '<div class="ans"><b>答案 ' + esc(ans) + '</b>'
     + (q.type ? '<span style="color:var(--text-3);font-weight:500">' + esc(q.type) + '</span>' : '') + '</div>'
@@ -1414,12 +1840,12 @@ function miniQ(q) {
 /* ---------- 视图：文化背景 ---------- */
 function viewBackground(p) {
   return '<div class="full-wrap"><div class="card">'
-    + '<h2>' + esc(p.label) + '篇 · 文化背景</h2>'
+    + '<div class="ov-head" style="margin-bottom:14px"><h2 style="margin:0">文化背景</h2>' + kindChip(p) + '</div>'
     + (p.background
         ? '<p>' + esc(p.background).replace(/\n/g, '<br>') + '</p>'
         : '<p style="color:var(--text-3)">这份材料暂无背景介绍。</p>')
     + (p.genre || p.topic ? '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
-        + (p.genre ? '<span class="chip">' + esc(p.genre) + '</span>' : '')
+        + (p.genre ? '<span class="chip gray">' + esc(p.genre) + '</span>' : '')
         + (p.topic ? '<span class="chip gray">' + esc(p.topic) + '</span>' : '')
         + '</div>' : '')
     + '</div></div>';
@@ -1429,7 +1855,7 @@ function viewBackground(p) {
 function viewExpressions(p) {
   const list = p.expressions || [];
   return '<div class="full-wrap"><div class="card">'
-    + '<h2>' + esc(p.label) + '篇 · 积累表达</h2>'
+    + '<div class="ov-head" style="margin-bottom:14px"><h2 style="margin:0">积累表达</h2>' + kindChip(p) + '</div>'
     + (list.length
         ? list.map((e) => '<div class="exp-row">'
             + '<div class="exp-term">' + esc(e.term) + '</div>'
@@ -1441,18 +1867,10 @@ function viewExpressions(p) {
 }
 
 /* ---------- 题目卡片 ---------- */
-function qHtml(q) {
+function qHtml(q, kind) {
   const shown = q.__shown ? ' on' : '';
   const ansShown = q.__ans ? ' on' : '';
   const isPicking = S.picking && String(S.picking.no) === String(q.no);
-  const opts = q.options.map((o) => {
-    let cls = 'opt';
-    if (q.__ans && q.answer && o.key === q.answer) cls += ' correct';
-    else if (q.__ans && q.answer) cls += ' wrong';
-    return '<div class="' + cls + '" data-pickans="' + esc(o.key) + '" data-q="' + esc(q.no) + '">'
-      + '<span class="k">' + esc(o.key) + '</span><span class="v">' + esc(o.text) + '</span></div>';
-  }).join('');
-
   const isAct = String(S.activeQ) === String(q.no) ? ' act' : '';
   return '<div class="qcard' + isAct + '" data-q="' + esc(q.no) + '">'
     + '<div class="qhead" data-jump="' + esc(q.no) + '">'
@@ -1460,7 +1878,7 @@ function qHtml(q) {
     +   '<span class="qstem">' + esc(q.stem) + '</span>'
     +   (q.type ? '<span class="qtype">' + esc(q.type) + '</span>' : '')
     + '</div>'
-    + '<div class="opts">' + opts + '</div>'
+    + (kind === 'grammar' ? grammarBody(q) : '<div class="opts">' + optsHtml(q) + '</div>')
     + '<div class="qbtns">'
     +   '<button class="qb' + shown + '" data-ev="' + esc(q.no) + '">📄 显示原文</button>'
     +   '<button class="qb' + ansShown + '" data-ans="' + esc(q.no) + '">✔ 显示答案</button>'
@@ -1468,27 +1886,72 @@ function qHtml(q) {
     +     (isPicking ? '请点左侧句子…' : '✎ 改对应句') + '</button>'
     + '</div>'
     + (q.__shown && q.evidence ? '<div class="evbox"><div class="lb">原文对应句</div><div class="tx">' + esc(q.evidence) + '</div></div>' : '')
-    + (q.__ans ? '<div class="anbox"><div class="lb">答案 ' + esc(q.answer || '—') + ' · 解析</div><div class="tx">' + esc(q.explain || '（暂无解析）') + '</div></div>' : '')
+    + (q.__ans
+        ? '<div class="anbox"><div class="lb">'
+          + (kind === 'grammar' ? '答案' : '答案 ' + esc(q.answer || '—')) + ' · 解析</div>'
+          + '<div class="tx">' + esc(q.explain || '（暂无解析）') + '</div></div>'
+        : '')
     + '</div>';
 }
 
-function emptyQs() {
+function optsHtml(q) {
+  return q.options.map((o) => {
+    let cls = 'opt';
+    if (q.__ans && q.answer && o.key === q.answer) cls += ' correct';
+    else if (q.__ans && q.answer) cls += ' wrong';
+    return '<div class="' + cls + '" data-pickans="' + esc(o.key) + '" data-q="' + esc(q.no) + '">'
+      + '<span class="k">' + esc(o.key) + '</span><span class="v">' + esc(o.text) + '</span></div>';
+  }).join('');
+}
+
+/* 语法填空没有选项，答案就是一个词 —— 直接把「答案」做成可点的按钮，
+   点一下即显示（等于「显示答案」），再点「×」恢复，方便上课先留白 */
+function grammarBody(q) {
+  const revealed = !!q.__ans;
+  const ans = String(q.answer || '').trim();
+  return '<div class="gbody">'
+    + '<span class="ghint">' + (q.hint ? '提示词：<b>' + esc(q.hint) + '</b>' : '无提示词') + '</span>'
+    + '<div class="gans' + (revealed ? ' on' : '') + '" data-gans="' + esc(q.no) + '">'
+    + (revealed
+        ? '<span class="val">' + esc(ans || '—') + '</span><span class="tog">隐藏</span>'
+        : '<span class="val">点击显示答案</span><span class="tog">答案</span>')
+    + '</div>'
+    + (q.options && q.options.length
+        ? '<div class="opts">' + optsHtml(q) + '</div>'
+        : '')
+    + '</div>';
+}
+
+function emptyQs(p) {
+  const k = p ? kindOf(p) : 'reading';
   return '<div style="padding:30px 10px;text-align:center;color:var(--text-3);font-size:.86rem;line-height:1.9">'
-    + '这篇材料里没有识别到配套题目。<br>可以点上方「上传图片」补充题目页。</div>';
+    + '这篇材料里没有识别到配套题目。<br>可以点上方「上传图片」补充题目页，'
+    + '或点右上角「⇄ 合并同题型」把被拆碎的段落合起来。</div>';
 }
 
 /* =========================================================
    交互
    ========================================================= */
-/* 篇切换 */
+/* 篇切换：点「全部」看速览，点某个题型跳到该题型的篇目 */
 $('#ptabs').addEventListener('click', (e) => {
   const b = e.target.closest('.ptab');
   if (!b) return;
-  S.cur = +b.dataset.pi;
   S.activeQ = null;
   S.picking = null;
+  if (b.dataset.overview) { S.view = 'overview'; render(); return; }
+  if (b.dataset.kind) { jumpToKind(b.dataset.kind); return; }
+  S.cur = +b.dataset.pi;
   render();
 });
+
+/* 跳到某个题型：落在该题型第一篇，视图从速览切回整篇 */
+function jumpToKind(kind) {
+  const list = kindSiblings(kind);
+  if (!list.length) return;
+  S.cur = list[0];
+  if (S.view === 'overview') S.view = 'split';
+  render();
+}
 
 /* 视图切换 */
 $('#vtabs').addEventListener('click', (e) => {
@@ -1505,6 +1968,23 @@ $('#content').addEventListener('click', (e) => {
 
   /* 译文开关 */
   if (t.closest('#zhToggle')) { S.showZh = !S.showZh; renderView(); return; }
+
+  /* 语法填空：点答案块 → 直接显示/隐藏（比找下面的按钮快，上课更顺手） */
+  const gans = t.closest('[data-gans]');
+  if (gans) {
+    const q = curQ(gans.dataset.gans);
+    if (!q) return;
+    q.__ans = !q.__ans;
+    if (q.__ans) { q.__shown = false; S.activeQ = q.no; }
+    renderView();
+    if (q.__ans) {
+      const el = document.querySelector('[data-gans="' + q.no + '"]');
+      if (el) { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200); }
+      const box = document.querySelector('.qcard[data-q="' + q.no + '"]');
+      safeScroll(box, { block: 'nearest' });
+    }
+    return;
+  }
 
   /* 点题目 → 定位高亮 */
   const jump = t.closest('[data-jump]');
@@ -1622,18 +2102,25 @@ function curQ(no) {
 }
 
 /* =========================================================
-   题目导航：整份试卷里连续切题（跨篇自动跳）
+   题目导航：在【当前题型内】连续切题（跨篇自动跳）
+   只在题型内翻是有意的 —— 讲语法填空时按方向键不会突然跳到阅读 A 篇
    ========================================================= */
+function navScope() {
+  const k = curKind();
+  return kindSiblings(k).map(function (pi) { return { pi: pi, p: S.passages[pi] }; });
+}
+
 function allQCount() {
-  return S.passages.reduce((n, p) => n + p.questions.length, 0);
+  return navScope().reduce(function (n, it) { return n + it.p.questions.length; }, 0);
 }
 
 function curQIndex() {
+  const scope = navScope();
   let idx = 0;
-  for (let i = 0; i < S.passages.length; i++) {
-    const qs = S.passages[i].questions;
+  for (let i = 0; i < scope.length; i++) {
+    const qs = scope[i].p.questions;
     for (let j = 0; j < qs.length; j++) {
-      if (i === S.cur && String(qs[j].no) === String(S.activeQ)) return idx;
+      if (scope[i].pi === S.cur && String(qs[j].no) === String(S.activeQ)) return idx;
       idx++;
     }
   }
@@ -1641,6 +2128,7 @@ function curQIndex() {
 }
 
 function navQ(dir) {
+  const scope = navScope();
   const total = allQCount();
   if (!total) return;
   let cur = curQIndex();
@@ -1649,11 +2137,11 @@ function navQ(dir) {
   if (target < 0) target = total - 1;
   if (target >= total) target = 0;
   let idx = 0;
-  for (let i = 0; i < S.passages.length; i++) {
-    const qs = S.passages[i].questions;
+  for (let i = 0; i < scope.length; i++) {
+    const qs = scope[i].p.questions;
     for (let j = 0; j < qs.length; j++) {
       if (idx === target) {
-        S.cur = i;
+        S.cur = scope[i].pi;
         S.activeQ = qs[j].no;
         S.picking = null;
         render();
@@ -1674,8 +2162,11 @@ function renderQNav() {
   if (!show) return;
   const i = curQIndex();
   const q = curQ(S.activeQ);
+  const k = curKind();
   $('#qnavCnt').innerHTML = (i >= 0 ? (i + 1) : '—') + ' / ' + total
-    + '<small>' + (q ? '第 ' + q.no + ' 题' : (S.passages.length + ' 篇')) + '</small>';
+    + '<small>' + esc(kindShort(k)) + ' · '
+    + (q ? '第 ' + esc(q.no) + (k === 'grammar' ? ' 空' : ' 题') : '点击题目开始')
+    + '</small>';
 }
 
 $('#qnav').addEventListener('click', (e) => {
@@ -1838,18 +2329,89 @@ $('#btnFsMinus').addEventListener('click', () => {
 $('#btnExport').addEventListener('click', () => {
   if (!S.passages.length) { toast('还没有可导出的内容', 'err'); return; }
   const data = { title: S.title, passages: cleanPassages() };
-  const name = (S.title || '英语阅读讲解').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) + '.json';
+  const name = (S.title || '英语试卷讲解').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) + '.json';
   download(name, JSON.stringify(data, null, 2));
   toast('已导出 JSON', 'ok');
 });
 
+/* =========================================================
+   合并同题型
+   AI 有时会把一篇语法填空/完形按排版拆成两篇，这里手动合回一篇
+   ========================================================= */
+function mergePreview() {
+  const groups = kindGroups();
+  const mergeable = groups.filter(function (g) { return g.kind !== 'reading' && g.items.length > 1; });
+  if (!mergeable.length) return null;
+  const before = S.passages.length;
+  let planned = 0;
+  mergeable.forEach(function (g) {
+    const merged = groupByKind(g.items.map(function (it) { return it.p; }));
+    planned += merged.length;
+  });
+  const keep = groups.filter(function (g) { return g.kind === 'reading' || g.items.length === 1; })
+    .reduce(function (n, g) { return n + g.items.length; }, 0);
+  return { mergeable: mergeable, before: before, after: keep + planned };
+}
+
+function runMergeKinds() {
+  if (!S.passages.length) { toast('还没有解析好的内容', 'err'); return; }
+  const pv = mergePreview();
+  if (!pv) { toast('没有需要合并的题型（每个题型都只有一篇）', 'ok'); return; }
+  /* 合并会改写段落和题目顺序，先弹确认，防止误点 */
+  openModal('合并同题型', '', [
+    { label: '取消', fn: () => $('#modal').classList.remove('on') },
+    {
+      label: '确认合并', solid: true, fn: function () {
+        $('#modal').classList.remove('on');
+        doMergeKinds();
+      }
+    }
+  ]);
+  $('#modalText').style.display = 'none';
+  const box = $('#modalCustom');
+  box.style.display = '';
+  box.innerHTML = '<div class="keynote">'
+    + '<p style="margin-bottom:10px">下面这些题型被切成了多篇，合并后每篇的段落按原顺序拼接、题目按题号排序去重：</p>'
+    + pv.mergeable.map(function (g) {
+        return '<p style="margin:8px 0">· <b>' + kindName(g.kind) + '</b>：'
+          + g.items.map(function (it) {
+              return esc(it.p.label || '') + '（' + it.p.questions.length + ' 题）';
+            }).join(' ＋ ')
+          + ' → 合为 1 篇</p>';
+      }).join('')
+    + '<p style="margin-top:12px;color:var(--text-3)">篇目总数：' + pv.before + ' → ' + pv.after + '</p>'
+    + '</div>';
+}
+
+function doMergeKinds() {
+  const before = S.passages.length;
+  const keepPi = S.cur;
+  const keepKind = S.passages[keepPi] ? kindOf(S.passages[keepPi]) : null;
+  const merged = mergeSameKind(S.passages.map(function (p) { return p; }));
+  if (merged.length >= before) { toast('没有可合并的内容', 'ok'); return; }
+  S.passages = merged;
+  /* 合并后用「原来停在哪个题型」找回位置，比记住下标靠谱 */
+  let idx = 0;
+  if (keepKind !== null) {
+    const list = kindSiblings(keepKind);
+    if (list.length) idx = list[0];
+  }
+  S.cur = Math.min(idx, S.passages.length - 1);
+  S.activeQ = null;
+  S.picking = null;
+  render(); save();
+  toast('已合并：' + before + ' 篇 → ' + S.passages.length + ' 篇', 'ok');
+}
+
+$('#btnMerge').addEventListener('click', runMergeKinds);
+
 function cleanPassages() {
   return S.passages.map((p) => ({
-    label: p.label, genre: p.genre, topic: p.topic,
+    kind: kindOf(p), label: p.label, genre: p.genre, topic: p.topic,
     paragraphs: p.paragraphs.map((x) => ({ en: x.en, zh: x.zh })),
     questions: p.questions.map((q) => ({
       no: q.no, stem: q.stem, options: q.options, answer: q.answer,
-      evidence: q.evidence, explain: q.explain, type: q.type
+      hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type
     })),
     background: p.background,
     expressions: p.expressions
@@ -1873,9 +2435,13 @@ $('#btnImport').addEventListener('click', () => {
 });
 
 function loadData(data) {
-  S.passages = (data.passages || []).map(normalizePassage);
-  S.title = data.title || '英语阅读讲解';
+  S.passages = mergeSameKind((data.passages || []).map(normalizePassage));
+  S.title = data.title || '英语试卷讲解';
   S.cur = 0; S.activeQ = null; S.picking = null;
+  /* 导入的卷子只要不止一种题型，同样先给题型速览 */
+  const kinds = {};
+  S.passages.forEach((p) => { kinds[kindOf(p)] = 1; });
+  S.view = Object.keys(kinds).length > 1 ? 'overview' : 'split';
   $('#docTitle').value = S.title;
   $('#emptyState').classList.add('hidden');
   $('#subbar').style.display = '';
@@ -1912,7 +2478,8 @@ function restore() {
   try {
     const d = JSON.parse(raw);
     if (!d.passages || !d.passages.length) return false;
-    S.passages = d.passages.map(normalizePassage);
+    /* 旧版缓存没有 kind 字段，normalizePassage + mergeSameKind 会自动补正归类 */
+    S.passages = mergeSameKind(d.passages.map(normalizePassage));
     S.title = d.title || '';
     S.fs = d.fs || 1;
     S.showZh = !!d.showZh;
