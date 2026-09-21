@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-page-node-id="pIFjMvoqcM2hQzd74i6oGK">
+<head data-page-node-id="Vx846mfxLiNX0FAutnJO42">
+<meta charset="UTF-8" data-page-node-id="cqgDly6aqCPnqMK4wLDL8R">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="6fAuDnfClc0kDAVvUHkjox">
 <title>英语阅读讲解器</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E" data-page-node-id="62OVNHwgTR2LLnm4UAlnS1">
 <style>
 :root{
   --bg:#eef2f7;
@@ -440,6 +440,26 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .lsacts .tb-btn{padding:5px 10px;font-size:.75rem}
 .lsempty{padding:20px;text-align:center;color:var(--text-3);font-size:.78rem}
 .lsmsg{margin-top:10px;font-size:.78rem;line-height:1.8}
+/* 继续讲解：速览页的「上次讲到」横幅 */
+.resume{
+  margin-top:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border:1.5px solid #e8b98d;background:#fdf6ec;border-radius:12px;padding:13px 18px;
+}
+.resume .tag{
+  flex:0 0 auto;font-size:.72rem;font-weight:800;color:#a04d06;letter-spacing:.06em;
+  background:#f9e4cd;border:1px solid #e8c9a4;border-radius:20px;padding:3px 10px;
+}
+.resume .txt{flex:1;min-width:220px;font-size:.86rem;color:var(--text);line-height:1.6}
+.resume .txt b{color:#a04d06}
+.resume .txt .dim{color:var(--text-3);font-size:.76rem}
+.resume .go{
+  flex:0 0 auto;border:none;background:#c96a12;color:#fff;border-radius:9px;
+  padding:9px 20px;font-size:.86rem;font-weight:800;cursor:pointer;letter-spacing:.05em;transition:.15s;
+}
+.resume .go:hover{background:#b05e0f;transform:translateY(-1px)}
+/* 课件列表里的「上次讲到」标记 */
+.lsmark{font-size:.72rem;color:#a04d06;font-weight:700;margin-top:3px}
+.lsmark em{font-style:normal;background:#f9e4cd;border-radius:4px;padding:1px 6px}
 .lsmsg.ok{color:var(--ok)}
 .lsmsg.err{color:var(--err)}
 
@@ -559,127 +579,127 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
 .gate-me .u{max-width:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
-<body class="gated">
+<body class="gated" data-page-node-id="tPXowp5WH6Jxm0JFlCWggG">
 
-<div class="gate" id="gate">
-  <div class="gate-card">
-    <div class="gate-logo">📖</div>
-    <h1>英语阅读讲解器</h1>
-    <div class="gate-sub">教研组内部使用 · 请先登录</div>
-    <div class="gate-field">
-      <label>姓名</label>
-      <input id="gateUser" placeholder="请输入你的姓名" autocomplete="off" spellcheck="false">
+<div class="gate" id="gate" data-page-node-id="LJrQoAokBFVot8fmBMavZZ">
+  <div class="gate-card" data-page-node-id="9VDlWADxv7Lz4piHQ9hSPE">
+    <div class="gate-logo" data-page-node-id="mp6W4ZwgLdIftmYd8ewH69">📖</div>
+    <h1 data-page-node-id="hsAFNohqogHj3EFGcEMN0k">英语阅读讲解器</h1>
+    <div class="gate-sub" data-page-node-id="eEPRbRp9v2DIJYC2yxtbAh">教研组内部使用 · 请先登录</div>
+    <div class="gate-field" data-page-node-id="T2v6iZMNMBV7oVVuYrDk4N">
+      <label data-page-node-id="uw0bpH1eERBNhFacm1JKoG">姓名</label>
+      <input id="gateUser" placeholder="请输入你的姓名" autocomplete="off" spellcheck="false" data-page-node-id="cCHNb24ZY2dkLyqDwnA0To">
     </div>
-    <div class="gate-field">
-      <label>密码</label>
-      <input id="gatePass" type="password" placeholder="请输入密码" autocomplete="off">
+    <div class="gate-field" data-page-node-id="cSzRPpS4HIAIFgg5Ng7ECZ">
+      <label data-page-node-id="zNRL8VsuxlYharLQCqE0DD">密码</label>
+      <input id="gatePass" type="password" placeholder="请输入密码" autocomplete="off" data-page-node-id="stlt1ec74Hc7Nbj24K8srx">
     </div>
-    <button class="gate-btn" id="gateEnter">登 录</button>
-    <div class="gate-err" id="gateErr"></div>
-    <div class="gate-foot">
-      账号即本人姓名，初始密码 <code>123456</code><br>
+    <button class="gate-btn" id="gateEnter" data-page-node-id="fMDGDdmq9a8Kih12WJgWru">登 录</button>
+    <div class="gate-err" id="gateErr" data-page-node-id="xcjCLmRjpBACAh4vREkFT5"></div>
+    <div class="gate-foot" data-page-node-id="bxYPTAr5qqgmjLaCYDpTgW">
+      账号即本人姓名，初始密码 <code data-page-node-id="cDdqUFu2XzIPjzTaM1pj1V">123456</code><br data-page-node-id="auOkabXJOVCUqqT6kZaUqQ">
       登录一次即可，之后打开本机浏览器自动记住
     </div>
   </div>
 </div>
 
-<header class="topbar">
-  <span class="logo">📖</span>
-  <span class="brand">英语阅读讲解器</span>
-  <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题">
-  <span class="top-hint" id="topHint">点题目定位 · 双击原文可改 · 每题可改对应句</span>
-  <span class="spacer"></span>
-  <span class="gate-me" id="gateMe" title="点击退出登录"><span>👤</span><span class="u" id="gateMeName"></span></span>
-  <select class="tb-sel" id="modelSelTop" title="解析引擎">
-    <option value="free">免费</option>
-    <option value="eco">经济</option>
-    <option value="pro">标准</option>
+<header class="topbar" data-page-node-id="XHk8mO9Fqxphqs1jxZUBAw">
+  <span class="logo" data-page-node-id="N748sjCz9l6Cczk0Cfl3nO">📖</span>
+  <span class="brand" data-page-node-id="CdheAnbuTLVEijEjEODozI">英语阅读讲解器</span>
+  <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题" data-page-node-id="CcOeIJm14fMMhuweZyyQFP">
+  <span class="top-hint" id="topHint" data-page-node-id="0MjRcWxs7M3DA1cDG0W9Xo">点题目定位 · 双击原文可改 · 每题可改对应句</span>
+  <span class="spacer" data-page-node-id="AvKRQdvR4SNLkxhHAnKgjp"></span>
+  <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="pM2FXNZ9cE5aMY7beBFhMh"><span data-page-node-id="vBrUsfjGC7PrnLgjBFg80F">👤</span><span class="u" id="gateMeName" data-page-node-id="KUkP7HgqhVxD5CleyrGVcv"></span></span>
+  <select class="tb-sel" id="modelSelTop" title="解析引擎" data-page-node-id="PnHVfO3dIUaSrJpzDcxRSg">
+    <option value="free" data-page-node-id="vTLDEA457TgWmBbqPFO4Mq">免费</option>
+    <option value="eco" data-page-node-id="t1sjUQTFnbZbsedYO8sZMd">经济</option>
+    <option value="pro" data-page-node-id="bGdW5ic8nkBloiX1IYrBFq">标准</option>
   </select>
-  <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）">🔑 免费Key</button>
-  <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用">📚 课件库</button>
-  <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇">⇄ 合并同题型</button>
-  <button class="tb-btn icon" id="btnFsMinus" title="减小字号">A－</button>
-  <button class="tb-btn icon" id="btnFsPlus" title="放大字号">A＋</button>
-  <button class="tb-btn" id="btnAddImg">＋ 上传图片</button>
-  <button class="tb-btn" id="btnImport">导入 JSON</button>
-  <button class="tb-btn solid" id="btnExport">导出 JSON</button>
+  <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）" data-page-node-id="RGhmbHNFjea6PJhpjHBpwR">🔑 免费Key</button>
+  <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="ohUQsLPHZD7ANd21yz1lvi">📚 课件库</button>
+  <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇" data-page-node-id="dZxq7Do0Y7hUffDRkvPjh7">⇄ 合并同题型</button>
+  <button class="tb-btn icon" id="btnFsMinus" title="减小字号" data-page-node-id="PHjoOYhH3TX4uAxzLaf3sI">A－</button>
+  <button class="tb-btn icon" id="btnFsPlus" title="放大字号" data-page-node-id="NZ6eHvDuVMVdlTFABtcVzP">A＋</button>
+  <button class="tb-btn" id="btnAddImg" data-page-node-id="YcNdZ8skWMXTcoxIEp8Bmf">＋ 上传图片</button>
+  <button class="tb-btn" id="btnImport" data-page-node-id="rUSr90i2fVfaxp9QDv4Xpj">导入 JSON</button>
+  <button class="tb-btn solid" id="btnExport" data-page-node-id="JPEmTs93HmJBE4Dveclrcl">导出 JSON</button>
 </header>
 
-<div class="subbar" id="subbar" style="display:none">
-  <div class="navline">
-    <span class="lb">题型</span>
-    <div class="ptabs" id="ptabs"></div>
+<div class="subbar" id="subbar" style="display:none" data-page-node-id="4rwma7NPLzBfVBgCJsqqzL">
+  <div class="navline" data-page-node-id="PLFATkPcicF0irHOvPl74h">
+    <span class="lb" data-page-node-id="C8VDcuNXzioALCpUfP8wKl">题型</span>
+    <div class="ptabs" id="ptabs" data-page-node-id="VwUKQTG0QszBxgUOGKXDc8"></div>
   </div>
-  <div class="navline">
-    <span class="lb">视图</span>
-    <div class="vtabs" id="vtabs">
-      <button class="vtab" data-view="split">整篇</button>
-      <button class="vtab" data-view="original">原文</button>
-      <button class="vtab" data-view="single">单段</button>
-      <button class="vtab" data-view="background">文化背景</button>
-      <button class="vtab" data-view="expressions">积累表达</button>
+  <div class="navline" data-page-node-id="Em826iBgPSjiAA2NfO43vP">
+    <span class="lb" data-page-node-id="CfWPPwvWF6M20m9rBHmEBS">视图</span>
+    <div class="vtabs" id="vtabs" data-page-node-id="LLY5KCBhOZm2OwEW2svZhf">
+      <button class="vtab" data-view="split" data-page-node-id="TKGhG26DkfQ6EFbLYIX5jh">整篇</button>
+      <button class="vtab" data-view="original" data-page-node-id="cc76zRYNlaTC8IWBOKrLdR">原文</button>
+      <button class="vtab" data-view="single" data-page-node-id="lL8tjAzkoaKxzEHQGPsJgD">单段</button>
+      <button class="vtab" data-view="background" data-page-node-id="hvsHpYt0aEJTsqJHrBeunl">文化背景</button>
+      <button class="vtab" data-view="expressions" data-page-node-id="J93VmNRKtxTZ3TdZxJrsU2">积累表达</button>
     </div>
   </div>
 </div>
 
-<main class="main" id="main">
-  <div id="content"></div>
+<main class="main" id="main" data-page-node-id="uB4dNkQws91ubofXSGE6OF">
+  <div id="content" data-page-node-id="GGDDJKzErwHx4p2v3vPUQ7"></div>
 
-  <div class="empty" id="emptyState">
-    <div class="drop" id="drop">
-      <div class="ic">📄</div>
-      <h3>上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
-      <p>把试卷拍照或截图拖进来，AI 自动识别文字、<b>判断题型</b>、切分段落、定位题目答案，生成讲解页。<br>
+  <div class="empty" id="emptyState" data-page-node-id="0cbA79U3MHRwFFM6yEwljz">
+    <div class="drop" id="drop" data-page-node-id="vOxm5DSvu7zjbrEttTGr9F">
+      <div class="ic" data-page-node-id="HoPH0TNWaRyBHbn5luNhum">📄</div>
+      <h3 data-page-node-id="FOEkWHRRcyCTyZmHuy0US2">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
+      <p data-page-node-id="QvmdwlAV8Y131baP0TolKk">把试卷拍照或截图拖进来，AI 自动识别文字、<b data-page-node-id="UMEFGXe8FRZMXQKa7j3RnZ">判断题型</b>、切分段落、定位题目答案，生成讲解页。<br data-page-node-id="XhRQ38zoM2tTw9Y3PE6Vl3">
          支持一次上传多张；一张卷子里有几种题型都能自动分开归类。</p>
-      <p style="margin-top:12px">也可以直接按 <span class="kbd">Ctrl</span> + <span class="kbd">V</span> 粘贴截图</p>
+      <p style="margin-top:12px" data-page-node-id="QMfsZYFvtBqCMxPy0tAGGv">也可以直接按 <span class="kbd" data-page-node-id="jA4gvYd6VVW0g27XDWHt78">Ctrl</span> + <span class="kbd" data-page-node-id="QJp1kftf2M7HJndM6NDn2B">V</span> 粘贴截图</p>
     </div>
 
-    <div class="thumbs" id="thumbs"></div>
+    <div class="thumbs" id="thumbs" data-page-node-id="ab6dGTAnaNqDQtFe1rojga"></div>
 
-    <div class="runbar" id="runbar" style="display:none">
-      <button class="big-btn" id="btnRun">开始解析</button>
-      <button class="big-btn ghost" id="btnClear">清空</button>
+    <div class="runbar" id="runbar" style="display:none" data-page-node-id="6GAex4zmxAlH0omNrXsddF">
+      <button class="big-btn" id="btnRun" data-page-node-id="F64Drip9cOhl0IYQfCydJ4">开始解析</button>
+      <button class="big-btn ghost" id="btnClear" data-page-node-id="hasVxoepDESAbSFu87QFlP">清空</button>
     </div>
 
-    <div style="margin-top:20px;text-align:center">
-      <button class="linkbtn" id="btnPasteText">📋 没有图片？直接粘贴试卷文本解析 →</button>
+    <div style="margin-top:20px;text-align:center" data-page-node-id="i5NLTyPhlBGAAox6utDPgX">
+      <button class="linkbtn" id="btnPasteText" data-page-node-id="707Wf8bxW2it64Szq2sjnK">📋 没有图片？直接粘贴试卷文本解析 →</button>
     </div>
-    <div class="model-row">
-      <span>解析引擎：</span>
-      <select id="modelSel">
-        <option value="free">免费 · 智谱 GLM-Flash（0 成本）</option>
-        <option value="eco">经济 · 通义 Flash 系列（很省）</option>
-        <option value="pro">标准 · 通义 VL-Max + Plus（最准）</option>
+    <div class="model-row" data-page-node-id="D9yV2jZY6axpH0UMdnK4Ve">
+      <span data-page-node-id="sG8iRNr7BcZgWE7pXXXB4p">解析引擎：</span>
+      <select id="modelSel" data-page-node-id="tRPW6SyBL5KAwzlewRpFI4">
+        <option value="free" data-page-node-id="kXNh8nZIHWyy3mu92CwAAu">免费 · 智谱 GLM-Flash（0 成本）</option>
+        <option value="eco" data-page-node-id="XMuQCPtoUivDSNIa62B1F6">经济 · 通义 Flash 系列（很省）</option>
+        <option value="pro" data-page-node-id="UXHppUInhAGSWpku8WTfOh">标准 · 通义 VL-Max + Plus（最准）</option>
       </select>
     </div>
-    <div class="keyhint" id="keyHint">
-      免费档：优先粘贴你自己的<b>智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）。
-      <button class="linkbtn2" id="btnKeyInline">立即配置 →</button>
+    <div class="keyhint" id="keyHint" data-page-node-id="6t1dfwgqwLaroqk1OGuoRc">
+      免费档：优先粘贴你自己的<b data-page-node-id="LxmFG7ZKmV319d2RMNHXlT">智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）。
+      <button class="linkbtn2" id="btnKeyInline" data-page-node-id="2YGrGE5opjs0u99CJGLy80">立即配置 →</button>
     </div>
 
-    <div class="progress" id="progress">
-      <div class="bar"><i id="barFill"></i></div>
-      <div class="steps" id="steps"></div>
+    <div class="progress" id="progress" data-page-node-id="NWMCxh17DMImKf05emjaH7">
+      <div class="bar" data-page-node-id="NXoCn30g8j1nERJbrNUbQV"><i id="barFill" data-page-node-id="b0yH8kjdJitaloMQYDe6Vt"></i></div>
+      <div class="steps" id="steps" data-page-node-id="6p1RJD11w5etHeRSBuxJAJ"></div>
     </div>
   </div>
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" data-page-node-id="Lxh1VP8xb9M0pdKeQs8Oxs"></div>
 
-<div class="qnav" id="qnav">
-  <button data-nav="-1" title="上一题（← 键）">‹</button>
-  <span class="cnt" id="qnavCnt">—<small>共 0 题</small></span>
-  <button data-nav="1" title="下一题（→ 键）">›</button>
+<div class="qnav" id="qnav" data-page-node-id="jJ5a3eHUEWJwZcI6wV6XCW">
+  <button data-nav="-1" title="上一题（← 键）" data-page-node-id="RyUk8wgsRsa4I1v63STkv4">‹</button>
+  <span class="cnt" id="qnavCnt" data-page-node-id="oGxahyDywZA8I2U79bu2GZ">—<small data-page-node-id="tf468BhAivNiDAJBnKPg1d">共 0 题</small></span>
+  <button data-nav="1" title="下一题（→ 键）" data-page-node-id="kn6kUEOG8roNtk0XewFZZI">›</button>
 </div>
 
-<div class="modal" id="modal">
-  <div class="modal-box">
-    <div class="modal-head"><span id="modalTitle">JSON</span><button class="x" id="modalX">✕</button></div>
-    <div class="modal-body">
+<div class="modal" id="modal" data-page-node-id="mTOMqRErxoRvG9A5Nv31KW">
+  <div class="modal-box" data-page-node-id="O629MYBnLCiGIRTzg1jxGM">
+    <div class="modal-head" data-page-node-id="fQcD40Ho4pHIPp3lFBNqQx"><span id="modalTitle" data-page-node-id="WlIYmdisGrYe1FgRVZqDOV">JSON</span><button class="x" id="modalX" data-page-node-id="rbY9beNYFa9meASFr7Q9Uj">✕</button></div>
+    <div class="modal-body" data-page-node-id="PFyPFRRFDsyaH5fXIcJQ3Y">
       <textarea id="modalText" spellcheck="false"></textarea>
-      <div id="modalCustom" class="modal-custom" style="display:none"></div>
+      <div id="modalCustom" class="modal-custom" style="display:none" data-page-node-id="3bX3Nn19pfz91uVlVUsRKl"></div>
     </div>
-    <div class="modal-foot" id="modalFoot"></div>
+    <div class="modal-foot" id="modalFoot" data-page-node-id="wAZ50OhyUSsApUWOJExl92"></div>
   </div>
 </div>
 
@@ -1899,6 +1919,18 @@ function viewOverview() {
   });
   html += '</div>';
 
+  /* 「上次讲到哪」横幅：本机缓存里有讲解进度就显示，点一下接着讲。
+     家里讲了一半没保存也没关系，本机缓存会记住；云端存过的更稳。 */
+  const rp = resumePoint();
+  if (rp) {
+    html += '<div class="resume">'
+      + '<span class="tag">上次讲到</span>'
+      + '<span class="txt"><b>' + esc(describeProgress(rp)) + '</b>'
+      + '<span class="dim"> · 共 ' + S.passages.reduce(function (n, p) { return n + p.questions.length; }, 0) + ' 题，接着讲不用从头翻</span></span>'
+      + '<button class="go" data-resume="1">继续讲解 →</button>'
+      + '</div>';
+  }
+
   /* 每种题型都拆成好几篇 = 大概率被切碎了，提醒一句 */
   const split = groups.filter(function (g) { return g.kind !== 'reading' && g.items.length > 1; });
   if (split.length) {
@@ -1920,6 +1952,29 @@ $('#content').addEventListener('click', (e) => {
   if (k === '__merge__') { runMergeKinds(); return; }
   jumpToKind(k);
 });
+
+/* 「上次讲到哪」横幅：点一下接着讲 */
+$('#content').addEventListener('click', (e) => {
+  const r = e.target.closest('[data-resume]');
+  if (!r) return;
+  const rp = resumePoint();
+  if (rp) applyProgress(rp);
+});
+
+/* 本机缓存里的讲解进度（restore 时从 localStorage 读出来的）。
+   和云端的 progress 结构一致：{ view, cur, activeQ, kind } */
+function resumePoint() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    /* 缓存必须和当前这份课件是同一份（标题一致才算），否则接着讲的是别人的卷子 */
+    if (!d || !d.passages || !d.passages.length) return null;
+    if ((d.title || '') !== (S.title || '')) return null;
+    if (d.cur == null && d.activeQ == null) return null;
+    return { view: d.view, cur: d.cur, activeQ: d.activeQ, kind: kindOf(d.passages[d.cur || 0] || {}) };
+  } catch (e) { return null; }
+}
 
 function renderView() {
   const c = $('#content');
@@ -2741,7 +2796,7 @@ function save() {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       title: S.title, engine: S.engine, fs: S.fs, showZh: S.showZh, view: S.view,
-      cur: S.cur, passages: cleanPassages()
+      cur: S.cur, activeQ: S.activeQ, passages: cleanPassages()
     }));
   } catch (e) { /* 超配额忽略 */ }
 }
@@ -2763,6 +2818,14 @@ function restore() {
     $('#modelSelTop').value = S.engine;
     S.view = d.view || 'split';
     S.cur = Math.min(d.cur || 0, S.passages.length - 1);
+    /* 上次讲到第几题也一并还原 —— 题号得真存在，防止缓存对不上时硬跳 */
+    if (d.activeQ != null) {
+      const p = S.passages[S.cur];
+      S.activeQ = (p && p.questions.some(function (q) { return String(q.no) === String(d.activeQ); }))
+        ? d.activeQ : null;
+    } else {
+      S.activeQ = null;
+    }
     $('#docTitle').value = S.title;
     $('#emptyState').classList.add('hidden');
     $('#subbar').style.display = '';
@@ -2947,7 +3010,13 @@ const SB_URL   = 'https://gqlwspxcyhjtzhikcexj.supabase.co';
 const OWNER_LS = 'reading_locator_owner_code';
 const LESSON_TABLE = 'reading_lessons';
 
+/* 课件的「主人」= 当前登录的老师姓名。
+   以前是要自己填一串口令，现在直接用登录名 —— 名字是谁，课件就是谁的，
+   其他老师看不到，也省得每人记一串口令。
+   兼容：本地存过旧口令的，在没登录前仍然可用（老课件不至于打不开）。 */
 function ownerCode() {
+  const u = curUser();
+  if (u) return u;
   try { return localStorage.getItem(OWNER_LS) || ''; } catch (e) { return ''; }
 }
 function setOwnerCode(c) {
@@ -2979,13 +3048,18 @@ async function sbFail(r) {
 
 async function lessonList() {
   const code = ownerCode();
-  if (!code) throw new Error('请先填写口令');
+  if (!code) throw new Error('请先登录');
   const u = SB_URL + '/rest/v1/' + LESSON_TABLE +
     '?owner_code=eq.' + encodeURIComponent(code) +
-    '&select=id,title,updated_at&order=updated_at.desc&limit=200';
+    '&select=id,title,updated_at,data&order=updated_at.desc&limit=200';
   const r = await fetch(u, { headers: sbHeaders() });
   if (!r.ok) throw await sbFail(r);
-  return r.json();
+  /* 列表页需要 progress 字段显示「上次讲到哪」，从 data 里挑出来 */
+  const j = await r.json();
+  return (j || []).map(function (it) {
+    it.progress = it.data && it.data.progress;
+    return it;
+  });
 }
 
 async function lessonSave(title, data) {
@@ -3033,39 +3107,35 @@ function openCustomPanel(title, actions, fill) {
 }
 
 function openLessonPanel() {
+  const me = curUser();
   openCustomPanel('云端课件库', [
     { label: '刷新', fn: refreshLessons },
     { label: '关闭', fn: () => $('#modal').classList.remove('on') }
   ], function (box) {
-    /* 口令 */
+    /* 登录人标识 —— 课件按登录姓名隔离，各看各的，不用再填口令 */
     const bar = document.createElement('div');
     bar.className = 'lsbar';
     const lb = document.createElement('label');
-    lb.textContent = '口令';
-    const inp = document.createElement('input');
-    inp.id = 'ownerInput';
-    inp.placeholder = '你自己设的一串字符，例如 wangl2026';
-    inp.value = ownerCode();
-    const bs = document.createElement('button');
-    bs.className = 'tb-btn';
-    bs.textContent = '保存口令';
-    bs.onclick = () => {
-      setOwnerCode((inp.value || '').trim());
-      toast(ownerCode() ? '口令已保存' : '口令已清空', 'ok');
-      refreshLessons();
-    };
-    bar.appendChild(lb); bar.appendChild(inp); bar.appendChild(bs);
+    lb.textContent = '当前老师';
+    const who = document.createElement('span');
+    who.style.cssText = 'flex:1;font-size:.92rem;font-weight:800;color:#1a7a52';
+    who.textContent = me ? '👤 ' + me : '（未登录）';
+    bar.appendChild(lb); bar.appendChild(who);
     box.appendChild(bar);
 
     const note = document.createElement('div');
     note.className = 'lsnote';
-    note.textContent = '口令用来区分「哪些课件是你的」：家里电脑和教室电脑填同一个口令，就能看到同一份列表。它不是密码，课件的正确性由你把握，请不要把学生姓名、成绩等敏感信息存进来。';
+    note.textContent = me
+      ? ('课件只存在 ' + me + ' 自己的名下，其他老师看不到。' +
+         '讲了一半的课，点「＋ 保存当前讲解」会把「讲到哪一题」也一起存下；' +
+         '下次打开这份课件，会直接接着上次的位置讲。')
+      : '还没登录，回到首页登录后才能用课件库。';
     box.appendChild(note);
 
     const save = document.createElement('button');
     save.className = 'lssave';
     save.id = 'btnLessonSave';
-    save.textContent = '＋ 把当前讲解保存到云端';
+    save.textContent = '＋ 保存当前讲解（含讲解进度）';
     save.onclick = saveCurrentLesson;
     box.appendChild(save);
 
@@ -3100,7 +3170,7 @@ async function refreshLessons() {
   if (!list) return;
   const save = $('#btnLessonSave');
   if (!ownerCode()) {
-    list.innerHTML = '<div class="lsempty">先填上面的口令，才能看到你的课件</div>';
+    list.innerHTML = '<div class="lsempty">还没登录。回到首页登录（账号＝姓名，密码 123456）后，这里就是你的课件库。</div>';
     if (save) save.disabled = true;
     return;
   }
@@ -3110,7 +3180,7 @@ async function refreshLessons() {
     const items = await lessonList();
     list.innerHTML = '';
     if (!items.length) {
-      list.innerHTML = '<div class="lsempty">这个口令下还没有课件。点上面的按钮把当前讲解存进去。</div>';
+      list.innerHTML = '<div class="lsempty">你还没有存过课件。点上面的按钮把当前讲解存进去，下次直接接着讲。</div>';
       return;
     }
     items.forEach((it) => {
@@ -3125,6 +3195,14 @@ async function refreshLessons() {
       d.className = 'lsdate';
       d.textContent = fmtTime(it.updated_at);
       info.appendChild(t); info.appendChild(d);
+      /* 列表里就标出「上次讲到哪」，一眼看出这份能不能接着讲 */
+      const pg = it.progress;
+      if (pg && (pg.cur != null || pg.activeQ != null)) {
+        const m = document.createElement('div');
+        m.className = 'lsmark';
+        m.innerHTML = '上次讲到 <em>' + esc(describeProgress(pg)) + '</em>';
+        info.appendChild(m);
+      }
       const acts = document.createElement('div');
       acts.className = 'lsacts';
       const bo = document.createElement('button');
@@ -3144,22 +3222,42 @@ async function refreshLessons() {
   }
 }
 
+/* 把一段 progress 描述成人话：阅读 A · 第 23 题 / 语法填空 · 第 56 空 / 整篇视图 */
+function describeProgress(pg) {
+  if (!pg) return '';
+  const k = pg.kind || 'reading';
+  const kn = kindShort(k);
+  if (pg.activeQ != null) return kn + ' · 第 ' + pg.activeQ + (k === 'grammar' ? ' 空' : ' 题');
+  const viewMap = { overview: '题型速览', split: '整篇', original: '原文', single: '单段', background: '文化背景', expressions: '积累表达' };
+  return kn + ' · ' + (viewMap[pg.view] || '整篇');
+}
+
 async function saveCurrentLesson() {
-  if (!ownerCode()) { lessonMsg('请先填写口令', 'err'); return; }
+  if (!ownerCode()) { lessonMsg('请先登录', 'err'); return; }
   if (!S.passages.length) { lessonMsg('当前没有解析好的内容可保存', 'err'); return; }
   const title = (S.title || '').trim() || ('未命名课件 ' + fmtTime(new Date().toISOString()));
   const btn = $('#btnLessonSave');
   if (btn) { btn.disabled = true; btn.textContent = '正在保存…'; }
   try {
-    const data = { title: title, passages: cleanPassages() };
+    /* 关键：把「讲到哪」一起存进去 —— 下次打开接着讲 */
+    const data = {
+      title: title,
+      passages: cleanPassages(),
+      progress: {
+        view: S.view,
+        cur: S.cur,
+        activeQ: S.activeQ,
+        kind: curKind()
+      }
+    };
     await lessonSave(title, data);
-    lessonMsg('已保存到云端：' + title, 'ok');
+    lessonMsg('已保存（含讲解进度）：' + title, 'ok');
     if (!S.title) { S.title = title; $('#docTitle').value = title; save(); }
     await refreshLessons();
   } catch (e) {
     lessonMsg('保存失败：' + e.message, 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '＋ 把当前讲解保存到云端'; }
+    if (btn) { btn.disabled = false; btn.textContent = '＋ 保存当前讲解（含讲解进度）'; }
   }
 }
 
@@ -3169,11 +3267,42 @@ async function openLesson(id) {
     const it = await lessonGet(id);
     if (!it || !it.data) throw new Error('这份课件内容为空');
     commitResult(it.data);
+    /* 有讲解进度就接着讲，没有就照常落在速览页 */
+    if (it.data.progress && applyProgress(it.data.progress)) {
+      toast('已接着上次的位置：' + describeProgress(it.data.progress), 'ok');
+    } else {
+      toast('已打开：' + (it.title || '未命名课件'), 'ok');
+    }
     $('#modal').classList.remove('on');
-    toast('已打开：' + (it.title || '未命名课件'), 'ok');
   } catch (e) {
     lessonMsg('打开失败：' + e.message, 'err');
   }
+}
+
+/* 把上次保存的讲解进度还原到界面（cur 越界、题号对不上都安全退回） */
+function applyProgress(pg) {
+  if (!pg || !S.passages.length) return false;
+  const viewOk = { overview: 1, split: 1, original: 1, single: 1, background: 1, expressions: 1 };
+  let cur = (pg.cur == null ? 0 : +pg.cur);
+  if (!(cur >= 0 && cur < S.passages.length)) cur = 0;
+  S.cur = cur;
+  /* 题号必须在当前篇里真的存在，才算接着讲成功；否则只还原到篇 */
+  let landedQ = false;
+  if (pg.activeQ != null) {
+    const p = S.passages[S.cur];
+    if (p && p.questions.some(function (q) { return String(q.no) === String(pg.activeQ); })) {
+      S.activeQ = pg.activeQ;
+      landedQ = true;
+    } else {
+      S.activeQ = null;
+    }
+  } else {
+    S.activeQ = null;
+  }
+  S.view = viewOk[pg.view] ? pg.view : 'split';
+  render();
+  if (landedQ) focusEvidence(true, pg.activeQ);
+  return landedQ || pg.view === 'overview' || pg.activeQ != null;
 }
 
 async function delLesson(id, title) {
