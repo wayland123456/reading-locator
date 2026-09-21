@@ -1217,6 +1217,43 @@ function salvageJson(s) {
   try { return JSON.parse(out); } catch (e) { return null; }
 }
 
+/* 修复「字符串里出现未转义的双引号」——免费档 GLM 生成 JSON 时最常见的坏毛病。
+   实测：正文里写 "...said, "Let's fix it together."" 引号没转义 → JSON.parse 整体失败，
+   但括号是配平的。做法：逐字符扫，遇到「看起来是收尾」的引号先试补转义，
+   再整体 parse，成功就返回。比正则可靠，也不会破坏正常 JSON。 */
+function repairJsonQuotes(s) {
+  if (typeof s !== 'string' || s.length < 2) return null;
+  const at = s.indexOf('{');
+  if (at < 0) return null;
+  let t = s.slice(at);
+
+  /* 逐字符重建：处于字符串内遇到裸引号时，判断它到底是「闭合」还是「正文里的引号」。
+     判据：闭合引号后面通常紧跟 , : } ] 或空白；否则视为正文引号，补一个 \ */
+  const out = [];
+  let inStr = false, esc = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (esc) { out.push(c); esc = false; continue; }
+    if (c === '\\') { out.push(c); esc = true; continue; }
+    if (c === '"') {
+      if (!inStr) { inStr = true; out.push(c); continue; }
+      /* 字符串内：向后看第一个非空白字符 */
+      let j = i + 1;
+      while (j < t.length && /\s/.test(t[j])) j++;
+      const nxt = t[j] || '';
+      if (nxt === '' || nxt === ',' || nxt === ':' || nxt === '}' || nxt === ']') {
+        inStr = false; out.push(c);           // 正常收尾
+      } else {
+        out.push('\\"');                       // 正文里的引号，补转义
+      }
+      continue;
+    }
+    out.push(c);
+  }
+  const fixed = out.join('');
+  try { return JSON.parse(fixed); } catch (e) { return null; }
+}
+
 function jsonFromText(raw) {
   let t = String(raw || '').trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -1224,7 +1261,11 @@ function jsonFromText(raw) {
   try { return JSON.parse(t); } catch (e) {}
   const a = t.indexOf('{'), b = t.lastIndexOf('}');
   if (a >= 0 && b > a) {
-    try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {}
+    const slice = t.slice(a, b + 1);
+    try { return JSON.parse(slice); } catch (e) {}
+    /* 括号配平但引号没转义 → 修一遍再试 */
+    const fixed = repairJsonQuotes(slice);
+    if (fixed && fixed.passages && fixed.passages.length) return fixed;
   }
   if (a >= 0) {
     const saved = salvageJson(t.slice(a));
