@@ -515,9 +515,72 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 @keyframes ganFlash{0%,100%{box-shadow:0 0 0 0 rgba(26,155,82,0)}40%{box-shadow:0 0 0 5px rgba(26,155,82,.2)}}
 
 .hidden{display:none !important}
+
+/* ---------- 登录闸门：未登录前盖住整个页面 ---------- */
+body.gated{overflow:hidden}
+body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-events:none;user-select:none}
+.gate{
+  position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;
+  background:rgba(247,245,241,.72);backdrop-filter:blur(2px);padding:20px;
+}
+.gate.hidden{display:none !important}
+.gate-card{
+  width:100%;max-width:392px;background:#fff;border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 18px 50px rgba(20,30,50,.16);padding:30px 30px 24px;text-align:center;
+}
+.gate-logo{font-size:2rem;line-height:1}
+.gate-card h1{font-size:1.16rem;margin:10px 0 3px;font-weight:800;letter-spacing:.4px}
+.gate-sub{font-size:.76rem;color:var(--text-3);margin-bottom:22px;letter-spacing:1.2px}
+.gate-field{text-align:left;margin-bottom:13px}
+.gate-field label{display:block;font-size:.75rem;color:var(--text-2);font-weight:700;margin-bottom:5px}
+.gate-field input{
+  width:100%;box-sizing:border-box;font-size:.95rem;padding:10px 13px;
+  border:1.5px solid var(--border);border-radius:9px;background:var(--panel-2);
+  font-family:inherit;transition:.15s;
+}
+.gate-field input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(201,106,18,.1)}
+.gate-btn{
+  width:100%;margin-top:9px;padding:11px;font-size:.95rem;font-weight:800;letter-spacing:2px;
+  border:none;border-radius:9px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.gate-btn:hover{filter:brightness(1.07)}
+.gate-btn:active{transform:translateY(1px)}
+.gate-btn[disabled]{opacity:.6;cursor:default;transform:none}
+.gate-err{min-height:17px;font-size:.78rem;color:var(--danger,#d64545);margin-top:9px;font-weight:600}
+.gate-foot{font-size:.7rem;color:var(--text-3);margin-top:16px;line-height:1.75;border-top:1px dashed var(--border);padding-top:13px}
+.gate-foot code{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.7rem}
+.gate-me{
+  display:none;align-items:center;gap:6px;margin-right:4px;padding:4px 11px;border-radius:20px;
+  background:#eef6f1;border:1px solid #cbe6d8;font-size:.76rem;font-weight:700;color:#1a7a52;cursor:pointer;
+}
+.gate-me.on{display:inline-flex}
+.gate-me:hover{background:#e2f1e9}
+.gate-me .u{max-width:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
-<body>
+<body class="gated">
+
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">📖</div>
+    <h1>英语阅读讲解器</h1>
+    <div class="gate-sub">教研组内部使用 · 请先登录</div>
+    <div class="gate-field">
+      <label>姓名</label>
+      <input id="gateUser" placeholder="请输入你的姓名" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="gate-field">
+      <label>密码</label>
+      <input id="gatePass" type="password" placeholder="请输入密码" autocomplete="off">
+    </div>
+    <button class="gate-btn" id="gateEnter">登 录</button>
+    <div class="gate-err" id="gateErr"></div>
+    <div class="gate-foot">
+      账号即本人姓名，初始密码 <code>123456</code><br>
+      登录一次即可，之后打开本机浏览器自动记住
+    </div>
+  </div>
+</div>
 
 <header class="topbar">
   <span class="logo">📖</span>
@@ -525,6 +588,7 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
   <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题">
   <span class="top-hint" id="topHint">点题目定位 · 双击原文可改 · 每题可改对应句</span>
   <span class="spacer"></span>
+  <span class="gate-me" id="gateMe" title="点击退出登录"><span>👤</span><span class="u" id="gateMeName"></span></span>
   <select class="tb-sel" id="modelSelTop" title="解析引擎">
     <option value="free">免费</option>
     <option value="eco">经济</option>
@@ -623,6 +687,102 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
    英语阅读讲解器
    流程：图片 → 视觉模型转写 → 文本模型结构化解析 → 渲染讲解页
    ========================================================= */
+
+/* =========================================================
+   登录闸门（教研组内部使用）
+   账号 = 本人姓名，初始密码 123456
+   说明：这是「防误入」级别的门禁，不是安全边界 —— 静态页面的
+   前端校验谁都能绕过，所以这里不放任何敏感数据。
+   ========================================================= */
+const AUTH_LS = 'reading_locator_user';
+const TEACHERS = [
+  '王淑芬', '鲍芳', '陈晶晶', '范智能', '付雯静', '胡凤凰', '姜明翠',
+  '李悦', '王浪', '熊婧', '叶红', '曾淑琼', '张莉', '张玲俐'
+];
+const TEACHER_MAP = {};
+TEACHERS.forEach(function (n) { TEACHER_MAP[n] = n; });
+/* 归一化：去掉所有空白（全角/半角空格、Tab），中文姓名里夹空格也能登 */
+function authNorm(s) {
+  return String(s == null ? '' : s).replace(/[\s\u3000\u00a0]+/g, '').trim();
+}
+function curUser() {
+  try { return localStorage.getItem(AUTH_LS) || ''; } catch (e) { return ''; }
+}
+function setCurUser(n) {
+  try { n ? localStorage.setItem(AUTH_LS, n) : localStorage.removeItem(AUTH_LS); } catch (e) {}
+}
+function doLogin(name, pass) {
+  const key = authNorm(name);
+  if (!key) return { ok: false, msg: '请输入姓名' };
+  if (!(key in TEACHER_MAP)) return { ok: false, msg: '姓名不在教研组名单里，请核对后重试' };
+  if (String(pass || '') !== '123456') return { ok: false, msg: '密码不对（初始密码 123456）' };
+  setCurUser(TEACHER_MAP[key]);
+  return { ok: true, user: TEACHER_MAP[key] };
+}
+function paintUser() {
+  const u = curUser();
+  const me = document.getElementById('gateMe');
+  const nm = document.getElementById('gateMeName');
+  if (me) me.classList.toggle('on', !!u);
+  if (nm) nm.textContent = u || '';
+  const ti = document.getElementById('docTitle');
+  if (ti && u && !ti.dataset.orig) ti.placeholder = u + ' 的文档 · 双击可改标题';
+}
+function showGate() {
+  const g = document.getElementById('gate');
+  if (!g) return;
+  g.classList.remove('hidden');
+  document.body.classList.add('gated');
+  const u = document.getElementById('gateUser');
+  if (u) setTimeout(function () { u.focus(); }, 60);
+}
+function hideGate() {
+  const g = document.getElementById('gate');
+  if (g) g.classList.add('hidden');
+  document.body.classList.remove('gated');
+  paintUser();
+}
+function bootAuth() {
+  if (curUser()) { hideGate(); return true; }
+  showGate();
+  return false;
+}
+/* 供 jsdom 测试用 */
+try { window.__auth = { doLogin: doLogin, curUser: curUser, setCurUser: setCurUser, showGate: showGate, hideGate: hideGate, TEACHERS: TEACHERS }; } catch (e) {}
+
+document.addEventListener('DOMContentLoaded', function () {
+  /* 已登录 → 直接进主界面 */
+  bootAuth();
+
+  const enter = document.getElementById('gateEnter');
+  const iu = document.getElementById('gateUser');
+  const ip = document.getElementById('gatePass');
+  const err = document.getElementById('gateErr');
+  if (!enter) return;
+
+  function submit() {
+    err.textContent = '';
+    const r = doLogin(iu.value, ip.value);
+    if (!r.ok) { err.textContent = r.msg; ip.select(); return; }
+    enter.disabled = true;
+    enter.textContent = '登录中…';
+    setTimeout(function () { hideGate(); enter.disabled = false; enter.textContent = '登 录'; }, 220);
+  }
+  enter.addEventListener('click', submit);
+  [iu, ip].forEach(function (el) {
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+  });
+  iu.addEventListener('input', function () { err.textContent = ''; });
+  ip.addEventListener('input', function () { err.textContent = ''; });
+
+  const me = document.getElementById('gateMe');
+  if (me) me.addEventListener('click', function () {
+    if (!confirm('退出登录？下次打开需要重新登录。')) return;
+    setCurUser('');
+    iu.value = ''; ip.value = ''; err.textContent = '';
+    showGate();
+  });
+});
 
 /* ---------- 接口配置（凭证在构建时注入） ---------- */
 const AI_PROXY = 'https://gqlwspxcyhjtzhikcexj.supabase.co/functions/v1/ai-proxy';
@@ -1350,21 +1510,30 @@ function finishSteps() {
    这里按题型/大题标记切块，每块单独解析，最后合并 —— 既避开上限，
    也顺带让 AI 每次只判一种题型，分类更准。
    ========================================================= */
-/* 大题起始标记：完形/七选五/语法填空/阅读第一节…… 命中即视为新块开头 */
-const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]|Part\s+[ⅠⅡⅢⅣV]|[A-D]\s*$|完形填空|七选五|语法填空|阅读理解|阅读下列短文)/i;
+/* 大题起始标记：完形/七选五/语法填空/阅读第一节……
+   注意：这里**故意不**用「单个 A/B/C/D 独占一行」当标记。
+   转写常常把选项字母或答题卡字母单独挤成一行，一旦当成大题标记，
+   语法填空的短文就会被从中间切断，后半段解析不出内容而静默消失
+   —— 这正是「上传了阅读+语法填空，只看到阅读」的根因。 */
+const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|Part\s*[ⅠⅡⅢⅣV1-5]\b|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
 
 function splitTranscript(text) {
   const t = String(text || '').trim();
   if (!t) return [];
-  /* 整卷很小就别切，切了反而增加请求数 */
-  if (t.length < 1800) return [t];
+  /* 整卷很小就别切，切了反而增加请求数（阈值下调，避免一篇阅读+一篇语法填空挤在一次请求里） */
+  if (t.length < 1100) return [t];
   const lines = t.split(/\n/);
   const blocks = [];
   let cur = [];
   lines.forEach((ln) => {
-    /* 只在「行首 + 像大题标记 + 当前块已有较多内容」时断开，避免把正文误切 */
-    const isHead = SECTION_RE.test(ln) && ln.trim().length < 40;
-    if (isHead && cur.join('\n').trim().length > 400) {
+    const s = ln.trim();
+    /* 大题标记必须：①行首命中 ②自身很短 ③不是纯字母选项行 ④不是纯题号行
+       ⑤后面一行看起来像正文（不是另一串选项），避免把选项群切开 */
+    const bareLetter = /^[A-DＡ-Ｄ][.、:：]?$/.test(s);
+    const bareNo = /^\d{1,2}[.、]?$/.test(s);
+    const isHead = SECTION_RE.test(ln) && s.length < 40 && !bareLetter && !bareNo;
+    /* 断块门槛：当前块已有实质内容（原 400 太钝，两小节短文常常各只有 300 字） */
+    if (isHead && cur.join('\n').trim().length > 220) {
       blocks.push(cur.join('\n').trim());
       cur = [];
     }
@@ -1373,6 +1542,9 @@ function splitTranscript(text) {
   if (cur.join('\n').trim()) blocks.push(cur.join('\n').trim());
   /* 切得太碎（>8 块）说明标记识别过度，退回整块 */
   if (blocks.length > 8 || blocks.length < 2) return [t];
+  /* 保险：任何一块如果短得不像一道题（<60 字），说明切歪了，退回整块
+     宁可让 AI 一次判两种题型，也不要切碎导致内容丢失 */
+  if (blocks.some(function (b) { return b.length < 60; })) return [t];
   return blocks;
 }
 
@@ -1391,17 +1563,78 @@ async function parseInChunks(transcript) {
     try {
       const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i]) }], 8192);
       const d = jsonFromText(raw);
-      if (!merged.title && d.title) merged.title = d.title;
-      (d.passages || []).forEach((p) => merged.passages.push(p));
+      const got = (d && d.passages) || [];
+      if (!merged.title && d && d.title) merged.title = d.title;
+      got.forEach((p) => merged.passages.push(p));
+      /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空会静默消失 */
+      if (!got.length) {
+        console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunks[i].slice(0, 80));
+        fails.push({ i: i + 1, why: '没解析出内容', text: chunks[i] });
+      }
     } catch (err) {
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + err.message);
-      fails.push(i + 1);
+      fails.push({ i: i + 1, why: err.message, text: chunks[i] });
     }
     if (i < chunks.length - 1) await sleep(300);
   }
   if (!merged.passages.length) throw new Error('解析结果为空，请重试');
-  if (fails.length) toast('第 ' + fails.join('、') + ' 部分没解析出来，可单独再传一次', 'err');
+  /* 有丢块就把「丢的那段原文」留下来，让老师能一键补解析，而不是干瞪眼 */
+  merged.__fails = fails;
+  if (fails.length) {
+    const lost = fails.map(function (f) { return f.text; }).join('\n\n');
+    try { window.__lastLostChunks = lost; } catch (e) {}
+    toast('有 ' + fails.length + ' 部分没解析出来（' + fails.map(function (f) { return '第' + f.i + '段'; }).join('、') +
+      '），点右上角「⚠ 补解析」可单独重试', 'err', 9000);
+    showLostBtn(true);
+  } else {
+    showLostBtn(false);
+  }
   return merged;
+}
+
+/* 「⚠ 补解析」按钮：只在前一次上传确实丢了内容时出现 */
+function showLostBtn(on) {
+  let b = $('#btnLost');
+  if (!on) { if (b) b.style.display = 'none'; return; }
+  if (!b) {
+    b = document.createElement('button');
+    b.className = 'tb-btn';
+    b.id = 'btnLost';
+    b.style.cssText = 'background:#fdf0e6;border-color:#e8b98d;color:#a04d06;font-weight:700';
+    b.title = '上次上传有内容没解析出来，点这里只重试丢掉的部分（不用重传图片）';
+    const merge = $('#btnMerge');
+    if (merge && merge.parentNode) merge.parentNode.insertBefore(b, merge);
+    else document.querySelector('.topbar').appendChild(b);
+  }
+  b.textContent = '⚠ 补解析';
+  b.style.display = '';
+  b.onclick = retryLostChunks;
+}
+
+async function retryLostChunks() {
+  const raw = window.__lastLostChunks;
+  if (!raw) { toast('没有需要补解析的内容', 'warn'); return; }
+  const b = $('#btnLost');
+  if (b) { b.disabled = true; b.textContent = '补解析中…'; }
+  try {
+    const raw2 = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', raw) }], 8192);
+    const d = jsonFromText(raw2);
+    const got = (d && d.passages) || [];
+    if (!got.length) throw new Error('还是没解析出内容，可把这段单独截图重传');
+    got.forEach(function (p) { S.passages.push(normalizePassage(p)); });
+    S.passages = mergeSameKind(S.passages);
+    /* 补齐后如果已经是多题型，就落到速览页 */
+    const kinds = {};
+    S.passages.forEach(function (p) { kinds[kindOf(p)] = 1; });
+    if (Object.keys(kinds).length > 1) S.view = 'overview';
+    renderTabs(); renderView();
+    window.__lastLostChunks = '';
+    showLostBtn(false);
+    toast('补解析成功，已并入 ' + got.length + ' 篇', 'ok');
+  } catch (e) {
+    toast('补解析失败：' + e.message, 'err');
+    if (b) { b.disabled = false; b.textContent = '⚠ 补解析'; }
+  }
 }
 
 async function runPipeline() {
@@ -2541,12 +2774,12 @@ function restore() {
    工具
    ========================================================= */
 let toastTimer = null;
-function toast(msg, kind) {
+function toast(msg, kind, ms) {
   const el = $('#toast');
   el.textContent = msg;
   el.className = 'toast on' + (kind ? ' ' + kind : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = 'toast'; }, 2600);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, ms || 2600);
 }
 
 /* 模态（保留给后续扩展：查看原始 JSON） */
@@ -2961,6 +3194,7 @@ $('#btnLibrary').addEventListener('click', openLessonPanel);
    ========================================================= */
 restore();
 renderKeyHint();
+paintUser();
 window.addEventListener('beforeunload', save);
 </script>
 </body>
