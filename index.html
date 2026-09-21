@@ -696,10 +696,12 @@ function saveFreeModels(m) {
   try { localStorage.setItem(FREE_MODELS_LS, JSON.stringify(m)); } catch (e) {}
 }
 
-/* 官方标注「永久免费」的模型候选表，按优先级排列（某个拥挤就轮换到下一个） */
+/* 官方标注「永久免费」的模型候选表，按优先级排列（某个拥挤就轮换到下一个）。
+   注意：走云端代理时这些名字必须与服务端 ai-proxy 的 ALLOWED_MODELS 白名单一致，
+   否则会 403「不在白名单内」（下面几个已同步加进白名单）。 */
 const FREE_CANDIDATES = {
-  parse:      ['glm-4.7-flash', 'glm-4-flash-250414', 'glm-4-flash', 'glm-4.5-flash'],
-  transcribe: ['glm-4.6v-flash', 'glm-4v-flash', 'glm-4.1v-thinking-flash']
+  parse:      ['glm-4.7-flash', 'glm-4-flash'],
+  transcribe: ['glm-4.6v-flash', 'glm-4v-flash']
 };
 
 /* 限流类错误（代理通路与直连通路共用） */
@@ -801,31 +803,46 @@ function errText(j, status) {
   return String(e.message || e.code || JSON.stringify(e));
 }
 
-async function proxyCall(model, messages, maxTokens) {
+async function proxyCall(model, messages, maxTokens, extra) {
+  const body = {
+    model: model,
+    messages: messages,
+    max_tokens: maxTokens || 4000,
+    temperature: 0.2
+  };
+  if (extra) Object.assign(body, extra);
   const resp = await fetch(AI_PROXY, {
     method: 'POST',
     headers: { 'apikey': PUB_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: model,
-      messages: messages,
-      max_tokens: maxTokens || 4000,
-      temperature: 0.2
-    })
+    body: JSON.stringify(body)
   });
   let j = null;
   try { j = await resp.json(); }
   catch (e) { throw new Error('接口返回异常（HTTP ' + resp.status + '）'); }
   if (!resp.ok || (j && j.error)) throw new Error(errText(j, resp.status));
   if (!j.choices || !j.choices[0]) throw new Error('接口未返回内容');
-  return { text: j.choices[0].message.content || '', finish: j.choices[0].finish_reason, think: 0 };
+  const m = j.choices[0].message || {};
+  return {
+    text: m.content || '',
+    finish: j.choices[0].finish_reason,
+    think: String(m.reasoning_content || '').length
+  };
+}
+
+/* 免费档经代理必须关掉「思考」，否则思考 token 吃光 max_tokens、正文变空串。
+   服务端 ai-proxy 已支持透传 thinking；旧版函数会忽略它 → 正文为空 → 上层走降级分支。 */
+function proxyExtra(model) {
+  return (S.engine === 'free' && /^glm-/.test(model)) ? { thinking: { type: 'disabled' } } : null;
 }
 
 /* 代理通路同样要退避（免费档 glm 走代理时也会 1305） */
-async function proxyCallRetry(model, messages, maxTokens) {
+async function proxyCallRetry(model, messages, maxTokens, extra) {
   let last = null;
   for (let i = 0; i < 3; i++) {
-    try { return await proxyCall(model, messages, maxTokens); }
-    catch (err) {
+    try {
+      return await proxyCall(model, messages, maxTokens,
+        extra === undefined ? proxyExtra(model) : extra);
+    } catch (err) {
       last = err;
       if (!BUSY_RE.test(String(err.message))) throw err;
       await sleep(1200 * (i + 1));
@@ -861,18 +878,42 @@ async function aiCallRaw(kind, messages, maxTokens) {
     }
   }
 
-  /* 代理通路 */
-  try {
-    const r = await proxyCallRetry(primary, messages, maxTokens);
-    /* 免费档 glm 走代理：思考 token 会把 max_tokens 吃光，正文可能是空的（已知问题）。
-       这里明确报错并给出指引，而不是偷偷切到要花钱的通义档。 */
-    if (S.engine === 'free' && /^glm-/.test(primary) && !String(r.text || '').trim()) {
-      throw new Error('免费模型经云端代理时输出被思考过程吃空（已知问题）→ 请点右上角「🔑 配免费Key」直连，或手动切到经济档');
+  /* 代理通路：免费档自动带 thinking 关掉思考；主模型限流就轮换白名单内其他免费模型 */
+  const chain = (S.engine === 'free')
+    ? [primary].concat((FREE_CANDIDATES[kind] || []).filter((m) => m !== primary))
+    : [primary];
+  let lastErr = null;
+  for (let i = 0; i < chain.length; i++) {
+    try {
+      const r = await proxyCallRetry(chain[i], messages, maxTokens);
+      /* 正文为空（且是免费档 glm）= 服务端没关掉思考：换模型也一样，别白试 */
+      if (S.engine === 'free' && /^glm-/.test(chain[i]) && !String(r.text || '').trim()) {
+        throw new Error('EMPTY_THINK');
+      }
+      if (chain[i] !== primary) {
+        const m2 = freeModels(); m2[kind] = chain[i]; saveFreeModels(m2);
+        console.log('[代理] 已轮换到 ' + chain[i]);
+      }
+      return r;
+    } catch (err) {
+      lastErr = err;
+      const m = String(err.message || '');
+      if (m === 'EMPTY_THINK') break;
+      if (!BUSY_RE.test(m) && !/不在白名单|未配置/.test(m)) throw err;
     }
-    return r;
-  } catch (err) {
-    const msg = String(err.message || '');
-    if (!fb || !/ZHIPU_API_KEY|未配置|不在白名单/.test(msg)) throw err;
+  }
+
+  /* 代理关不掉思考：本机有 Key 就走直连，没有就给一句能照做的提示（不偷偷切到要花钱的档） */
+  if (String((lastErr && lastErr.message) || '') === 'EMPTY_THINK') {
+    if (zhipuKey()) {
+      toast('云端未关闭思考，改用本机 Key 直连', 'err');
+      return await zhipuCallRole(kind, messages, maxTokens);
+    }
+    throw new Error('免费模型输出被思考过程吃空：请稍后重试，或点右上角「🔑 免费Key」贴一次智谱 Key 走直连');
+  }
+
+  const msg = String((lastErr && lastErr.message) || '');
+  if (fb && /ZHIPU_API_KEY|未配置|不在白名单/.test(msg)) {
     if (!_fallbackNoted) {
       _fallbackNoted = true;
       toast('免费档云端不可用，已自动切到通义 Flash', 'err');
@@ -880,6 +921,7 @@ async function aiCallRaw(kind, messages, maxTokens) {
     console.warn('[引擎降级] ' + primary + ' -> ' + fb + ' : ' + msg);
     return await proxyCallRetry(fb, messages, maxTokens);
   }
+  throw lastErr;
 }
 
 /* 对外：拿纯文本。被 max_tokens 截断时自动放大额度再试一次 */
@@ -1950,8 +1992,8 @@ function renderKeyHint() {
       '</b> 识图（官方永久免费，Key 只存本机）　<button class="linkbtn2" id="btnKeyInline">重新配置</button>';
   } else {
     h.className = 'keyhint';
-    h.innerHTML = '免费档需粘贴你自己的<b>智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）　' +
-      '<button class="linkbtn2" id="btnKeyInline">立即配置 →</button>';
+    h.innerHTML = '免费档开箱即用（走云端，无需配置）；贴一次自己的<b>智谱 Key</b>可直连、更快（Key 只存本机浏览器）　' +
+      '<button class="linkbtn2" id="btnKeyInline">可选配置 →</button>';
   }
   const b = $('#btnKeyInline');
   if (b) b.addEventListener('click', openKeyPanel);
@@ -1989,7 +2031,8 @@ function openKeyPanel() {
   let note = $('#keyNote');
   if (!note) { note = document.createElement('div'); note.id = 'keyNote'; note.className = 'keynote'; body.appendChild(note); }
   note.style.display = '';
-  note.innerHTML = '获取地址：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → 用户中心 → API Keys</a><br>' +
+  note.innerHTML = '<b>不配置也能用</b>：免费档默认走云端代理，开箱即用；配上自己的 Key 则直连，速度更快、也不受云端白名单限制。<br>' +
+    '获取地址：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → 用户中心 → API Keys</a><br>' +
     '免费档用 <code>GLM-4.7-Flash</code>（解析）+ <code>GLM-4.6V-Flash</code>（识图），官方定价 <b>永久免费</b>，不消耗你的通义余额。<br>' +
     'Key 只保存在这台电脑的浏览器本地，不会上传到任何服务器；换电脑或换浏览器重新粘贴一次即可。<br>' +
     '粘贴后建议点一次「一键自检」，会实测两个模型是否可用并自动记录。';
