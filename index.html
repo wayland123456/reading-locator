@@ -4002,6 +4002,57 @@ async function lessonSave(title, data) {
   return j && j[0];
 }
 
+/* 轻量查重：只取标题不取正文（整份正文拉下来会白白下载几 MB） */
+async function findLessonByTitle(title) {
+  try {
+    const code = ownerCode();
+    if (!code) return null;
+    const u = SB_URL + '/rest/v1/' + LESSON_TABLE
+      + '?owner_code=eq.' + encodeURIComponent(code)
+      + '&title=eq.' + encodeURIComponent(title)
+      + '&select=id,title,updated_at&limit=1';
+    const r = await fetch(u, { headers: sbHeaders() });
+    if (!r.ok) return null;          /* 查重失败不阻塞保存，按新增处理 */
+    const j = await r.json();
+    return (j && j[0]) || null;
+  } catch (e) { return null; }
+}
+
+async function listLessonTitles() {
+  try {
+    const code = ownerCode();
+    if (!code) return [];
+    const u = SB_URL + '/rest/v1/' + LESSON_TABLE
+      + '?owner_code=eq.' + encodeURIComponent(code) + '&select=title&limit=200';
+    const r = await fetch(u, { headers: sbHeaders() });
+    if (!r.ok) return [];
+    return (await r.json() || []).map(function (x) { return String(x.title || ''); });
+  } catch (e) { return []; }
+}
+
+/* 覆盖保存：同一条记录原地更新，列表里始终只有一份 */
+async function lessonUpdate(id, title, data) {
+  const r = await fetch(SB_URL + '/rest/v1/' + LESSON_TABLE +
+    '?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: sbHeaders({ 'Prefer': 'return=minimal' }),
+    body: JSON.stringify({ title: title, data: data, updated_at: new Date().toISOString() })
+  });
+  if (!r.ok) throw await sbFail(r);
+}
+
+/* 「另存」时给标题加个不重复的序号，避免出现两条同名 */
+async function uniqueTitle(base) {
+  const names = {};
+  (await listLessonTitles()).forEach(function (t) { names[t.trim()] = 1; });
+  if (!names[base]) return base;
+  for (let i = 2; i < 99; i++) {
+    const t = base + '（' + i + '）';
+    if (!names[t]) return t;
+  }
+  return base + '（' + new Date().getTime() + '）';
+}
+
 async function lessonGet(id) {
   const r = await fetch(SB_URL + '/rest/v1/' + LESSON_TABLE +
     '?id=eq.' + encodeURIComponent(id) + '&select=id,title,data', { headers: sbHeaders() });
@@ -4177,15 +4228,55 @@ async function saveCurrentLesson() {
         kind: curKind()
       }
     };
-    await lessonSave(title, data);
-    lessonMsg('已保存（含讲解进度）：' + title, 'ok');
-    if (!S.title) { S.title = title; $('#docTitle').value = title; save(); }
-    await refreshLessons();
+    /* 同名已经存过一份 → 让老师选「覆盖」还是「另存」，
+       别再默默新增一条（列表里会堆出一串同名课件） */
+    const dup = await findLessonByTitle(title);
+    if (dup) { openSaveChoice(dup, title, data); return; }
+    await doLessonSave(title, data, true);
   } catch (e) {
     lessonMsg('保存失败：' + e.message, 'err');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '＋ 保存当前讲解（含讲解进度）'; }
   }
+}
+
+/* 真正写入云端（新增一条） */
+async function doLessonSave(title, data, verb) {
+  await lessonSave(title, data);
+  lessonMsg((verb || '已保存') + '（含讲解进度）：' + title, 'ok');
+  if (!S.title) { S.title = title; $('#docTitle').value = title; save(); }
+  await refreshLessons();
+}
+
+/* 同名已存在 → 让老师自己选：覆盖（列表只留一条）还是另存一份 */
+function openSaveChoice(dup, title, data) {
+  const when = dup && dup.updated_at ? fmtTime(dup.updated_at) : '';
+  openCustomPanel('《' + title + '》已经存过一份', [
+    { label: '取消', fn: () => $('#modal').classList.remove('on') },
+    {
+      label: '另存为新的一份', fn: async () => {
+        $('#modal').classList.remove('on');
+        try { await doLessonSave(await uniqueTitle(title), data, '已另存'); }
+        catch (e) { lessonMsg('保存失败：' + e.message, 'err'); }
+      }
+    },
+    {
+      label: '覆盖原来那份', solid: true, fn: async () => {
+        $('#modal').classList.remove('on');
+        try {
+          await lessonUpdate(dup.id, title, data);
+          lessonMsg('已覆盖保存：' + title, 'ok');
+          if (!S.title) { S.title = title; $('#docTitle').value = title; save(); }
+          await refreshLessons();
+        } catch (e) { lessonMsg('保存失败：' + e.message, 'err'); }
+      }
+    }
+  ], function (box) {
+    box.innerHTML = '<div style="font-size:.87rem;line-height:1.95;color:var(--text-2)">'
+      + '课件库里已经有一份同名的' + (when ? '（' + esc(when) + '）' : '') + '。<br><br>'
+      + '<b>覆盖原来那份</b>：用现在这份替换它，列表里始终只有一条 —— 平时用这个最清爽。<br>'
+      + '<b>另存为新的一份</b>：再存一条，标题自动加序号（如「' + esc(title) + '（2）」），原来那份不动。</div>';
+  });
 }
 
 async function openLesson(id) {
