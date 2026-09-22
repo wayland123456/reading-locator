@@ -1136,7 +1136,15 @@ const S = {
   picking: null,     // {pi, qi} 正在为该题指定对应句
   fs: 1,
   showZh: false,
-  files: [],         // {id, name, dataUrl}
+  files: [],         // {id, name, dataUrl}  —— 只用于缩略图显示
+  /* 本次上传的图片「页序」（存 id，不存对象）：
+     识别成功的页解析完会把图片从 files 里清掉，但拼转录文本时还得按原页序来，
+     所以页序单独记一份，不受 files 清空影响。 */
+  pageOrder: [],
+  /* 逐张转写成功的原文，key = 图片 id。
+     用途：某一张因模型限流失败时，点重试只重跑失败的那张，
+     已经识别成功的直接复用（整卷重跑又慢、又容易被限流再打断一次）。 */
+  pageTexts: {},
 };
 
 const $  = (s, r) => (r || document).querySelector(s);
@@ -1706,6 +1714,36 @@ function showMissingKindsModal(missing) {
   });
 }
 
+/* 有整页没识别成功时的说明框。
+   这类情况最阴：转写里连「语法填空」的字样都没有，前面的「题型盘点 + 自动补回」
+   全都发现不了（它们只会发现"卷面上有字样却没解析出来"）。
+   表现就是老师看到「整卷只剩阅读」，却不知道为什么 —— 所以必须挡住说清楚。 */
+function showBadPagesModal(badPages) {
+  if (!badPages || !badPages.length) return;
+  const n = badPages.length;
+  openCustomPanel('⚠ 有 ' + n + ' 页没识别出来', [
+    { label: '知道了，先这样', fn: () => $('#modal').classList.remove('on') },
+    {
+      label: '重试这 ' + n + ' 张', solid: true,
+      fn: () => { $('#modal').classList.remove('on'); hideNotice(); runPipeline(); }
+    }
+  ], function (box) {
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:.9rem;line-height:1.9;margin-bottom:12px';
+    h.innerHTML = '第 <b style="color:#c0392b">' + badPages.join('、') + '</b> 张图片没能识别成文字'
+      + '（多半是免费模型这会儿访问量太大，少数是图片太大或拍糊了）。<br>'
+      + '这一页已经被整页跳过 —— <b>你下面看不到的那个题型，很可能整页就在这张图上</b>。';
+    box.appendChild(h);
+    const p = document.createElement('div');
+    p.style.cssText = 'font-size:.84rem;line-height:1.9;color:#555';
+    p.innerHTML = '<b>怎么办（任选一个）</b>：<br>'
+      + '① 点下面的 <b>重试这 ' + n + ' 张</b> —— 已经识别成功的页都记着，不会重跑<br>'
+      + '② 把这一页单独重拍一张清楚的，重新上传<br>'
+      + '③ 点右上角 <b>📄</b>（粘贴试卷文本），把这一页的文字粘进去直接解析';
+    box.appendChild(p);
+  });
+}
+
 /* =========================================================
    图片处理
    ========================================================= */
@@ -1984,18 +2022,35 @@ async function runPipeline() {
 
   try {
     hideNotice();
-    /* --- 1. 逐张转写（单张失败不拖垮整卷：降清晰度重试一次，再不行就跳过这张但留下提示） --- */
+    /* --- 1. 逐张转写（单张失败不拖垮整卷：多试几次 + 降清晰度重试，再不行就留下这一张让老师一键重试） ---
+       关键教训：免费识图模型高峰期常报「该模型当前访问量过大」（429/1305）。
+       以前每张只试 2 次、等 1.5 秒就放弃 —— 那张图（往往正好是语法填空那页）
+       会被静默跳过，老师看到的就是「整卷少了一个题型，却不知道为什么」。 */
     const texts = [];
     const badPages = [];
-    for (let i = 0; i < S.files.length; i++) {
-      setRunLabel('正在识别第 ' + (i + 1) + '/' + S.files.length + ' 张图片…');
+    if (!S.pageTexts) S.pageTexts = {};
+    const PAGE_TRIES = 4;
+    const BUSY_WAIT = [0, 6000, 12000, 18000];
+    /* 按「页序」走，而不是按当前缩略图列表 —— 重试时列表里只剩失败的那张，
+       识别成功的页要从缓存里按原页序接回来，否则转录文本会缺页。 */
+    if (!S.pageOrder || !S.pageOrder.length) S.pageOrder = S.files.map(function (f) { return f.id; });
+    const order = S.pageOrder.slice();
+    const total = order.length;
+    for (let i = 0; i < order.length; i++) {
+      const fid = order[i];
+      /* 上一轮已经识别成功的这一张直接复用（重试失败页时不用把整卷重跑一遍） */
+      if (S.pageTexts[fid]) { texts.push(S.pageTexts[fid]); continue; }
+      const F = S.files.filter(function (f) { return f.id === fid; })[0];
+      if (!F) { badPages.push(i + 1); continue; }
       let got = '';
-      for (let attempt = 0; attempt < 2 && !got; attempt++) {
+      for (let attempt = 0; attempt < PAGE_TRIES && !got; attempt++) {
+        setRunLabel('正在识别第 ' + (i + 1) + '/' + total + ' 张图片'
+          + (attempt ? '（模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
         try {
-          /* 第 2 次尝试换更小更省的图（大图被网关掐断时，小图往往能过） */
+          /* 从第 2 次起换更小更省的图（大图被网关掐断时，小图往往能过） */
           const url = attempt === 0
-            ? S.files[i].dataUrl
-            : (S.files[i].file ? await prepareImage(S.files[i].file, 1000, 0.78) : S.files[i].dataUrl);
+            ? F.dataUrl
+            : (F.file ? await prepareImage(F.file, attempt === 1 ? 1200 : 900, 0.78) : F.dataUrl);
           const content = [
             { type: 'image_url', image_url: { url: url } },
             { type: 'text', text: TRANSCRIBE_PROMPT }
@@ -2003,11 +2058,15 @@ async function runPipeline() {
           const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
           if (t && t.trim()) got = t.trim();
         } catch (err) {
-          console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + err.message);
-          if (attempt === 0) await sleep(1500);
+          const em = String(err.message || '');
+          console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + em);
+          if (attempt < PAGE_TRIES - 1) {
+            /* 限流（繁忙）等久一点再试，其它错误（网络抖动等）等短一点 */
+            await sleep(BUSY_RE.test(em) ? BUSY_WAIT[attempt + 1] : 2000);
+          }
         }
       }
-      if (got) texts.push(got);
+      if (got) { texts.push(got); S.pageTexts[fid] = got; }
       else badPages.push(i + 1);
     }
     if (!texts.length) {
@@ -2020,9 +2079,19 @@ async function runPipeline() {
       throw new Error('图片识别未成功');
     }
     if (badPages.length) {
-      showNotice('第 <b>' + badPages.join('、') + ' 张</b>没能识别出来，已跳过，其余已正常解析。'
-        + '<div class="sub">这一页多半是拍得太大/太糊。可以单独把这一页重拍后补传，或点「📋 粘贴试卷文本」把它粘进去。</div>',
-        'warn');
+      /* 记住是哪几张 —— 解析完成后要把这几张留在页面上，让老师能一键重试
+         （以前无条件清空图片列表，一旦某页没识别成功，老师既没图可重试、
+         也没有任何文字留存，只能把整卷重传一遍） */
+      S._badFileIds = badPages.map(function (n) { return order[n - 1]; }).filter(Boolean);
+      window.__badPages = badPages.slice();
+      showNotice('⚠ 第 <b>' + badPages.join('、') + ' 张</b>没能识别出来，这一页已跳过，其余正常解析。'
+        + '<div class="sub">少掉的内容（常常是一整页的完形填空或语法填空）就在这一页 —— '
+        + '所以下面看不到它，不是程序没归类。<br>'
+        + '已经识别成功的页面都记住了，点按钮只重跑没成功的那张，整卷不用重来。</div>',
+        'warn', '重试这 ' + badPages.length + ' 张', () => { hideNotice(); runPipeline(); });
+    } else {
+      S._badFileIds = [];
+      window.__badPages = [];
     }
     setStep(1);
 
@@ -2039,10 +2108,15 @@ async function runPipeline() {
     await sleep(420);
     commitResult(data);
     toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
-    /* 有题型实在没认出来 → 弹一个说明框（toast 太容易滑过去看不见） */
+    /* 有题型实在没认出来 / 有整页没识别成功 → 弹说明框（toast 太容易滑过去看不见） */
     if (data.__missing && data.__missing.length) {
       await sleep(700);
       showMissingKindsModal(data.__missing);
+    } else if (badPages.length) {
+      /* 整页没识别成功的这种情况，光靠顶部一条提示条老师会忽略，
+         而少掉的往往正是语法填空那一整页 —— 必须挡住一次说清楚 */
+      await sleep(700);
+      showBadPagesModal(badPages);
     }
   } catch (err) {
     progressState.show = false;
@@ -2130,7 +2204,9 @@ function commitResult(data) {
   S.view = Object.keys(kinds).length > 1 ? 'overview' : 'split';
   $('#emptyState').classList.add('hidden');
   $('#subbar').style.display = '';
-  S.files = [];
+  /* 全部识别成功才清空图片列表；有没识别成功的页就把它们留下来，
+     点「重试这 N 张」时才有图可用（识别成功的页文本已缓存，不会重跑） */
+  S.files = S.files.filter(function (f) { return (S._badFileIds || []).indexOf(f.id) >= 0; });
   renderThumbs();
   progressState.show = false;
   renderProgress();
@@ -2946,12 +3022,21 @@ function renderThumbs() {
 async function addFiles(fileList) {
   const arr = Array.prototype.slice.call(fileList).filter((f) => /^image\//.test(f.type));
   if (!arr.length) { toast('请选择图片文件', 'err'); return; }
+  /* 图片列表是空的 → 老师开始传一份新卷子：把上一份的页序和转写缓存清掉，
+     否则新卷子会把上一份识别过的文字也拼进去 */
+  if (!S.files.length) { S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; }
   for (const f of arr) {
     if (S.files.length >= 8) { toast('一次最多 8 张，多的请分批处理'); break; }
     try {
       const url = await prepareImage(f);
       /* 同时留着原始文件：转写失败时要用它压出更小的图重试 */
-      S.files.push({ id: 'f' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name, dataUrl: url, file: f });
+      const fobj = {
+        id: 'f' + Date.now() + Math.random().toString(36).slice(2, 6),
+        name: f.name, dataUrl: url, file: f
+      };
+      S.files.push(fobj);
+      if (!S.pageOrder) S.pageOrder = [];
+      S.pageOrder.push(fobj.id);
     } catch (err) { toast('「' + f.name + '」读取失败', 'err'); }
   }
   renderThumbs();
@@ -3013,11 +3098,19 @@ document.addEventListener('paste', (e) => {
 $('#thumbs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-del]');
   if (!b) return;
-  S.files = S.files.filter((f) => f.id !== b.dataset.del);
+  const gone = b.dataset.del;
+  S.files = S.files.filter((f) => f.id !== gone);
+  /* 这张图删了，它缓存的转写原文也一起清掉，
+     免得以后传了别的图却被复用到这一张的旧文字 */
+  if (S.pageTexts) delete S.pageTexts[gone];
+  if (S.pageOrder) S.pageOrder = S.pageOrder.filter((id) => id !== gone);
+  if (S._badFileIds) S._badFileIds = S._badFileIds.filter((id) => id !== gone);
   renderThumbs();
 });
 
-$('#btnClear').addEventListener('click', () => { S.files = []; renderThumbs(); });
+$('#btnClear').addEventListener('click', () => {
+  S.files = []; S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; renderThumbs();
+});
 $('#btnRun').addEventListener('click', runPipeline);
 $('#btnPasteText').addEventListener('click', runFromText);
 
