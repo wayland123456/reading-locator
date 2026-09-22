@@ -4226,8 +4226,18 @@ function applyProgress(pg) {
   } else {
     S.activeQ = null;
   }
-  S.view = viewOk[pg.view] ? pg.view : 'split';
+  /* 上次停在「题型速览」时，点「继续讲解」再回速览 = 原地不动，
+     老师会以为按钮坏了（实测反馈）。改成直接落到该题型的第一篇，从那里接着讲。 */
+  let resumedFromOverview = false;
+  if (pg.view === 'overview') {
+    resumedFromOverview = true;
+    S.view = 'split';
+    const list = pg.kind ? kindSiblings(pg.kind) : [];
+    if (list.length) S.cur = list[0];
+  }
+  S.view = resumedFromOverview ? S.view : (viewOk[pg.view] ? pg.view : 'split');
   render();
+  if (resumedFromOverview) toast('接着讲：' + kindShort(pg.kind || 'reading') + ' · 整篇', 'ok');
   if (landedQ) focusEvidence(true, pg.activeQ);
   return landedQ || pg.view === 'overview' || pg.activeQ != null;
 }
