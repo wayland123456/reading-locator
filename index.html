@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-page-node-id="rnKJDX7VVfrGsXhvL8ztyC">
+<head data-page-node-id="ieoM0LLMw0ZYO12lmWtfmB">
+<meta charset="UTF-8" data-page-node-id="Kndm8JWNCxTyhJyMoM0d4k">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="XxYAslxaiOtGqmwQhUwh9H">
 <title>英语阅读讲解器</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E" data-page-node-id="zPkh7CwbjrA4qaJYI7FQmg">
 <style>
 :root{
   --bg:#eef2f7;
@@ -537,6 +537,28 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 
 .hidden{display:none !important}
 
+/* 常驻提示条（解析失败/部分失败时留在页面上，不是一闪而过） */
+.notice{
+  display:flex;align-items:flex-start;gap:11px;width:min(760px,100%);margin:18px auto 0;
+  border:1.5px solid #e6b98d;background:#fdf6ec;border-radius:11px;padding:13px 16px;
+  box-shadow:0 4px 14px rgba(160,90,20,.07);
+}
+.notice.err{border-color:#e0a2a2;background:#fdf0f0}
+.notice.ok{border-color:#a8d5b8;background:#eff8f2}
+.notice .ni{flex:0 0 auto;font-size:1.05rem;line-height:1.5}
+.notice .ntx{flex:1;min-width:0;font-size:.85rem;line-height:1.85;color:var(--text)}
+.notice .ntx b{color:#a04d06}
+.notice.err .ntx b{color:#b03434}
+.notice .ntx .sub{font-size:.78rem;color:var(--text-3);margin-top:5px;line-height:1.75}
+.notice .nbtn{
+  flex:0 0 auto;border:1px solid #d9b183;background:#fff;color:#a04d06;border-radius:7px;
+  padding:6px 13px;font-size:.79rem;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;
+}
+.notice .nbtn:hover{background:#f9e4cd}
+.notice .nbtn.ghost{border-color:var(--border);color:var(--text-3)}
+.notice .nbtn.ghost:hover{background:var(--panel-2)}
+.notice .nbtn[disabled]{opacity:.55;cursor:default}
+
 /* ---------- 登录闸门：未登录前盖住整个页面 ---------- */
 body.gated{overflow:hidden}
 body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-events:none;user-select:none}
@@ -579,127 +601,135 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
 .gate-me .u{max-width:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
-<body class="gated">
+<body class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
 
-<div class="gate" id="gate">
-  <div class="gate-card">
-    <div class="gate-logo">📖</div>
-    <h1>英语阅读讲解器</h1>
-    <div class="gate-sub">教研组内部使用 · 请先登录</div>
-    <div class="gate-field">
-      <label>姓名</label>
-      <input id="gateUser" placeholder="请输入你的姓名" autocomplete="off" spellcheck="false">
+<div class="gate" id="gate" data-page-node-id="G0TdvysSAdjGmeZDWfWhmY">
+  <div class="gate-card" data-page-node-id="zfKn4yqbrXoGr3fpCOwLtP">
+    <div class="gate-logo" data-page-node-id="EFrmpM3CHBmupJdn2uvN6i">📖</div>
+    <h1 data-page-node-id="VxIDpA8Df7MQyelHC9OIKw">英语阅读讲解器</h1>
+    <div class="gate-sub" data-page-node-id="zQotGBsQSH4y0ExcZZLmgd">教研组内部使用 · 请先登录</div>
+    <div class="gate-field" data-page-node-id="7OkiyZHLFdDXb7lmItmnJR">
+      <label data-page-node-id="SH6QfBLkAqzxNFFVzNZjrT">姓名</label>
+      <input id="gateUser" placeholder="请输入你的姓名" autocomplete="off" spellcheck="false" data-page-node-id="gPgwQFKXnE1iI5tGBPzIrZ">
     </div>
-    <div class="gate-field">
-      <label>密码</label>
-      <input id="gatePass" type="password" placeholder="请输入密码" autocomplete="off">
+    <div class="gate-field" data-page-node-id="nbTlPFKqgL6nd3cIr1lwK6">
+      <label data-page-node-id="JNWS9XDBxzhOHzgK2BblCT">密码</label>
+      <input id="gatePass" type="password" placeholder="请输入密码" autocomplete="off" data-page-node-id="e235KrlCCaE9SseUIBbglZ">
     </div>
-    <button class="gate-btn" id="gateEnter">登 录</button>
-    <div class="gate-err" id="gateErr"></div>
-    <div class="gate-foot">
-      账号即本人姓名，初始密码 <code>123456</code><br>
+    <button class="gate-btn" id="gateEnter" data-page-node-id="DMxHj7uWwFsVPv5vU1hX5R">登 录</button>
+    <div class="gate-err" id="gateErr" data-page-node-id="4wzJqBBZygEfJQrXx20vvC"></div>
+    <div class="gate-foot" data-page-node-id="VmFmPUfo06wcXFBWdJXCGP">
+      账号即本人姓名，初始密码 <code data-page-node-id="UEvtHoGTezbKco44ddI2H0">123456</code><br data-page-node-id="YKOqH7Gek3yTlDY20JAQAn">
       登录一次即可，之后打开本机浏览器自动记住
     </div>
   </div>
 </div>
 
-<header class="topbar">
-  <span class="logo">📖</span>
-  <span class="brand">英语阅读讲解器</span>
-  <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题">
-  <span class="top-hint" id="topHint">点题目定位 · 双击原文可改 · 每题可改对应句</span>
-  <span class="spacer"></span>
-  <span class="gate-me" id="gateMe" title="点击退出登录"><span>👤</span><span class="u" id="gateMeName"></span></span>
-  <select class="tb-sel" id="modelSelTop" title="解析引擎">
-    <option value="free">免费</option>
-    <option value="eco">经济</option>
-    <option value="pro">标准</option>
+<header class="topbar" data-page-node-id="Ft1JCTWhdyywtPzA7Fvn95">
+  <span class="logo" data-page-node-id="pvYxCJFogItWDyLbqqEDm0">📖</span>
+  <span class="brand" data-page-node-id="C7e13Ab8YDj7bAysRD8xlv">英语阅读讲解器</span>
+  <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题" data-page-node-id="LcwYz6p0tdzQQdwDyKUy6y">
+  <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi">点题目定位 · 双击原文可改 · 每题可改对应句</span>
+  <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
+  <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
+  <select class="tb-sel" id="modelSelTop" title="解析引擎" data-page-node-id="Relsu60R5Ns09B4jBrkqkB">
+    <option value="free" data-page-node-id="OdCSo3lIx4AdMl4aXqFUxb">免费</option>
+    <option value="eco" data-page-node-id="FMeCTInKaJgMj5XIKkwRHE">经济</option>
+    <option value="pro" data-page-node-id="G9d2dkbYfcApgw80P4swnA">标准</option>
   </select>
-  <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）">🔑 免费Key</button>
-  <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用">📚 课件库</button>
-  <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇">⇄ 合并同题型</button>
-  <button class="tb-btn icon" id="btnFsMinus" title="减小字号">A－</button>
-  <button class="tb-btn icon" id="btnFsPlus" title="放大字号">A＋</button>
-  <button class="tb-btn" id="btnAddImg">＋ 上传图片</button>
-  <button class="tb-btn" id="btnImport">导入 JSON</button>
-  <button class="tb-btn solid" id="btnExport">导出 JSON</button>
+  <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）" data-page-node-id="TYYqE2fZ5ROvanLDdeKKH6">🔑 免费Key</button>
+  <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
+  <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇" data-page-node-id="7hgePhBzubQRcstGgDOGeC">⇄ 合并同题型</button>
+  <button class="tb-btn icon" id="btnFsMinus" title="减小字号" data-page-node-id="qQxjR0OcsA3MCsQs1oZsWx">A－</button>
+  <button class="tb-btn icon" id="btnFsPlus" title="放大字号" data-page-node-id="qYRgxONqhh9gP3CpQfHD77">A＋</button>
+  <button class="tb-btn" id="btnAddImg" data-page-node-id="zirITAiNm68Ao61jpIsCr6">＋ 上传图片</button>
+  <button class="tb-btn" id="btnImport" data-page-node-id="WMc9UgxbpqbYQncXrbNVYu">导入 JSON</button>
+  <button class="tb-btn solid" id="btnExport" data-page-node-id="QWNA9SHhcQjeMPqNnVKPyG">导出 JSON</button>
 </header>
 
-<div class="subbar" id="subbar" style="display:none">
-  <div class="navline">
-    <span class="lb">题型</span>
-    <div class="ptabs" id="ptabs"></div>
+<div class="subbar" id="subbar" style="display:none" data-page-node-id="DhPFG4lax1Kpjked1gjzeu">
+  <div class="navline" data-page-node-id="dMFQLS2tIlqtvTCk5uri0R">
+    <span class="lb" data-page-node-id="qs12QXp26VMffjLP7FjDac">题型</span>
+    <div class="ptabs" id="ptabs" data-page-node-id="z07wU6TmmDqFnDxU4d3zFF"></div>
   </div>
-  <div class="navline">
-    <span class="lb">视图</span>
-    <div class="vtabs" id="vtabs">
-      <button class="vtab" data-view="split">整篇</button>
-      <button class="vtab" data-view="original">原文</button>
-      <button class="vtab" data-view="single">单段</button>
-      <button class="vtab" data-view="background">文化背景</button>
-      <button class="vtab" data-view="expressions">积累表达</button>
+  <div class="navline" data-page-node-id="zTSwkUjUiGDwt6b68FHEUc">
+    <span class="lb" data-page-node-id="y2SONUTtanth3ggxJuIPrZ">视图</span>
+    <div class="vtabs" id="vtabs" data-page-node-id="2AOGFJxvssblhyHXXan6iI">
+      <button class="vtab" data-view="split" data-page-node-id="if5ddn8dUrBXpQ8llmXKmS">整篇</button>
+      <button class="vtab" data-view="original" data-page-node-id="22ZwAVEVIUAa3jtyfYuNGv">原文</button>
+      <button class="vtab" data-view="single" data-page-node-id="Jo5WHzu1mVAiwIA3iE86do">单段</button>
+      <button class="vtab" data-view="background" data-page-node-id="Y8KrHiOoaHtql3PsB8mDlX">文化背景</button>
+      <button class="vtab" data-view="expressions" data-page-node-id="1sdnrBcE2sAD8QfOftF0aR">积累表达</button>
     </div>
   </div>
 </div>
 
-<main class="main" id="main">
-  <div id="content"></div>
+<main class="main" id="main" data-page-node-id="yvWafthIJKbYHO96QM8kGo">
+  <div id="content" data-page-node-id="Mv290dg4p5TtBY2gbTc4Yc"></div>
 
-  <div class="empty" id="emptyState">
-    <div class="drop" id="drop">
-      <div class="ic">📄</div>
-      <h3>上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
-      <p>把试卷拍照或截图拖进来，AI 自动识别文字、<b>判断题型</b>、切分段落、定位题目答案，生成讲解页。<br>
+  <div class="empty" id="emptyState" data-page-node-id="1EXewiK6zWk2vGtFOnpdcO">
+    <div class="drop" id="drop" data-page-node-id="VXfcB5nmtqq1zmF2D5O4WI">
+      <div class="ic" data-page-node-id="PtkafDuCYrzEDcWjzpnthT">📄</div>
+      <h3 data-page-node-id="sAOP6W0uzvPPrHocHm7CVW">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
+      <p data-page-node-id="knRVPXLuteWR74MVebXyo5">把试卷拍照或截图拖进来，AI 自动识别文字、<b data-page-node-id="NTo4ueaGP3YrcgQwwoM7Ua">判断题型</b>、切分段落、定位题目答案，生成讲解页。<br data-page-node-id="LtgkzUHyJ79u9E30wVVmSr">
          支持一次上传多张；一张卷子里有几种题型都能自动分开归类。</p>
-      <p style="margin-top:12px">也可以直接按 <span class="kbd">Ctrl</span> + <span class="kbd">V</span> 粘贴截图</p>
+      <p style="margin-top:12px" data-page-node-id="PJRBFgs4hERvcQJsymOEIb">也可以直接按 <span class="kbd" data-page-node-id="nUA4qgEAy4eC8XHR5EPktO">Ctrl</span> + <span class="kbd" data-page-node-id="66uOW5G8NAK7yVrsLBWlId">V</span> 粘贴截图</p>
     </div>
 
-    <div class="thumbs" id="thumbs"></div>
+    <div class="thumbs" id="thumbs" data-page-node-id="9nXIQK4lnqqCJDAN8Ow6eL"></div>
 
-    <div class="runbar" id="runbar" style="display:none">
-      <button class="big-btn" id="btnRun">开始解析</button>
-      <button class="big-btn ghost" id="btnClear">清空</button>
+    <div class="runbar" id="runbar" style="display:none" data-page-node-id="aybfS7gXgylXCvGr1WbfeO">
+      <button class="big-btn" id="btnRun" data-page-node-id="JIzoPiG5V66xkfbK7Ge7bb">开始解析</button>
+      <button class="big-btn ghost" id="btnClear" data-page-node-id="CaaKrb01uN7CwVmvnLE2JV">清空</button>
     </div>
 
-    <div style="margin-top:20px;text-align:center">
-      <button class="linkbtn" id="btnPasteText">📋 没有图片？直接粘贴试卷文本解析 →</button>
+    <div style="margin-top:20px;text-align:center" data-page-node-id="dVQNcP17zkV39z0IIChAAU">
+      <button class="linkbtn" id="btnPasteText" data-page-node-id="RovnPahGP2AvlMGcGDTC18">📋 没有图片？直接粘贴试卷文本解析 →</button>
     </div>
-    <div class="model-row">
-      <span>解析引擎：</span>
-      <select id="modelSel">
-        <option value="free">免费 · 智谱 GLM-Flash（0 成本）</option>
-        <option value="eco">经济 · 通义 Flash 系列（很省）</option>
-        <option value="pro">标准 · 通义 VL-Max + Plus（最准）</option>
+    <div class="model-row" data-page-node-id="q3ax8VeFEzQspxYlLgSx4F">
+      <span data-page-node-id="WAxXHam12OombJhAHDmKqT">解析引擎：</span>
+      <select id="modelSel" data-page-node-id="HiF9gGsRloEF5g28KtDN4u">
+        <option value="free" data-page-node-id="BMTT89uIY5qEL8YKcDXxZI">免费 · 智谱 GLM-Flash（0 成本）</option>
+        <option value="eco" data-page-node-id="NVNJpLsy86n1W3ypeCGJsf">经济 · 通义 Flash 系列（很省）</option>
+        <option value="pro" data-page-node-id="tuE7Td2YBLeOfHo44T6cqu">标准 · 通义 VL-Max + Plus（最准）</option>
       </select>
     </div>
-    <div class="keyhint" id="keyHint">
-      免费档：优先粘贴你自己的<b>智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）。
-      <button class="linkbtn2" id="btnKeyInline">立即配置 →</button>
+    <div class="keyhint" id="keyHint" data-page-node-id="fZEd2fBqPGPIeoEUaa7VA7">
+      免费档：优先粘贴你自己的<b data-page-node-id="ItcLnK2STyeM8bPtPblEBh">智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）。
+      <button class="linkbtn2" id="btnKeyInline" data-page-node-id="L0tcaPHNa0ejmpDfgSE6VX">立即配置 →</button>
     </div>
 
-    <div class="progress" id="progress">
-      <div class="bar"><i id="barFill"></i></div>
-      <div class="steps" id="steps"></div>
+    <div class="progress" id="progress" data-page-node-id="RawuDVlecsINtpV5uENCY1">
+      <div class="bar" data-page-node-id="BTi9VkDM5pkm1xENLa99ML"><i id="barFill" data-page-node-id="OkLpOEMfBQNuxTzF0Zbrox"></i></div>
+      <div class="steps" id="steps" data-page-node-id="CyODqCx0R9aFJDYHSBqybQ"></div>
     </div>
+  </div>
+
+  <!-- 常驻提示条：失败原因不再是一闪而过的提示，留着让老师看清并重试 -->
+  <div class="notice" id="notice" style="display:none" data-page-node-id="TlGpLyr9QKJ6sermpWBEwO">
+    <span class="ni" id="noticeIcon" data-page-node-id="l6S6GhEhAiD1xV4qi5FqCK">⚠</span>
+    <div class="ntx" id="noticeText" data-page-node-id="hGTC6er9ZlWK8jCTuwrnwG"></div>
+    <button class="nbtn" id="noticeAct" style="display:none" data-page-node-id="GR3KDi0pq5mY4gUZBiH9aq">重试</button>
+    <button class="nbtn ghost" id="noticeX" data-page-node-id="6zCCZANUtHrA47CRlsi8YX">关闭</button>
   </div>
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" data-page-node-id="DCCst4Fyl2NNJonECUORnO"></div>
 
-<div class="qnav" id="qnav">
-  <button data-nav="-1" title="上一题（← 键）">‹</button>
-  <span class="cnt" id="qnavCnt">—<small>共 0 题</small></span>
-  <button data-nav="1" title="下一题（→ 键）">›</button>
+<div class="qnav" id="qnav" data-page-node-id="vGCKOiNwgZHDiPSnHKamG6">
+  <button data-nav="-1" title="上一题（← 键）" data-page-node-id="WTxqzYe2RjRVTv3Gf7NeTn">‹</button>
+  <span class="cnt" id="qnavCnt" data-page-node-id="EAtVE1X7Ml50HPwTIOVe5Z">—<small data-page-node-id="Fa2IensFIsXgx31NecRR0r">共 0 题</small></span>
+  <button data-nav="1" title="下一题（→ 键）" data-page-node-id="ln9ibKcZkNJkOtfvDtgwrK">›</button>
 </div>
 
-<div class="modal" id="modal">
-  <div class="modal-box">
-    <div class="modal-head"><span id="modalTitle">JSON</span><button class="x" id="modalX">✕</button></div>
-    <div class="modal-body">
+<div class="modal" id="modal" data-page-node-id="DBPL25QJjTJnU8RkRrq9uG">
+  <div class="modal-box" data-page-node-id="yjruoy58KAFw8IxhDqT9yE">
+    <div class="modal-head" data-page-node-id="Soh0YWwAV4YCf2wsk2sxCC"><span id="modalTitle" data-page-node-id="gA8l4BgA212qf6mlQMERPE">JSON</span><button class="x" id="modalX" data-page-node-id="LH46BkdnrHYYb6lrbrOtYz">✕</button></div>
+    <div class="modal-body" data-page-node-id="hMlKXr3qif8tKyCERJ6D0y">
       <textarea id="modalText" spellcheck="false"></textarea>
-      <div id="modalCustom" class="modal-custom" style="display:none"></div>
+      <div id="modalCustom" class="modal-custom" style="display:none" data-page-node-id="vCPvD8yvX7gTUiTWLgdJF2"></div>
     </div>
-    <div class="modal-foot" id="modalFoot"></div>
+    <div class="modal-foot" id="modalFoot" data-page-node-id="6eymFrfJXwszUzaoEW9soA"></div>
   </div>
 </div>
 
@@ -1153,8 +1183,15 @@ const FREE_CANDIDATES = {
   transcribe: ['glm-4.6v-flash', 'glm-4v-flash']
 };
 
-/* 限流类错误（代理通路与直连通路共用） */
-const BUSY_RE = /1305|访问量过大|稍后再试|请稍后|429|too many|rate.?limit|overload|繁忙/i;
+/* 瞬时类错误（限流 / 网关抖动）：这些都该退避重试，而不是当场判死。
+   504/546 是网关超时（Cloudflare Worker 超限），529 是服务过载 —— 实测高频出现，
+   以前没列进来，一遇到就直接终止解析，表现就是「点了开始解析然后什么都没有」。 */
+const BUSY_RE = /1305|访问量过大|稍后再试|请稍后|429|too many|rate.?limit|overload|繁忙|50[234]|52[24]|546|529|gateway|timed?\s*out|timeout|超时|无响应|网络|负载/i;
+
+/* 直连超时 ≠ 网关抖动：超时说明「这个模型现在就是慢」—— 实测 glm-4.7-flash 偶尔要 114 秒，
+   紧贴 120 秒上限，而兄弟模型 glm-4-flash 只要 3.3 秒。重试同一个模型多半还是慢，
+   所以这里不重试，直接抛出去让 zhipuCallRole 轮换到更快的免费模型。 */
+const DIRECT_TIMEOUT_RE = /请求超时|无响应/;
 
 /* 智谱报错归类：busy 退避重试 / nomodel 换下一个 / param 降级参数 / auth 要用户换 Key */
 function zhipuErrKind(msg) {
@@ -1177,14 +1214,17 @@ async function zhipuOnce(model, messages, maxTokens, disableThink) {
   if (disableThink) body.thinking = { type: 'disabled' };
   let resp;
   try {
-    resp = await fetch(ZHIPU_URL, {
+    /* 直连同样要设超时，否则同样会永久挂住页面 */
+    resp = await fetchWithTimeout(ZHIPU_URL, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + zhipuKey(), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    });
+    }, 120000);
   } catch (e) {
-    /* fetch 抛异常 = 没收到可读响应：跨域被拦 / 断网 / 被代理劫持 */
-    throw new Error('无法连接智谱（跨域或网络问题：' + String((e && e.message) || e) + '）');
+    /* fetch 抛异常 = 没收到可读响应：跨域被拦 / 断网 / 被代理劫持 / 超时 */
+    const m = String((e && e.message) || e);
+    if (/超时/.test(m)) throw new Error(m);
+    throw new Error('无法连接智谱（跨域或网络问题：' + m + '）');
   }
   let j = null;
   try { j = await resp.json(); }
@@ -1211,6 +1251,8 @@ async function zhipuAttempt(model, messages, maxTokens, tries) {
       lastErr = err;
       const kind = zhipuErrKind(err.message);
       if (kind === 'param' && disableThink) { disableThink = false; continue; }
+      /* 超时 = 模型本身慢，别在这里死磕 2×120 秒；抛给上层立刻换下一个模型 */
+      if (DIRECT_TIMEOUT_RE.test(String(err.message))) throw err;
       if (kind !== 'busy') throw err;
       await sleep(700 + 900 * i);
     }
@@ -1252,19 +1294,48 @@ function errText(j, status) {
   return String(e.message || e.code || JSON.stringify(e));
 }
 
+/* 部分模型的 max_tokens 上限很低（glm-4v-flash 只允许 1～1024），
+   不夹住就直接 400 报错，导致轮换到它等于白轮换 */
+const MODEL_MAXTOK = { 'glm-4v-flash': 1024 };
+
+/* 带超时的 fetch。
+   以前裸 fetch 没有超时 —— 服务端不响应时请求会永久挂着，
+   页面就停在「正在识别第 N 张图片…」不动了，老师看到的就是「点了没反应」。
+   超时后按"繁忙"处理：上层会自动重试 / 换模型。 */
+async function fetchWithTimeout(url, opts, ms) {
+  const ac = new AbortController();
+  const timer = setTimeout(function () { ac.abort(); }, ms || 120000);
+  try {
+    return await fetch(url, Object.assign({}, opts, { signal: ac.signal }));
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || /abort/i.test(String(e.message)))) {
+      throw new Error('请求超时（' + Math.round((ms || 120000) / 1000) + ' 秒无响应），已自动重试');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function proxyCall(model, messages, maxTokens, extra) {
+  let mt = maxTokens || 4000;
+  if (MODEL_MAXTOK[model] && mt > MODEL_MAXTOK[model]) mt = MODEL_MAXTOK[model];
   const body = {
     model: model,
     messages: messages,
-    max_tokens: maxTokens || 4000,
+    max_tokens: mt,
     temperature: 0.2
   };
   if (extra) Object.assign(body, extra);
-  const resp = await fetch(AI_PROXY, {
+  /* 认图（带 image_url）给 150 秒，纯文本 110 秒 —— 都比服务端网关的掐断线略宽一点 */
+  const isVision = (messages || []).some(function (m) {
+    return Array.isArray(m.content) && m.content.some(function (c) { return c.type === 'image_url'; });
+  });
+  const resp = await fetchWithTimeout(AI_PROXY, {
     method: 'POST',
     headers: { 'apikey': PUB_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
-  });
+  }, isVision ? 100000 : 90000);
   let j = null;
   try { j = await resp.json(); }
   catch (e) { throw new Error('接口返回异常（HTTP ' + resp.status + '）'); }
@@ -1285,16 +1356,28 @@ function proxyExtra(model) {
 }
 
 /* 代理通路同样要退避（免费档 glm 走代理时也会 1305） */
+/* 纯限流（模型被挤爆）—— 跟网关抖动分开处理 */
+const RATE_RE = /429|1305|访问量过大|rate.?limit|too many/i;
+
 async function proxyCallRetry(model, messages, maxTokens, extra) {
+  /* 视觉模型（认图）没有靠谱的替补：glm-4v-flash 的 max_tokens 只有 1024，装不下一页卷子，
+     所以它被限流时只能多等几次；文本模型则相反 —— 限流就立刻换下一个（glm-4-flash 通常还活着）。 */
+  const isVision = /v-flash|vl|4v/i.test(model);
   let last = null;
-  for (let i = 0; i < 3; i++) {
+  /* 有界：认图最多 2 次（每次最长 100 秒），文本最多 2 次（每次最长 90 秒）。
+     不设上限的话早高峰会让学生干等十几分钟 —— 宁可早点告诉老师"现在太挤，稍后再试"。 */
+  const tries = 2;
+  for (let i = 0; i < tries; i++) {
     try {
       return await proxyCall(model, messages, maxTokens,
         extra === undefined ? proxyExtra(model) : extra);
     } catch (err) {
       last = err;
-      if (!BUSY_RE.test(String(err.message))) throw err;
-      await sleep(1200 * (i + 1));
+      const m = String(err.message);
+      if (!BUSY_RE.test(m)) throw err;
+      /* 文本模型一限流就走人，交给上层轮换 —— 别在被挤爆的模型上干耗 */
+      if (!isVision && RATE_RE.test(m)) break;
+      if (i < tries - 1) await sleep(1400 * (i + 1) + Math.floor(Math.random() * 900));
     }
   }
   throw new Error('云端模型繁忙（' + String(last.message).slice(0, 40) + '）');
@@ -1567,7 +1650,7 @@ async function autoRescueMissing(transcript, data) {
     const k = missing[i];
     const seg = extractKindSegment(transcript, k);
     if (!seg) { stillMissing.push(k); continue; }
-    $('#topHint').textContent = '发现' + kindName(k) + '没解析出来，正在单独补解析…';
+    setRunLabel('' + kindName(k) + '没解析出来，正在单独补解析…');
     try {
       const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(k, seg) }], 8192);
       const d = jsonFromText(raw);
@@ -1645,21 +1728,56 @@ function loadImg(src) {
 }
 
 /* 压缩：长边不超过 maxSide，输出 jpeg，控制上传体积 */
-async function prepareImage(file, maxSide) {
-  maxSide = maxSide || 1700;
+/* 图片预处理：压缩到模型吃得下的尺寸。
+   原来 1700px / 质量 0.9 —— 整页试卷这样压完 payload 很大，视觉模型要啃很久，
+   实测会被服务端网关（Cloudflare 546）掐断，表现就是「解析半天没反应然后白屏」。
+   降到 1400px / 0.85 后单张明显更快，文字仍然清楚。 */
+async function prepareImage(file, maxSide, quality) {
+  maxSide = maxSide || 1400;
+  quality = quality || 0.85;
   const raw = await readAsDataUrl(file);
   const img = await loadImg(raw);
   const long = Math.max(img.width, img.height);
   const scale = Math.min(1, maxSide / long);
-  if (scale >= 1 && raw.length < 1600000) return raw;
+  if (scale >= 1 && raw.length < 1100000) return raw;
   const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.9);
+  return c.toDataURL('image/jpeg', quality);
 }
+
+/* =========================================================
+   常驻提示条：解析失败时留在页面上，别让老师对着白屏猜
+   ========================================================= */
+function showNotice(html, kind, actionLabel, actionFn) {
+  const box = $('#notice');
+  if (!box) return;
+  box.className = 'notice' + (kind ? ' ' + kind : '');
+  box.style.display = '';
+  $('#noticeIcon').textContent = kind === 'err' ? '❌' : (kind === 'ok' ? '✅' : '⚠');
+  $('#noticeText').innerHTML = html;
+  const act = $('#noticeAct');
+  if (actionLabel && actionFn) {
+    act.style.display = '';
+    act.textContent = actionLabel;
+    act.disabled = false;
+    act.onclick = actionFn;
+  } else {
+    act.style.display = 'none';
+    act.onclick = null;
+  }
+  try {
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {}
+}
+function hideNotice() {
+  const box = $('#notice');
+  if (box) box.style.display = 'none';
+}
+$('#noticeX').addEventListener('click', hideNotice);
 
 /* =========================================================
    解析流水线
@@ -1750,7 +1868,7 @@ async function parseInChunks(transcript) {
   const merged = { title: '', passages: [] };
   const fails = [];
   for (let i = 0; i < chunks.length; i++) {
-    $('#topHint').textContent = '正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分…';
+    setRunLabel('正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分…');
     try {
       const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i]) }], 8192);
       const d = jsonFromText(raw);
@@ -1830,26 +1948,82 @@ async function retryLostChunks() {
   }
 }
 
+/* 跑一次解析时在提示条上显示「已用时 N 秒」——
+   免费模型慢的时候，老师至少知道程序在干活，而不是「点了没反应」 */
+let _runTimer = null, _runT0 = 0, _runLabel = '';
+function startRunClock(label) {
+  stopRunClock();
+  _runT0 = Date.now();
+  _runLabel = label || '';
+  $('#topHint').textContent = _runLabel;
+  _runTimer = setInterval(function () {
+    const s = Math.round((Date.now() - _runT0) / 1000);
+    const el = $('#topHint');
+    /* 只在没被别的阶段文案覆盖时刷新，避免打架 */
+    if (el && /已用时|正在/.test(el.textContent)) {
+      el.textContent = _runLabel + '（已用时 ' + s + ' 秒）';
+    }
+  }, 1000);
+}
+function setRunLabel(label) {
+  _runLabel = label;
+  const el = $('#topHint');
+  if (el) el.textContent = label + '（已用时 ' + Math.round((Date.now() - _runT0) / 1000) + ' 秒）';
+}
+function stopRunClock() {
+  if (_runTimer) { clearInterval(_runTimer); _runTimer = null; }
+}
+
 async function runPipeline() {
   if (!S.files.length) return;
   $('#btnRun').disabled = true;
   $('#btnClear').disabled = true;
   progressState = { show: true, done: [], active: 0 };
   renderProgress();
+  startRunClock('准备中…');
 
   try {
-    /* --- 1. 逐张转写 --- */
+    hideNotice();
+    /* --- 1. 逐张转写（单张失败不拖垮整卷：降清晰度重试一次，再不行就跳过这张但留下提示） --- */
     const texts = [];
+    const badPages = [];
     for (let i = 0; i < S.files.length; i++) {
-      $('#topHint').textContent = '正在识别第 ' + (i + 1) + '/' + S.files.length + ' 张图片…';
-      const content = [
-        { type: 'image_url', image_url: { url: S.files[i].dataUrl } },
-        { type: 'text', text: TRANSCRIBE_PROMPT }
-      ];
-      const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
-      if (t && t.trim()) texts.push(t.trim());
+      setRunLabel('正在识别第 ' + (i + 1) + '/' + S.files.length + ' 张图片…');
+      let got = '';
+      for (let attempt = 0; attempt < 2 && !got; attempt++) {
+        try {
+          /* 第 2 次尝试换更小更省的图（大图被网关掐断时，小图往往能过） */
+          const url = attempt === 0
+            ? S.files[i].dataUrl
+            : (S.files[i].file ? await prepareImage(S.files[i].file, 1000, 0.78) : S.files[i].dataUrl);
+          const content = [
+            { type: 'image_url', image_url: { url: url } },
+            { type: 'text', text: TRANSCRIBE_PROMPT }
+          ];
+          const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
+          if (t && t.trim()) got = t.trim();
+        } catch (err) {
+          console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + err.message);
+          if (attempt === 0) await sleep(1500);
+        }
+      }
+      if (got) texts.push(got);
+      else badPages.push(i + 1);
     }
-    if (!texts.length) throw new Error('没有识别到任何文字，请换更清晰的图片');
+    if (!texts.length) {
+      /* 一张都没成功 → 常驻面板，把原因说清楚并给重试入口 */
+      progressState.show = false; renderProgress();
+      showNotice('这份卷子<b>一张都没能识别成功</b>。多半是图片太大或网络不稳，服务端处理超时了。'
+        + '<div class="sub">建议：① 把图片裁成半页再传（字看得清就行）② 一次少传几张 ③ 点下面的重试按钮再试一次<br>'
+        + '④ 也可以点「📋 没有图片？直接粘贴试卷文本解析」把文字粘进去，最稳。</div>',
+        'err', '重试一次', () => { hideNotice(); runPipeline(); });
+      throw new Error('图片识别未成功');
+    }
+    if (badPages.length) {
+      showNotice('第 <b>' + badPages.join('、') + ' 张</b>没能识别出来，已跳过，其余已正常解析。'
+        + '<div class="sub">这一页多半是拍得太大/太糊。可以单独把这一页重拍后补传，或点「📋 粘贴试卷文本」把它粘进去。</div>',
+        'warn');
+    }
     setStep(1);
 
     /* --- 2~4. 结构化解析（整卷自动分批，避免输出被截断丢题型） --- */
@@ -1873,9 +2047,22 @@ async function runPipeline() {
   } catch (err) {
     progressState.show = false;
     renderProgress();
-    toast('解析失败：' + err.message, 'err');
     console.error(err);
+    /* 已经是"识别未成功"的情况自己弹过面板了，别重复覆盖 */
+    const box = $('#notice');
+    if (err.message !== '图片识别未成功' && (!box || box.style.display === 'none')) {
+      const msg = String(err.message || '');
+      const busy = /繁忙|429|访问量|rate/i.test(msg);
+      showNotice(busy
+        ? '解析失败：<b>免费模型这会儿用的人太多，被限流了</b>。'
+          + '<div class="sub">等 1～2 分钟再点重试就行；也可以点右上角「🔑 免费Key」贴一个自己的智谱 Key 走直连，不受这个限制。</div>'
+        : '解析失败：<b>' + esc(msg) + '</b>'
+          + '<div class="sub">可以点重试再试一次；如果反复失败，试试「📋 粘贴试卷文本」直接把文字粘进去解析。</div>',
+        'err', '重试一次', () => { hideNotice(); runPipeline(); });
+    }
+    toast('解析失败：' + err.message, 'err', 5000);
   } finally {
+    stopRunClock();
     $('#btnRun').disabled = false;
     $('#btnClear').disabled = false;
     $('#topHint').textContent = '点题目定位 · 双击原文可改 · 每题可改对应句';
@@ -2763,7 +2950,8 @@ async function addFiles(fileList) {
     if (S.files.length >= 8) { toast('一次最多 8 张，多的请分批处理'); break; }
     try {
       const url = await prepareImage(f);
-      S.files.push({ id: 'f' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name, dataUrl: url });
+      /* 同时留着原始文件：转写失败时要用它压出更小的图重试 */
+      S.files.push({ id: 'f' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name, dataUrl: url, file: f });
     } catch (err) { toast('「' + f.name + '」读取失败', 'err'); }
   }
   renderThumbs();
