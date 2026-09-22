@@ -1897,7 +1897,7 @@ function finishSteps() {
    「二、语法填空」不被当成大题标记 → 整卷 5000 字挤成一块解析，
    输出超出 max_tokens 被截断，语法填空整块丢在 JSON 末尾 ——
    这就是「明明传了语法填空却只剩阅读」的根因。 */
-const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|[一二三四五六七八九十]+\s*[、.．]\s*(?:完形|七选五|语法|阅读|写作|应用文|短文|听力)|Part\s*[ⅠⅡⅢⅣV1-5]\b|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
+const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|(?:[一二三四五六七八九十]+|[ⅠⅡⅢⅣⅤIVX]+)\s*[、.．]\s*(?:完形|七选五|语法|阅读|写作|应用文|短文|听力)|Part\s*[ⅠⅡⅢⅣV1-5](?:\s|$|[、.．])|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
 
 function splitTranscript(text) {
   const t = String(text || '').trim();
@@ -1913,7 +1913,10 @@ function splitTranscript(text) {
        ⑤后面一行看起来像正文（不是另一串选项），避免把选项群切开 */
     const bareLetter = /^[A-DＡ-Ｄ][.、:：]?$/.test(s);
     const bareNo = /^\d{1,2}[.、]?$/.test(s);
-    const isHead = SECTION_RE.test(ln) && s.length < 40 && !bareLetter && !bareNo;
+    /* ⅱ.篇级断点：单独成行的「A」「B」「C」也是切点 —— 否则三篇阅读挤在一块请求里，
+       输出一长就把末尾那篇（通常是 C 篇）吃掉，老师看到的就只剩 A、B 两篇。 */
+    const isHead = (SECTION_RE.test(ln) && s.length < 40 && !bareLetter && !bareNo)
+      || (bareLetter && cur.join('\n').trim().length > 320);
     /* 断块门槛：当前块已有实质内容（原 400 太钝，两小节短文常常各只有 300 字） */
     if (isHead && cur.join('\n').trim().length > 220) {
       blocks.push(cur.join('\n').trim());
