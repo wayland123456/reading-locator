@@ -1041,12 +1041,19 @@ function uniqQuestions(list) {
 
 /* 双保险：即便 AI 没标 kind，只要一篇自己就是语法填空的排版，也能认出来
    （10 个左右连续题号、无选项、有空号标记 —— 只有语法填空长这样） */
+/* 双保险：即便 AI 没标 kind（或标错了），只要一篇自己就是语法填空的排版，也能认出来
+   （10 个左右连续题号、无选项、有空号标记）—— 只有语法填空长这样。
+   放宽了两处：题号落在 41～70 之间也算（部分地区号段不同），
+   以及「题数符合 + 完全无选项」即使空号标记没保留下来也认。 */
 function looksLikeGrammar(p) {
   const qs = p.questions || [];
-  if (qs.length < 8 || qs.length > 12) return false;
+  if (qs.length < 6 || qs.length > 15) return false;
   if (qs.some(function (q) { return q.options && q.options.length; })) return false;
   const holes = (p.paragraphs || []).filter(function (x) { return /_{2,}|\(\s*\d{2}\s*\)/.test(x.en || ''); }).length;
-  return holes > 0;
+  if (holes > 0) return true;
+  /* 空号标记没保留（转写把空填上了）时，靠题号段判断 */
+  const nos = qs.map(function (q) { return Number(q.no); }).filter(function (n) { return n >= 41 && n <= 70; });
+  return nos.length >= Math.min(6, qs.length);
 }
 
 function groupByKind(passages) {
@@ -1456,6 +1463,167 @@ function jsonFromText(raw) {
 }
 
 /* =========================================================
+   转录文本的「题型盘点」
+   解析完先数一遍：卷面上本来该有哪些题型？跟解析结果对不上就说明丢了，
+   不能再让语法填空静默消失 —— 这是「上传了却看不到语法填空」的最后一道保险。
+   ========================================================= */
+const KIND_EVIDENCE = {
+  grammar: [
+    /语法\s*填\s*空/, /第二节\s*\S{0,6}语法/, /阅读下面(?:短文|材料|对话)[^。]{0,80}填入(?:适当|1个)/i,
+    /在(?:空白处|空格处)填入(?:适当的|1个)?(?:内容|单词)/, /单词的适当形式/, /括号内单词的适当形式/
+  ],
+  cloze: [/完\s*形\s*填\s*空/],
+  seven: [/七\s*选\s*五/, /选项中选出.{0,30}最佳选项.{0,60}多余/, /(?:A[～~\-]G|A-G)\s*七个?选项/]
+};
+
+/* 语法填空的排版指纹：连续的 56～65 题号、或一排带提示词的空 */
+function grammarFingerprint(text) {
+  const t = String(text || '');
+  /* ① 连续题号 56～65（新高考语法填空固定号段） */
+  const nos = (t.match(/(?:^|\s)(5[6-9]|6[0-5])\s*[.、．]\s*/g) || []).length;
+  /* ② 带括号提示词的空：______ (finish) 或 (56) (finish) */
+  const hints = (t.match(/_{2,}\s*\(?\s*\d{0,2}\s*\)?\s*\(\s*[A-Za-z][A-Za-z\-]{1,20}\s*\)/g) || []).length;
+  /* ③ 纯空号空：______ (56) */
+  const holes = (t.match(/_{2,}\s*\(\s*\d{2}\s*\)/g) || []).length;
+  /* ④ 提示词短语：用所给词的适当形式 / 每空一词 等 */
+  const phrases = /适当形式|每空(?:限)?\s*(?:一|1)\s*词|填入(?:适当|1个)/.test(t) ? 1 : 0;
+  /* ⑤ 空号落在 51～70（语法填空专属号段；七选五是 36～40，不会误伤） */
+  const holeNos = (t.match(/_{2,}\s*\(\s*(\d{2})\s*\)/g) || [])
+    .map(function (s) { return Number((s.match(/\d{2}/) || [0])[0]); });
+  const numbered = holeNos.filter(function (n) { return n >= 51 && n <= 70; }).length;
+  return { nos: nos, hints: hints, holes: holes, phrases: phrases, numbered: numbered };
+}
+
+function expectKinds(text) {
+  const t = String(text || '');
+  const out = {};
+  if (KIND_EVIDENCE.grammar.some((re) => re.test(t))) out.grammar = true;
+  else {
+    const f = grammarFingerprint(t);
+    /* 两个及以上独立指纹同时命中才算，避免把七选五/完形误判成语法填空 */
+    const score = (f.nos >= 3 ? 1 : 0) + (f.hints >= 3 ? 1 : 0) + (f.holes >= 3 ? 1 : 0) + f.phrases;
+    if (score >= 2) out.grammar = true;
+    /* 空号落在 51～70 是语法填空的专属号段，3 个以上就足够断定 */
+    else if (f.numbered >= 3) out.grammar = true;
+  }
+  if (KIND_EVIDENCE.cloze.some((re) => re.test(t))) out.cloze = true;
+  if (KIND_EVIDENCE.seven.some((re) => re.test(t))) out.seven = true;
+  return out;
+}
+
+/* 从转录文本里截出某个题型的那一段（从标记处到下一个大题标记或结尾） */
+function extractKindSegment(text, kind) {
+  const t = String(text || '');
+  const markers = KIND_EVIDENCE[kind] || [];
+  let at = -1;
+  for (let i = 0; i < markers.length; i++) {
+    const m = t.search(markers[i]);
+    if (m >= 0 && (at < 0 || m < at)) at = m;
+  }
+  if (at < 0) return '';
+  /* 往前带 60 字，避免把标题/说明切掉 */
+  const start = Math.max(0, at - 60);
+  const rest = t.slice(at);
+  const others = [];
+  Object.keys(KIND_EVIDENCE).forEach(function (k) {
+    if (k === kind) return;
+    KIND_EVIDENCE[k].forEach(function (re) { others.push(re); });
+  });
+  others.push(/^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|Writing|写作|读后续写|第四部分)/i);
+  let cut = -1;
+  others.forEach(function (re) {
+    const m = rest.slice(10).search(re);
+    if (m >= 0) { const abs = m + 10; if (cut < 0 || abs < cut) cut = abs; }
+  });
+  const seg = cut > 0 ? t.slice(start, at + cut) : t.slice(start);
+  return seg.trim();
+}
+
+/* 补解析时加的强约束：这段只有某一种题型，别再判错 */
+function rescuePrompt(kind, seg) {
+  const name = kindName(kind);
+  const force = kind === 'grammar'
+    ? '这段内容**只有语法填空**，是短文挖 10 个空、部分空括号里给了提示词那种。'
+      + '**必须输出且只输出一个 passages 项，kind 必须是 "grammar"，options 必须是空数组 []**，'
+      + 'questions 里的 no 用卷面题号（56～65），hint 填括号里的提示词原形，answer 填完整词形（不能只写首字母）。'
+    : (kind === 'cloze'
+      ? '这段内容**只有完形填空**，kind 必须是 "cloze"，每空带 A/B/C/D 四个选项。'
+      : '这段内容**只有七选五**，kind 必须是 "seven"，options 必须列出 A～G 七个选项句。');
+  return PARSE_PROMPT.replace('{{TEXT}}', seg) + '\n\n【本次特别要求】' + force
+    + '\n只输出 ' + name + ' 这一项，不要输出其他题型的 passages。';
+}
+
+/* 解析完盘点：少了哪种题型就单独补解析，全程自动 */
+async function autoRescueMissing(transcript, data) {
+  const expected = expectKinds(transcript);
+  const have = {};
+  (data.passages || []).forEach(function (p) { have[kindOf(p)] = 1; });
+  const missing = Object.keys(expected).filter(function (k) { return !have[k]; });
+  if (!missing.length) { try { window.__missingKinds = []; } catch (e) {} return data; }
+  console.warn('[题型盘点] 卷面上有但没解析出来的题型：' + missing.join('、'));
+  const rescued = [];
+  const stillMissing = [];
+  for (let i = 0; i < missing.length; i++) {
+    const k = missing[i];
+    const seg = extractKindSegment(transcript, k);
+    if (!seg) { stillMissing.push(k); continue; }
+    $('#topHint').textContent = '发现' + kindName(k) + '没解析出来，正在单独补解析…';
+    try {
+      const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(k, seg) }], 8192);
+      const d = jsonFromText(raw);
+      const got = (d && d.passages) || [];
+      if (got.length) {
+        got.forEach(function (p) { data.passages.push(p); });
+        rescued.push(k);
+        console.log('[题型盘点] 已补回 ' + kindName(k) + '：' + got.length + ' 篇');
+      } else {
+        stillMissing.push(k);
+      }
+    } catch (err) {
+      console.warn('[题型盘点] 补解析 ' + kindName(k) + ' 失败：' + err.message);
+      stillMissing.push(k);
+    }
+    await sleep(200);
+  }
+  if (rescued.length) {
+    toast('已自动补回：' + rescued.map(kindName).join('、'), 'ok', 6000);
+    try { window.__rescuedKinds = rescued; } catch (e) {}
+  }
+  /* 还是没补回来 = 转录里其实有这个题型的字样但内容没识别出来，得让老师知道 */
+  data.__missing = stillMissing;
+  try { window.__missingKinds = stillMissing; } catch (e) {}
+  if (stillMissing.length) {
+    try { window.__lastLostChunks = missing.map(function (k) { return extractKindSegment(transcript, k) || transcript.slice(-1200); }).join('\n\n'); } catch (e) {}
+    showLostBtn(true);
+    return data;
+  }
+  showLostBtn(false);
+  return data;
+}
+
+/* 补不回来时弹一个无法忽略的说明框（toast 太容易被忽略） */
+function showMissingKindsModal(missing) {
+  if (!missing || !missing.length) return;
+  openCustomPanel('⚠ 有题型没被识别', [
+    { label: '知道了', fn: () => $('#modal').classList.remove('on') }
+  ], function (box) {
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:.9rem;line-height:1.9;margin-bottom:12px';
+    h.innerHTML = '这份卷子里识别出 <b style="color:#c0392b">' + missing.map(kindName).join('、')
+      + '</b> 的字样，但没能解析成题目。<br>程序已经单独重试过一次，还是没成功。';
+    box.appendChild(h);
+    const p = document.createElement('div');
+    p.style.cssText = 'font-size:.84rem;line-height:1.9;color:#555';
+    p.innerHTML = '<b>最可能的原因</b>：这一部分的图片没拍全、拍糊了，或者根本没传进来。<br><br>'
+      + '<b>怎么办（任选一个）</b>：<br>'
+      + '① 把这一页单独拍一张清楚的照片，重新上传<br>'
+      + '② 点右上角橙色 <b>⚠ 补解析</b> 按钮再试一次<br>'
+      + '③ 点右上角的 <b>📄</b>（粘贴试卷文本），把这部分文字粘进去直接解析';
+    box.appendChild(p);
+  });
+}
+
+/* =========================================================
    图片处理
    ========================================================= */
 function readAsDataUrl(file) {
@@ -1574,7 +1742,9 @@ async function parseInChunks(transcript) {
   const chunks = splitTranscript(transcript);
   if (chunks.length === 1) {
     const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[0]) }], 8192);
-    return jsonFromText(raw);
+    const d = jsonFromText(raw);
+    /* 单块也要盘点：一次请求塞整卷时，末尾题型最容易被吃掉 */
+    return await autoRescueMissing(chunks[0], d);
   }
   console.log('[分批解析] 共 ' + chunks.length + ' 块：' + chunks.map((c) => c.length + '字').join(' / '));
   const merged = { title: '', passages: [] };
@@ -1606,11 +1776,13 @@ async function parseInChunks(transcript) {
     try { window.__lastLostChunks = lost; } catch (e) {}
     toast('有 ' + fails.length + ' 部分没解析出来（' + fails.map(function (f) { return '第' + f.i + '段'; }).join('、') +
       '），点右上角「⚠ 补解析」可单独重试', 'err', 9000);
-    showLostBtn(true);
-  } else {
-    showLostBtn(false);
   }
-  return merged;
+  /* 再做一轮题型盘点：卷面上有、结果里没有的，单独补解析 */
+  const data2 = await autoRescueMissing(transcript, merged);
+  if (!data2.__missing || !data2.__missing.length) {
+    if (!fails.length) showLostBtn(false);
+  }
+  return data2;
 }
 
 /* 「⚠ 补解析」按钮：只在前一次上传确实丢了内容时出现 */
@@ -1693,6 +1865,11 @@ async function runPipeline() {
     await sleep(420);
     commitResult(data);
     toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
+    /* 有题型实在没认出来 → 弹一个说明框（toast 太容易滑过去看不见） */
+    if (data.__missing && data.__missing.length) {
+      await sleep(700);
+      showMissingKindsModal(data.__missing);
+    }
   } catch (err) {
     progressState.show = false;
     renderProgress();
@@ -1727,6 +1904,10 @@ async function runFromText() {
           await sleep(380);
           commitResult(data);
           toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
+          if (data.__missing && data.__missing.length) {
+            await sleep(700);
+            showMissingKindsModal(data.__missing);
+          }
         } catch (err) {
           progressState.show = false;
           renderProgress();
