@@ -655,6 +655,7 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
   <button class="tb-btn icon" id="btnFsMinus" title="减小字号" data-page-node-id="qQxjR0OcsA3MCsQs1oZsWx">A－</button>
   <button class="tb-btn icon" id="btnFsPlus" title="放大字号" data-page-node-id="qYRgxONqhh9gP3CpQfHD77">A＋</button>
   <button class="tb-btn" id="btnAddImg" data-page-node-id="zirITAiNm68Ao61jpIsCr6">＋ 上传图片</button>
+  <button class="tb-btn" id="btnAddDoc" title="上传 docx / txt / PDF 试卷：直接从文件里取文字解析，不走识图，几秒就好、也不受限流影响" data-page-node-id="docBtn2026">📄 上传文档</button>
   <button class="tb-btn" id="btnImport" data-page-node-id="WMc9UgxbpqbYQncXrbNVYu">导入 JSON</button>
   <button class="tb-btn solid" id="btnExport" data-page-node-id="QWNA9SHhcQjeMPqNnVKPyG">导出 JSON</button>
 </header>
@@ -692,6 +693,10 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
       <h3 data-page-node-id="sAOP6W0uzvPPrHocHm7CVW">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
       <p data-page-node-id="knRVPXLuteWR74MVebXyo5">把试卷拍照或截图拖进来，AI 自动识别文字、<b data-page-node-id="NTo4ueaGP3YrcgQwwoM7Ua">判断题型</b>、切分段落、定位题目答案，生成讲解页。<br data-page-node-id="LtgkzUHyJ79u9E30wVVmSr">
          支持一次上传多张；一张卷子里有几种题型都能自动分开归类。</p>
+      <p style="margin-top:12px" data-page-node-id="docHint01">有现成电子版？点顶栏 <b data-page-node-id="docHint02">📄 上传文档</b>，
+         支持 <b data-page-node-id="docHint03">Word（.docx）· 纯文本（.txt）· PDF</b>，
+         直接从文件里取文字 —— 不用拍照，也不用等识图，几秒就出结果。<br data-page-node-id="docHint04">
+         （老版 .doc 请先用 Word 另存为 .docx；扫描件图片版 PDF 请截图后用「＋ 上传图片」）</p>
       <p style="margin-top:12px" data-page-node-id="PJRBFgs4hERvcQJsymOEIb">也可以直接按 <span class="kbd" data-page-node-id="nUA4qgEAy4eC8XHR5EPktO">Ctrl</span> + <span class="kbd" data-page-node-id="66uOW5G8NAK7yVrsLBWlId">V</span> 粘贴截图</p>
     </div>
 
@@ -2177,6 +2182,45 @@ async function runPipeline() {
 }
 
 /* ---------- 直接用文本解析（跳过 OCR） ---------- */
+/* 统一的「纯文本 → 解析」管线：
+   「粘贴试卷文本」和「上传文档」都走这里，跳过识图，不受识图模型限流影响。
+   srcName 有值时用它当课件标题（文件名比 AI 猜的准）。 */
+async function runFromTextCore(text, srcName) {
+  text = String(text || '').trim();
+  if (text.length < 30) { toast('文字太少，请把阅读文章和题目一起放进来', 'err'); return; }
+  progressState = { show: true, done: [0], active: 1 };
+  renderProgress();
+  $('#btnRun').disabled = true;
+  $('#btnClear').disabled = true;
+  try {
+    setStep(2);
+    const data = await parseInChunks(text);
+    if (!data.passages || !data.passages.length) throw new Error('解析结果为空，请重试');
+    setStep(3);
+    progressState.done = [0, 1, 2, 3];
+    finishSteps();
+    await sleep(380);
+    if (srcName) {
+      const nm = String(srcName).replace(/\.[^.]+$/, '').trim();
+      if (nm) data.title = nm;
+    }
+    commitResult(data);
+    toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
+    if (data.__missing && data.__missing.length) {
+      await sleep(700);
+      showMissingKindsModal(data.__missing);
+    }
+  } catch (err) {
+    progressState.show = false;
+    renderProgress();
+    toast('解析失败：' + err.message, 'err', 5000);
+    console.error(err);
+  } finally {
+    $('#btnRun').disabled = false;
+    $('#btnClear').disabled = false;
+  }
+}
+
 async function runFromText() {
   openModal('粘贴试卷文本', '', [
     { label: '取消', fn: () => $('#modal').classList.remove('on') },
@@ -2185,31 +2229,7 @@ async function runFromText() {
         const text = $('#modalText').value.trim();
         if (text.length < 30) { toast('文本太短了，请把阅读文章和题目一起粘进来', 'err'); return; }
         $('#modal').classList.remove('on');
-        progressState = { show: true, done: [0], active: 1 };
-        renderProgress();
-        $('#btnRun').disabled = true;
-        try {
-          setStep(2);
-          const data = await parseInChunks(text);
-          if (!data.passages || !data.passages.length) throw new Error('解析结果为空，请重试');
-          setStep(3);
-          progressState.done = [0, 1, 2, 3];
-          finishSteps();
-          await sleep(380);
-          commitResult(data);
-          toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
-          if (data.__missing && data.__missing.length) {
-            await sleep(700);
-            showMissingKindsModal(data.__missing);
-          }
-        } catch (err) {
-          progressState.show = false;
-          renderProgress();
-          toast('解析失败：' + err.message, 'err');
-          console.error(err);
-        } finally {
-          $('#btnRun').disabled = false;
-        }
+        await runFromTextCore(text, '');
       }
     }
   ]);
@@ -3071,15 +3091,7 @@ async function addFiles(fileList) {
      老师传了图却看不到任何变化，页面上一直是上次的旧结果 ——
      这就是「上传图片后没有重新分析的按钮和过程」的根因。 */
   if (S.passages && S.passages.length) {
-    $('#emptyState').classList.remove('hidden');
-    const bar = $('#reupBar');
-    if (bar) bar.style.display = '';
-    const rt = $('#reupText');
-    if (rt) rt.textContent = '当前显示的是上次的《' + (S.title || '英语试卷讲解')
-      + '》，传了新图后点「开始解析」会替换掉它';
-    setTimeout(function () {
-      try { $('#emptyState').scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
-    }, 60);
+    markReup('当前显示的是上次的《' + (S.title || '英语试卷讲解') + '》，传了新图后点「开始解析」会替换掉它');
   }
   for (const f of arr) {
     if (S.files.length >= 8) { toast('一次最多 8 张，多的请分批处理'); break; }
@@ -3100,9 +3112,354 @@ async function addFiles(fileList) {
 
 $('#drop').addEventListener('click', () => pickFiles());
 $('#btnAddImg').addEventListener('click', () => pickFiles());
+$('#btnAddDoc').addEventListener('click', () => pickDocs());
 
 function pickFiles() {
   pickFile({ accept: 'image/*', multiple: true, onPick: addFiles });
+}
+
+function pickDocs() {
+  pickFile({
+    accept: '.docx,.txt,.pdf,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    multiple: true,
+    onPick: routeFiles
+  });
+}
+
+/* 已经有结果时再传新东西：把上传区重新露出来，
+   否则 emptyState 有结果就被隐藏，传了却看不到任何按钮。 */
+function markReup(msg) {
+  const es = $('#emptyState');
+  if (es) es.classList.remove('hidden');
+  const bar = $('#reupBar');
+  if (bar) bar.style.display = '';
+  const rt = $('#reupText');
+  if (rt) rt.textContent = msg;
+  setTimeout(function () {
+    try { if (es) es.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+  }, 60);
+}
+
+/* ============ 上传文档（docx / txt / PDF）============
+   老师手里常有现成的 Word 卷子 / PDF，没必要再拍照去跑识图：
+   直接把文件里的文字提出来，走和「粘贴试卷文本」一样的解析管线。
+   好处：秒级出结果，完全不受免费识图模型高峰期限流的影响。 */
+
+function docKindOf(f) {
+  const name = String((f && f.name) || '').toLowerCase();
+  const type = String((f && f.type) || '');
+  if (/\.docx$/.test(name)) return 'docx';
+  if (/\.pdf$/.test(name)) return 'pdf';
+  if (/\.txt$/.test(name)) return 'txt';
+  if (/pdf/.test(type)) return 'pdf';
+  if (/wordprocessingml|officedocument/.test(type)) return 'docx';
+  if (/^text\//.test(type)) return 'txt';
+  return '';
+}
+
+/* 拖入/粘贴时图片和文档可能混在一起：各自走各自的管线 */
+function routeFiles(fileList) {
+  const arr = Array.prototype.slice.call(fileList || []);
+  if (!arr.length) return;
+  const imgs = arr.filter(function (f) { return /^image\//.test(f && f.type); });
+  const docs = arr.filter(function (f) { return !!docKindOf(f); });
+  if (imgs.length) addFiles(imgs);
+  if (docs.length) addDocs(docs);
+  if (!imgs.length && !docs.length) {
+    toast('只支持图片，或 docx / txt / PDF 文档（老版 .doc 请先用 Word 另存为 .docx）', 'err', 6000);
+  }
+}
+
+const DOC_MAX = 600000;   /* 60 万字封顶，防手抖选了本教材 */
+
+async function addDocs(fileList) {
+  const arr = Array.prototype.slice.call(fileList || []).filter(function (f) { return !!docKindOf(f); });
+  if (!arr.length) return;
+
+  if (S.passages && S.passages.length) {
+    markReup('当前显示的是上次的《' + (S.title || '英语试卷讲解') + '》，文档解析完会替换掉它');
+  }
+
+  const parts = [], okFiles = [];
+  for (const f of arr) {
+    const kind = docKindOf(f);
+    let text = '';
+    try {
+      toast('正在读取《' + f.name + '》…');
+      if (kind === 'txt') text = await readTxtFile(f);
+      else if (kind === 'docx') text = await readDocxFile(f);
+      else text = await readPdfFile(f);
+    } catch (e) {
+      toast('《' + f.name + '》读取失败：' + e.message, 'err', 7000);
+      console.error(e);
+      continue;
+    }
+    text = String(text || '').trim();
+    if (text.length < 30) {
+      toast('《' + f.name + '》里没读到文字 —— 多半是扫描件（图片版）。'
+        + '请把页面截图后用「＋ 上传图片」', 'err', 7000);
+      continue;
+    }
+    if (text.length > DOC_MAX) {
+      const keep = confirm('《' + f.name + '》有 ' + text.length + ' 字，可能不是一份卷子。\n\n点「确定」继续解析全文，点「取消」只取前 ' + DOC_MAX + ' 字。');
+      if (keep) { /* 继续 */ } else { text = text.slice(0, DOC_MAX); }
+    }
+    parts.push(text);
+    okFiles.push(f);
+  }
+  if (!parts.length) return;
+
+  const title = okFiles.length === 1
+    ? okFiles[0].name
+    : (okFiles.length + ' 份文档合并');
+  toast('读到 ' + parts.join('').length + ' 字，开始分析…', 'ok');
+  await runFromTextCore(parts.join('\n\n'), title);
+}
+
+/* ---- txt：自动判断 UTF-8 / GBK（国标)
+   从教研组拷出来的老卷子多是 GBK，直接用 UTF-8 解会满屏乱码。 ---- */
+async function readTxtFile(file) {
+  const buf = await file.arrayBuffer();
+  let utf8 = '';
+  try { utf8 = new TextDecoder('utf-8').decode(buf); } catch (e) { utf8 = ''; }
+  const bad = (utf8.match(/\uFFFD/g) || []).length;
+  if (bad && bad > utf8.length * 0.002) {
+    try {
+      const gbk = new TextDecoder('gbk').decode(buf);
+      const gbad = (gbk.match(/\uFFFD/g) || []).length;
+      if (gbad < bad || /[\u4e00-\u9fa5]/.test(gbk)) return gbk;
+    } catch (e) { /* 浏览器不认 gbk 就退回 utf-8 */ }
+  }
+  return utf8;
+}
+
+/* ---- docx：本质是 zip，取出 word/document.xml 里的段落文本 ---- */
+async function readDocxFile(file) {
+  let xml = '';
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    xml = await zipEntryText(buf, 'word/document.xml');
+  } catch (e) {
+    /* 原生解压不可用（较老的浏览器）→ 拉 CDN 上的解压组件兜底 */
+    xml = await readDocxWithZipLib(file);
+  }
+  if (!xml) throw new Error('没取到正文');
+  return xmlDocToText(xml);
+}
+
+function findEocd(dv, len) {
+  const min = Math.max(0, len - 22 - 65535);
+  for (let i = len - 22; i >= min; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) return i;
+  }
+  return -1;
+}
+
+async function zipEntryText(bytes, want) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const eocd = findEocd(dv, bytes.length);
+  if (eocd < 0) throw new Error('文件结构损坏，可能不是 docx');
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  if (dv.getUint32(off, true) === 0x06054b50) throw new Error('zip64 暂不支持，请另存一份新的 docx');
+  for (let n = 0; n < count; n++) {
+    if (off + 46 > bytes.length || dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nlen = dv.getUint16(off + 28, true);
+    const elen = dv.getUint16(off + 30, true);
+    const clen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = new TextDecoder('utf-8').decode(bytes.subarray(off + 46, off + 46 + nlen));
+    if (name === want) {
+      if (lho + 30 > bytes.length || dv.getUint32(lho, true) !== 0x04034b50) break;
+      const lnlen = dv.getUint16(lho + 26, true);
+      const lelen = dv.getUint16(lho + 28, true);
+      const start = lho + 30 + lnlen + lelen;
+      const raw = bytes.subarray(start, start + csize);
+      if (method === 0) return new TextDecoder('utf-8').decode(raw);
+      return new TextDecoder('utf-8').decode(await inflateRaw(raw));
+    }
+    off += 46 + nlen + elen + clen;
+  }
+  throw new Error('找不到正文 word/document.xml');
+}
+
+async function inflateRaw(raw) {
+  if (typeof DecompressionStream === 'function') {
+    try {
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (e) { /* 落到 CDN 兜底 */ }
+  }
+  throw new Error('当前浏览器不支持本地解压');
+}
+
+let _docLibPromises = {};
+function loadScriptOnce(url, globalName) {
+  if (window[globalName]) return Promise.resolve(window[globalName]);
+  if (!_docLibPromises[globalName]) {
+    _docLibPromises[globalName] = new Promise(function (resolve, reject) {
+      const s = document.createElement('script');
+      s.src = url;
+      s.onload = function () {
+        if (window[globalName]) resolve(window[globalName]);
+        else reject(new Error('组件加载异常'));
+      };
+      s.onerror = function () { reject(new Error('组件加载失败（网络或校园网拦截）')); };
+      document.head.appendChild(s);
+      setTimeout(function () { reject(new Error('组件加载超时')); }, 25000);
+    });
+  }
+  return _docLibPromises[globalName];
+}
+
+async function readDocxWithZipLib(file) {
+  const JSZip = await loadScriptOnce('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', 'JSZip')
+    .catch(function () { return loadScriptOnce('https://unpkg.com/jszip@3.10.1/dist/jszip.min.js', 'JSZip'); });
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const entry = zip.file('word/document.xml');
+  if (!entry) throw new Error('不是有效的 docx（也许是被保护/加密的文档）');
+  return entry.async('string');
+}
+
+/* XML → 纯文本：按 <w:p> 段落切开，保留换行；
+   delText 是被修订删掉的文字，instrText 是域指令（页码之类），都不要 */
+function xmlDocToText(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('正文 XML 无法解析');
+  const ps = doc.getElementsByTagName('w:p');
+  const lines = [];
+  for (let i = 0; i < ps.length; i++) lines.push(collectParaText(ps[i]));
+  let text = lines.join('\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+  if (!text.trim()) text = (doc.documentElement && doc.documentElement.textContent) || '';
+  return text;
+}
+
+function collectParaText(node) {
+  let out = '';
+  const kids = node.childNodes;
+  for (let i = 0; i < kids.length; i++) {
+    const k = kids[i];
+    if (k.nodeType !== 1) { out += (k.textContent || ''); continue; }
+    const tag = k.nodeName;
+    if (tag === 'w:t') { out += (k.textContent || ''); continue; }
+    if (tag === 'w:delText' || tag === 'w:instrText') continue;
+    if (tag === 'w:tab') { out += '\t'; continue; }
+    if (tag === 'w:br' || tag === 'w:cr') { out += '\n'; continue; }
+    if (tag === 'w:drawing' || tag === 'w:pict' || tag === 'w:object') continue;
+    out += collectParaText(k);
+  }
+  return out;
+}
+
+/* ---- PDF：按需加载 pdf.js（不打开 patron:（ ; 兜底 ---- */
+const PDFJS_VER = '4.7.76';
+let _pdfjs = null;
+
+async function loadPdfJs() {
+  if (_pdfjs) return _pdfjs;
+  const hosts = ['https://cdn.jsdelivr.net/npm/pdfjs-dist@', 'https://unpkg.com/pdfjs-dist@'];
+  let last = null;
+  for (const h of hosts) {
+    const base = h + PDFJS_VER + '/build/';
+    try {
+      const mod = await importEsm(base + 'pdf.min.mjs');
+      const lib = (mod && mod.getDocument) ? mod : ((mod && mod.default) || {});
+      if (!lib.getDocument) throw new Error('组件不完整');
+      if (lib.GlobalWorkerOptions) lib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs';
+      _pdfjs = lib;
+      return lib;
+    } catch (e) {
+      last = e;
+      console.warn('[pdf.js] ' + base + ' 加载失败：', e);
+    }
+  }
+  throw new Error('PDF 组件加载失败（校园网可能拦了 CDN）。'
+    + '可以先用 Word/WPS 打开 PDF 复制文字，走「粘贴试卷文本」，或截图走「上传图片」');
+}
+
+/* 动态 import()：在线版本直接用；加载不成功时
+   再退回「注入一个 module 型 script 标签」的方式重试 */
+function importEsm(url) {
+  return new Promise(function (resolve, reject) {
+    const done = { v: false };
+    const finish = function (v) { done.v = true; resolve(v); };
+    const fail = function (e) { done.v = true; reject(e); };
+    try {
+      const p = import(url);
+      if (p && typeof p.then === 'function') { p.then(finish, fail); return; }
+      fail(new Error('不支持动态加载'));
+    } catch (e) {
+      /* 某些环境（比如本地双击打开的 file:// 页面）不允许直接 import() */
+      try {
+        const s = document.createElement('script');
+        s.type = 'module';
+        s.textContent = 'import("' + url + '").then(function(m){window.__esm=m;window.__esmDone=1;},'
+          + 'function(e){window.__esmErr=e;window.__esmDone=1;});';
+        document.head.appendChild(s);
+        let waited = 0;
+        const iv = setInterval(function () {
+          waited += 250;
+          if (window.__esmDone) {
+            clearInterval(iv);
+            try { s.parentNode.removeChild(s); } catch (ee) {}
+            window.__esmDone = 0;
+            if (window.__esm && Object.keys(window.__esm).length) { const m = window.__esm; window.__esm = null; finish(m); }
+            else { const er = window.__esmErr || new Error('未知错误'); window.__esmErr = null; fail(er); }
+          } else if (waited > 25000) {
+            clearInterval(iv);
+            fail(new Error('加载超时'));
+          }
+        }, 250);
+      } catch (e2) { fail(e2); }
+    }
+  });
+}
+
+async function readPdfFile(file) {
+  const lib = await loadPdfJs();
+  let pdf = null;
+  try {
+    const data = new Uint8Array(await file.arrayBuffer());
+    pdf = await lib.getDocument({ data: data, isEvalSupported: false, disableAutoFetch: true }).promise;
+    const lines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      let line = '', lastY = null;
+      for (let i = 0; i < tc.items.length; i++) {
+        const it = tc.items[i];
+        const s = String((it && it.str) || '');
+        if (!s) continue;
+        const y = (it && it.transform && it.transform[5] != null) ? it.transform[5] : 0;
+        if (lastY !== null && Math.abs(y - lastY) > 3) {
+          if (line) lines.push(line);
+          line = '';
+          lastY = null;
+        }
+        line = pdfJoin(line, s);
+        lastY = y;
+      }
+      if (line) lines.push(line);
+      lines.push('');
+    }
+    const text = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+    return text;
+  } finally {
+    try { if (pdf && pdf.destroy) await pdf.destroy(); } catch (e) {}
+  }
+}
+
+/* pdf.js 把一行拆成很多小片段，英文之间要补空格，中文之间千万不要插空格 */
+function pdfJoin(prev, s) {
+  if (!prev) return s;
+  if (/^\s/.test(s) || /\s$/.test(prev)) return prev + s;
+  const cjk = /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+  if (cjk.test(prev.charAt(prev.length - 1)) || cjk.test(s.charAt(0))) return prev + s;
+  return prev + ' ' + s;
 }
 
 /* 统一的「选文件」入口。
@@ -3142,12 +3499,12 @@ function pickFile(opts) {
 ['dragleave', 'drop'].forEach((ev) =>
   $('#drop').addEventListener(ev, (e) => { e.preventDefault(); $('#drop').classList.remove('over'); }));
 $('#drop').addEventListener('drop', (e) => {
-  if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  if (e.dataTransfer && e.dataTransfer.files) routeFiles(e.dataTransfer.files);
 });
 
 document.addEventListener('paste', (e) => {
   if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length) {
-    addFiles(e.clipboardData.files);
+    routeFiles(e.clipboardData.files);
   }
 });
 
