@@ -317,6 +317,18 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
   position:absolute;inset:0;overflow-y:auto;padding:34px 24px 60px;
   display:flex;flex-direction:column;align-items:center;
 }
+/* 已有结果时再传新图：盖在上传区顶部的「将要替换」提醒条 */
+.reup-bar{
+  width:min(660px,100%);margin-bottom:16px;padding:11px 16px;border-radius:10px;
+  background:#fdf3e3;border:1.5px solid #ecc987;color:#8a5a12;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  font-size:.85rem;font-weight:600;line-height:1.6;
+}
+.reup-back{
+  flex:none;padding:5px 12px;border-radius:8px;border:1px solid #d9b06a;
+  background:#fff;color:#8a5a12;font-size:.8rem;font-weight:700;cursor:pointer;
+}
+.reup-back:hover{background:#fdf3e3}
 .drop{
   width:min(660px,100%);border:2.5px dashed var(--border-2);border-radius:18px;
   background:var(--panel);padding:44px 30px;text-align:center;transition:.22s;cursor:pointer;
@@ -668,6 +680,13 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
   <div id="content" data-page-node-id="Mv290dg4p5TtBY2gbTc4Yc"></div>
 
   <div class="empty" id="emptyState" data-page-node-id="1EXewiK6zWk2vGtFOnpdcO">
+    <!-- 已有讲解结果时再传新图：这条横幅告诉老师「传了新图要点开始解析才会替换」，
+         并给一个「返回当前讲解」的出口。否则 emptyState 一有结果就被隐藏，
+         缩略图和「开始解析」按钮老师根本看不见 —— 这就是「传了图却没反应」的根因。 -->
+    <div class="reup-bar" id="reupBar" style="display:none">
+      <span id="reupText">当前显示的是上次的讲解，上传新图后点「开始解析」将替换它</span>
+      <button class="reup-back" id="btnReupBack">返回当前讲解 ✕</button>
+    </div>
     <div class="drop" id="drop" data-page-node-id="VXfcB5nmtqq1zmF2D5O4WI">
       <div class="ic" data-page-node-id="PtkafDuCYrzEDcWjzpnthT">📄</div>
       <h3 data-page-node-id="sAOP6W0uzvPPrHocHm7CVW">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
@@ -878,6 +897,7 @@ const TRANSCRIBE_PROMPT = [
 '   ① 无提示词的空写成连续的六个下划线：______',
 '   ② 有提示词的空写成：______ (提示词)，括号里的原形词必须一字不改地保留，如 ______ (finish)；',
 '   ③ 空号（如 56、57、58）写在紧跟空格的括号里，如 ______ (56) 或 ______ (56) (finish)；',
+'   ④ 卷面上常有学生用另一种笔迹手写的答案：这些手写字【不是】印刷正文，绝不能直接嵌进句子里。空格仍按上面写成 ______ (题号) (提示词原形)；手写答案看得清就附在该空后面（如 ______ (3) (start) [手写: started]），看不清就只留空格。',
 '4) 如果卷面上印了答案或答案解析，一并转写出来，放在该题后面；',
 '5) 页眉页脚、页码、Logo、听力部分等与本页题目无关的内容不要输出；',
 '6) 只输出纯文本，不要输出任何坐标、JSON、表格或额外说明。',
@@ -993,6 +1013,14 @@ function kindOf(p) {
     if (KIND_ALIAS[key] === key && (lbl.indexOf(KIND_INFO[key].short) >= 0 || lbl.indexOf(KIND_INFO[key].name) >= 0)) return key;
   }
   return 'reading';
+}
+
+/* 写作（应用文/读后续写）和听力不属于四种讲解题型。
+   AI 偶尔会把它们也当成 passage 输出（kind 写 "writing"），
+   归一化时又会被兜底成 reading，平白多出一篇假阅读 —— 直接丢弃。 */
+function isNonLessonKind(p) {
+  const s = (String((p && p.kind) || '') + '|' + String((p && p.label) || '')).toLowerCase();
+  return /writing|listening|speaking|作文|写作|应用文|续写|听力|口语/.test(s);
 }
 function kindName(k) { return (KIND_INFO[k] || KIND_INFO.reading).name; }
 function kindShort(k) { return (KIND_INFO[k] || KIND_INFO.reading).short; }
@@ -1856,11 +1884,15 @@ function finishSteps() {
    也顺带让 AI 每次只判一种题型，分类更准。
    ========================================================= */
 /* 大题起始标记：完形/七选五/语法填空/阅读第一节……
-   注意：这里**故意不**用「单个 A/B/C/D 独占一行」当标记。
+   注意一：这里**故意不**用「单个 A/B/C/D 独占一行」当标记。
    转写常常把选项字母或答题卡字母单独挤成一行，一旦当成大题标记，
-   语法填空的短文就会被从中间切断，后半段解析不出内容而静默消失
-   —— 这正是「上传了阅读+语法填空，只看到阅读」的根因。 */
-const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|Part\s*[ⅠⅡⅢⅣV1-5]\b|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
+   语法填空的短文就会被从中间切断，后半段解析不出内容而静默消失。
+   注意二（2026-09-22 补）：很多卷子的大题编号是「一、二、三、」这种
+   「中文数字＋顿号」，不是「第一部分」。旧正则只认「第X节」，结果
+   「二、语法填空」不被当成大题标记 → 整卷 5000 字挤成一块解析，
+   输出超出 max_tokens 被截断，语法填空整块丢在 JSON 末尾 ——
+   这就是「明明传了语法填空却只剩阅读」的根因。 */
+const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|[一二三四五六七八九十]+\s*[、.．]\s*(?:完形|七选五|语法|阅读|写作|应用文|短文|听力)|Part\s*[ⅠⅡⅢⅣV1-5]\b|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
 
 function splitTranscript(text) {
   const t = String(text || '').trim();
@@ -1970,7 +2002,8 @@ async function retryLostChunks() {
     const d = jsonFromText(raw2);
     const got = (d && d.passages) || [];
     if (!got.length) throw new Error('还是没解析出内容，可把这段单独截图重传');
-    got.forEach(function (p) { S.passages.push(normalizePassage(p)); });
+    got.filter(function (p) { return !isNonLessonKind(p); })
+      .forEach(function (p) { S.passages.push(normalizePassage(p)); });
     S.passages = mergeSameKind(S.passages);
     /* 补齐后如果已经是多题型，就落到速览页 */
     const kinds = {};
@@ -2186,7 +2219,9 @@ async function runFromText() {
 
 /* ---------- 解析结果落地 ---------- */
 function commitResult(data) {
-  const raw = (data.passages || []).map(normalizePassage);
+  /* 先丢弃「写作/听力」这类不属于讲解题型的 passage（AI 偶尔会把应用文也输出进来） */
+  const usable = (data.passages || []).filter(function (p) { return !isNonLessonKind(p); });
+  const raw = usable.map(normalizePassage);
   /* 同类题型被拆成多篇的，先合并再落地，避免语法填空显示成两篇 */
   const merged = mergeSameKind(raw);
   if (merged.length < raw.length) {
@@ -2204,6 +2239,9 @@ function commitResult(data) {
   S.view = Object.keys(kinds).length > 1 ? 'overview' : 'split';
   $('#emptyState').classList.add('hidden');
   $('#subbar').style.display = '';
+  /* 解析落地后把「将要替换」提醒条也收起来 */
+  const _rb = $('#reupBar');
+  if (_rb) _rb.style.display = 'none';
   /* 全部识别成功才清空图片列表；有没识别成功的页就把它们留下来，
      点「重试这 N 张」时才有图可用（识别成功的页文本已缓存，不会重跑） */
   S.files = S.files.filter(function (f) { return (S._badFileIds || []).indexOf(f.id) >= 0; });
@@ -3017,6 +3055,9 @@ function renderThumbs() {
     + '<span class="n">' + esc(f.name || '图片') + '</span></div>'
   ).join('');
   $('#runbar').style.display = S.files.length ? '' : 'none';
+  /* 已有结果时把按钮文案说透：点了会替换当前这份，避免老师以为会"追加" */
+  const rb = $('#btnRun');
+  if (rb) rb.textContent = (S.passages && S.passages.length) ? '开始解析（替换当前结果）' : '开始解析';
 }
 
 async function addFiles(fileList) {
@@ -3025,6 +3066,21 @@ async function addFiles(fileList) {
   /* 图片列表是空的 → 老师开始传一份新卷子：把上一份的页序和转写缓存清掉，
      否则新卷子会把上一份识别过的文字也拼进去 */
   if (!S.files.length) { S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; }
+  /* 已经有了一份讲解结果时再传新图：必须把上传覆盖层显示出来。
+     否则 emptyState 一有结果就被隐藏，缩略图和「开始解析」按钮都在它里面、
+     老师传了图却看不到任何变化，页面上一直是上次的旧结果 ——
+     这就是「上传图片后没有重新分析的按钮和过程」的根因。 */
+  if (S.passages && S.passages.length) {
+    $('#emptyState').classList.remove('hidden');
+    const bar = $('#reupBar');
+    if (bar) bar.style.display = '';
+    const rt = $('#reupText');
+    if (rt) rt.textContent = '当前显示的是上次的《' + (S.title || '英语试卷讲解')
+      + '》，传了新图后点「开始解析」会替换掉它';
+    setTimeout(function () {
+      try { $('#emptyState').scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+    }, 60);
+  }
   for (const f of arr) {
     if (S.files.length >= 8) { toast('一次最多 8 张，多的请分批处理'); break; }
     try {
@@ -3110,6 +3166,13 @@ $('#thumbs').addEventListener('click', (e) => {
 
 $('#btnClear').addEventListener('click', () => {
   S.files = []; S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; renderThumbs();
+});
+
+/* 「返回当前讲解」：老师传了新图又改变主意，点它收起上传覆盖层、回到原结果 */
+$('#btnReupBack').addEventListener('click', () => {
+  $('#emptyState').classList.add('hidden');
+  const bar = $('#reupBar');
+  if (bar) bar.style.display = 'none';
 });
 $('#btnRun').addEventListener('click', runPipeline);
 $('#btnPasteText').addEventListener('click', runFromText);
