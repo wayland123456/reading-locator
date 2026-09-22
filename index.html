@@ -100,7 +100,7 @@ input,select,textarea{font-family:inherit;color:inherit}
 .ptab{
   padding:5px 15px;border-radius:7px;font-size:.84rem;font-weight:700;
   background:var(--panel-2);color:var(--text-2);border:1px solid var(--border);
-  transition:.16s;
+  transition:.16s;cursor:pointer;
 }
 .ptab:hover{border-color:var(--primary);color:var(--primary)}
 .ptab.on{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 6px rgba(43,95,168,.3)}
@@ -2382,6 +2382,21 @@ function renderTabs() {
       + '全部<span class="meta">' + S.passages.length + '篇</span></button>';
   }
   groups.forEach(function (g) {
+    /* 同题型有多篇（如阅读 A/B/C）：每篇单独一个标签，点了直接切过去。
+       以前整组挤在一个标签里、点击只会跳第一篇，第二篇往后永远看不到。 */
+    if (g.items.length > 1) {
+      g.items.forEach(function (it) {
+        const on = S.view !== 'overview' && it.pi === S.cur;
+        const nm = it.p.label || ('第' + (it.pi + 1) + '篇');
+        html += '<span class="ptab ' + kindCls(g.kind) + (on ? ' on' : '') + '"'
+          + ' data-pi="' + it.pi + '"'
+          + ' title="' + esc(nm + ' · ' + kindDesc(g.kind)) + '">'
+          + '<span class="tk">' + esc(kindShort(g.kind)) + '</span>' + esc(nm)
+          + '<span class="meta">' + (it.p.questions.length ? it.p.questions.length + '题' : '0题') + '</span>'
+          + '</span>';
+      });
+      return;
+    }
     const qn = g.items.reduce(function (n, it) { return n + it.p.questions.length; }, 0);
     html += '<span class="ptab ' + kindCls(g.kind) + (S.view !== 'overview' && g.kind === ck ? ' on' : '') + '"'
       + ' data-kind="' + g.kind + '" data-pi="' + g.items[0].pi + '"'
@@ -2773,6 +2788,7 @@ $('#ptabs').addEventListener('click', (e) => {
   if (b.dataset.overview) { S.view = 'overview'; render(); return; }
   if (b.dataset.kind) { jumpToKind(b.dataset.kind); return; }
   S.cur = +b.dataset.pi;
+  if (S.view === 'overview') S.view = 'split';   /* 在速览页点某篇 → 直接进它的讲解 */
   render();
 });
 
