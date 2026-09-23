@@ -47,11 +47,13 @@ input,select,textarea{font-family:inherit;color:inherit}
   color:#fff; box-shadow:0 2px 10px rgba(24,44,72,.18);
   position:relative; z-index:30;
   flex-wrap:nowrap;
+  overflow-x:auto; scrollbar-width:none;   /* 极窄屏兜底：还能横向滑到后面的按钮，不会被裁掉 */
 }
+.topbar::-webkit-scrollbar{display:none}
 /* 顶栏按钮/下拉一律不压缩，否则窗口变窄时最后一个按钮会被裁掉 */
 .topbar>.tb-btn,.topbar>.tb-sel,.topbar>.logo,.topbar>.brand{flex:0 0 auto}
-/* 窄屏（教室投影常见 1280/1366）依次让出次要信息 */
-@media (max-width:1560px){ .top-hint{display:none} }
+/* 窄屏（教室投影常见 1280/1366）依次让出次要信息；阈值上调，给「全屏」按钮腾位置 */
+@media (max-width:1720px){ .top-hint{display:none} }
 @media (max-width:1180px){ .brand{display:none} }
 @media (max-width:1040px){ .doc-title{display:none} }
 .logo{font-size:1.15rem;line-height:1}
@@ -183,7 +185,8 @@ body.show-zh .para-zh{display:block}
   0%,100%{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
   35%{background:#ffd75e;box-shadow:inset 0 -2px 0 var(--hl-line),0 0 0 5px rgba(240,180,41,.34)}
 }
-.s.hl.flash{animation:flashhl .78s ease-in-out 3}
+/* 闪 2 次就够（原来 3 次 ×0.78s，投影上看就是"抖"），只在主目标句上闪 */
+.s.hl.flash{animation:flashhl .6s ease-in-out 2}
 .s.pk{cursor:crosshair}
 body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary)}
 .s.elink{cursor:pointer}
@@ -476,7 +479,7 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .lsmsg.err{color:var(--err)}
 
 /* ---------------- 题型分类 ---------------- */
-/* 篇标签按题型配色，一眼分得出听力以外的四种题型 */
+/* 篇标签按题型配色，一眼分得出听力以外的六种题型（含应用文写作 / 读后续写） */
 .ptab .tk{display:inline-block;font-size:.66rem;font-weight:700;padding:1px 5px;border-radius:4px;margin-right:5px;background:rgba(255,255,255,.26);letter-spacing:.02em}
 .ptab.tk-read.on{background:#2b5fa8;border-color:#2b5fa8}
 .ptab.tk-cloze.on{background:#7a52b3;border-color:#7a52b3}
@@ -525,6 +528,34 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .qtype.tk-cloze{background:#f1ebfa;color:#7a52b3}
 .qtype.tk-seven{background:#e4f6f1;color:#1a9b7a}
 .qtype.tk-gram{background:var(--accent-soft);color:#c96a12}
+
+/* ---------- 写作两类题型（2026-09-24 新增）：应用文=玫红，续写=青蓝 ---------- */
+.ptab.tk-appwrite.on{background:#b8446a;border-color:#b8446a}
+.ptab.tk-cont.on{background:#0d7f95;border-color:#0d7f95}
+.ptab.tk-appwrite:hover{color:#b8446a;border-color:#b8446a}
+.ptab.tk-cont:hover{color:#0d7f95;border-color:#0d7f95}
+.ov-card.tk-appwrite{border-left-color:#b8446a}.ov-card.tk-appwrite .tk{background:#fbe9f0;color:#b8446a}
+.ov-card.tk-cont{border-left-color:#0d7f95}.ov-card.tk-cont .tk{background:#e3f3f7;color:#0d7f95}
+.chip.tk-appwrite{background:#fbe9f0;color:#b8446a}
+.chip.tk-cont{background:#e3f3f7;color:#0d7f95}
+.qtype.tk-appwrite{background:#fbe9f0;color:#b8446a}
+.qtype.tk-cont{background:#e3f3f7;color:#0d7f95}
+
+/* ---------- 写作题专用区块（题目材料 / 写作要求 / 审题要点 / 段落框架 / 参考范文） ---------- */
+.wbox{margin-bottom:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:13px 16px}
+.wbox:last-child{margin-bottom:0}
+.wbox>h4{margin:0 0 9px;font-size:.82rem;font-weight:800;color:var(--text-2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wbox>h4 .k{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--primary-soft);color:var(--primary)}
+.wtask{font-size:calc(.9rem * var(--fs));line-height:1.88;color:var(--text);white-space:pre-wrap}
+.wlist{margin:0;padding:0;list-style:none}
+.wlist li{position:relative;padding-left:19px;margin-bottom:6px;font-size:calc(.86rem * var(--fs));line-height:1.78;color:var(--text-2)}
+.wlist li:before{content:'◆';position:absolute;left:2px;top:0;color:var(--accent);font-size:.6rem}
+.wlist li:last-child{margin-bottom:0}
+.wsample-tag{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#fff4e5;color:#a9741a;border:1px solid #f0d49a}
+.wsample-tag.paper{background:#e8f0fb;color:#2b5fa8;border-color:#c9d8ee}
+/* 写作题不给"单段精读"按钮 */
+body.write-mode .vtab[data-view="single"]{display:none}
+.wsep{margin:16px 0 12px;border-top:1px dashed var(--border);padding-top:11px;font-size:.78rem;font-weight:800;color:var(--text-2);letter-spacing:.4px}
 .mini-q .mhint{font-size:.76rem;color:var(--accent);font-weight:700;margin-left:6px}
 
 /* 语法填空的答案块：点一下显示，再点隐藏，方便上课先留白 */
@@ -611,6 +642,51 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
 .gate-me.on{display:inline-flex}
 .gate-me:hover{background:#e2f1e9}
 .gate-me .u{max-width:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- 全屏讲解模式：收掉顶栏，原文+题目占满整屏 ---------- */
+body.focus .topbar,body.focus .subbar{display:none}
+body.focus .main{height:100vh}
+body.focus #emptyState{height:100vh}
+
+/* ---------- 记号笔：整页画布 + 右下角浮动工具条 ---------- */
+#inkCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:60;pointer-events:none}
+body.pen-mode #inkCanvas{pointer-events:auto;cursor:crosshair}
+body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell}
+.pen-bar{
+  position:fixed;right:16px;bottom:78px;z-index:70;display:flex;align-items:center;gap:5px;  /* 抬到题目导航上面，别打架 */
+  background:#fff;border:1px solid var(--border);border-radius:14px;padding:6px 8px;
+  box-shadow:0 10px 26px rgba(20,30,50,.16);
+  opacity:.5;transition:opacity .18s;
+}
+.pen-bar:hover,.pen-bar.busy{opacity:1}
+/* 平时只显示图标（窄，少挡内容），鼠标移上去或正在用笔时才展开文字 */
+.pen-bar .lbl{display:none;margin-left:4px}
+.pen-bar:hover .lbl,.pen-bar.busy .lbl{display:inline}
+.pen-bar .pb{
+  display:inline-flex;align-items:center;gap:4px;font-size:.78rem;font-weight:700;color:var(--text-2);
+  background:var(--panel-2);border:1px solid var(--border);border-radius:9px;padding:6px 10px;
+  cursor:pointer;font-family:inherit;transition:.14s;white-space:nowrap;
+}
+.pen-bar .pb:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.pen-bar .pb.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pen-bar .sep{width:1px;height:20px;background:var(--border);margin:0 3px}
+.pen-bar .dot{
+  width:19px;height:19px;border-radius:50%;border:2px solid #fff;
+  box-shadow:0 0 0 1px var(--border);cursor:pointer;padding:0;transition:.14s;
+}
+.pen-bar .dot:hover{transform:scale(1.12)}
+.pen-bar .dot.on{box-shadow:0 0 0 2px var(--primary);transform:scale(1.12)}
+.pen-bar .dot[data-ink-color="red"]{background:#e23b3b}
+.pen-bar .dot[data-ink-color="blue"]{background:#2b5fa8}
+.pen-bar .dot[data-ink-color="yellow"]{background:#ffd640}
+#btnExitFs{display:none}
+body.focus #btnExitFs{display:inline-flex}
+
+/* ---------- 改答案：点了「✎ 改答案」之后选项才可点（防误触把答案点乱） ---------- */
+.qbtns .qb[data-ansedit]:not(.on){border-color:#c9d8ee;color:var(--primary);background:#f4f8ff}
+.qbtns .qb[data-ansedit]:not(.on):hover{background:var(--primary);border-color:var(--primary);color:#fff}
+.opt.editing{cursor:pointer}
+.opt.editing:hover{box-shadow:inset 0 0 0 1px var(--primary)}
 </style>
 </head>
 <body class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
@@ -651,6 +727,7 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
   </select>
   <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）" data-page-node-id="TYYqE2fZ5ROvanLDdeKKH6">🔑 免费Key</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
+  <button class="tb-btn" id="btnFullTop" title="全屏讲解：地址栏消失，原文和题目占满整屏（ESC 或右下角按钮退出）">⛶ 全屏</button>
   <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇" data-page-node-id="7hgePhBzubQRcstGgDOGeC">⇄ 合并同题型</button>
   <button class="tb-btn icon" id="btnFsMinus" title="减小字号" data-page-node-id="qQxjR0OcsA3MCsQs1oZsWx">A－</button>
   <button class="tb-btn icon" id="btnFsPlus" title="放大字号" data-page-node-id="qYRgxONqhh9gP3CpQfHD77">A＋</button>
@@ -690,9 +767,9 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
     </div>
     <div class="drop" id="drop" data-page-node-id="VXfcB5nmtqq1zmF2D5O4WI">
       <div class="ic" data-page-node-id="PtkafDuCYrzEDcWjzpnthT">📄</div>
-      <h3 data-page-node-id="sAOP6W0uzvPPrHocHm7CVW">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空）</h3>
+      <h3 data-page-node-id="sAOP6W0uzvPPrHocHm7CVW">上传英语试卷图片（阅读 / 完形 / 七选五 / 语法填空 / 应用文写作 / 读后续写）</h3>
       <p data-page-node-id="knRVPXLuteWR74MVebXyo5">把试卷拍照或截图拖进来，AI 自动识别文字、<b data-page-node-id="NTo4ueaGP3YrcgQwwoM7Ua">判断题型</b>、切分段落、定位题目答案，生成讲解页。<br data-page-node-id="LtgkzUHyJ79u9E30wVVmSr">
-         支持一次上传多张；一张卷子里有几种题型都能自动分开归类。</p>
+         支持一次上传多张；一张卷子里有几种题型都能自动分开归类。写作题也会一并收进来 —— 卷面印了范文就用卷面的，没印就替你写一篇示范。</p>
       <p style="margin-top:12px" data-page-node-id="docHint01">有现成电子版？点顶栏 <b data-page-node-id="docHint02">📄 上传文档</b>，
          支持 <b data-page-node-id="docHint03">Word（.docx）· 纯文本（.txt）· PDF</b>，
          直接从文件里取文字 —— 不用拍照，也不用等识图，几秒就出结果。<br data-page-node-id="docHint04">
@@ -739,6 +816,22 @@ body.gated .topbar,body.gated .subbar,body.gated .main{filter:blur(7px);pointer-
 </main>
 
 <div class="toast" id="toast" data-page-node-id="DCCst4Fyl2NNJonECUORnO"></div>
+
+<!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右下角浮动工具条 -->
+<canvas id="inkCanvas" aria-hidden="true"></canvas>
+<div class="pen-bar" id="penBar">
+  <button class="pb" data-ink="pen" title="记号笔：红/蓝两色细笔">🖊<span class="lbl">笔</span></button>
+  <button class="pb" data-ink="highlight" title="荧光笔：粗、半透明，划句子用">▨<span class="lbl">荧光</span></button>
+  <button class="pb" data-ink="erase" title="橡皮擦：擦到哪擦哪，整笔擦净即消失">🧽<span class="lbl">橡皮</span></button>
+  <button class="pb" id="btnClearInk" title="一键清空全部标注">🗑<span class="lbl">清屏</span></button>
+  <span class="sep"></span>
+  <button class="dot on" data-ink-color="red" title="红色"></button>
+  <button class="dot" data-ink-color="blue" title="蓝色"></button>
+  <button class="dot" data-ink-color="yellow" title="黄色（荧光笔色）"></button>
+  <span class="sep"></span>
+  <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏">⛶<span class="lbl">全屏</span></button>
+  <button class="pb" id="btnExitFs" title="退出全屏（ESC 也行）">✕<span class="lbl">退出全屏</span></button>
+</div>
 
 <div class="qnav" id="qnav" data-page-node-id="vGCKOiNwgZHDiPSnHKamG6">
   <button data-nav="-1" title="上一题（← 键）" data-page-node-id="WTxqzYe2RjRVTv3Gf7NeTn">‹</button>
@@ -841,7 +934,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!r.ok) { err.textContent = r.msg; ip.select(); return; }
     enter.disabled = true;
     enter.textContent = '登录中…';
-    setTimeout(function () { hideGate(); enter.disabled = false; enter.textContent = '登 录'; }, 220);
+    /* 换人登录后整页重载：按新登录人重新加载缓存，不残留上一个人的讲解内容 */
+    setTimeout(function () { location.reload(); }, 120);
   }
   enter.addEventListener('click', submit);
   [iu, ip].forEach(function (el) {
@@ -854,8 +948,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (me) me.addEventListener('click', function () {
     if (!confirm('退出登录？下次打开需要重新登录。')) return;
     setCurUser('');
-    iu.value = ''; ip.value = ''; err.textContent = '';
-    showGate();
+    location.reload();
   });
 });
 
@@ -918,12 +1011,15 @@ const PARSE_PROMPT = [
 '【转录文本结束】',
 '',
 '【第一步：判断题型】',
-'高考英语笔试部分只有下面四种，每一部分必须归入其中一种，kind 字段只能取这四个值：',
+'高考英语笔试部分只有下面六种，每一部分必须归入其中一种，kind 字段只能取这六个值：',
 '1. kind = "reading"（阅读理解）：一段完整文章 + 若干单选，通常是 A/B/C/D 四篇，题号连续。',
 '2. kind = "cloze"（完形填空）：一段文章里挖了若干空，每空从 A/B/C/D 四个词或短语里选一个。',
 '3. kind = "seven"（七选五）：一段文章挖了 5 个空（题号形如 36～40），文后给出 A～G 七个选项句，选 5 句填回，有 2 句多余。',
 '4. kind = "grammar"（语法填空）：一段（或两小段）短文里挖了 10 个空，题号形如 56～65；有的空在括号里给了提示词（如 (finish)）要变形，有的空什么都没给要自己填虚词。没有 A/B/C/D 选项。',
-'判断要点：**有 A～G 七个选项句、文章里挖 5 个空 = seven**；**短文挖约 10 个空、部分空带括号提示词、完全没有选项 = grammar**；**文章挖空且每空有 A～D 选项 = cloze**；**整篇文章配若干独立单选 = reading**。',
+'5. kind = "appwrite"（应用文写作）：给一个情境（多为中文说明，如「假定你是李华，你校将……」）要求写一封信 / 通知 / 演讲稿 / 建议信等，常注明「80 词左右」；有的卷子另给英文提纲或要点。**没有选项、没有小题题号。**',
+'6. kind = "continuation"（读后续写）：给一段没写完的故事原文 + 两段续写开头句，要求续写「150 词左右」。**同样没有选项。**',
+'判断要点：**有 A～G 七个选项句、文章里挖 5 个空 = seven**；**短文挖约 10 个空、部分空带括号提示词、完全没有选项 = grammar**；**文章挖空且每空有 A～D 选项 = cloze**；**出现「假定你是李华」「写一封信/通知/演讲稿」「80 词左右」= appwrite**；**出现「读后续写」「续写」「两段开头句」「150 词左右」或给了一段没写完的故事 = continuation**；**整篇文章配若干独立单选 = reading**。',
+'注意：写作题只有卷面上确实印了才输出，绝不要凭空虚构一道写作题。',
 '',
 '【第二步：切分 passages】',
 '按「题型 + 独立篇目」切分，同一个 passages 项里的文章必须属于同一种题型：',
@@ -931,7 +1027,9 @@ const PARSE_PROMPT = [
 '- 整段完形填空 → 一个 passages 项，kind = "cloze"，label 用「完形」。',
 '- 七选五 → 一个 passages 项，kind = "seven"，label 用「七选五」。',
 '- 语法填空 → 一个 passages 项，kind = "grammar"，label 用「语法填空」。',
-'**特别注意**：语法填空的短文常常分成两三个小段排版，但它仍然只是一道题、一个 passages 项，绝对不要把两小段拆成两篇。完形填空的短文跨页同样不要拆。',
+'- 应用文写作 → 一个 passages 项，kind = "appwrite"，label 用「应用文写作」。',
+'- 读后续写 → 一个 passages 项，kind = "continuation"，label 用「读后续写」。',
+'**特别注意**：语法填空的短文常常分成两三个小段排版，但它仍然只是一道题、一个 passages 项，绝对不要把两小段拆成两篇。完形填空的短文跨页同样不要拆。写作题也是一道题、一个 passages 项，不要和前面的阅读合并，也不要拆开。',
 '',
 '【输出要求】',
 '只输出一个 JSON 对象，不要用 markdown 代码块包裹，不要输出任何解释文字。JSON 结构如下：',
@@ -967,46 +1065,64 @@ const PARSE_PROMPT = [
 '      "background": "该材料的文化背景或话题背景介绍，中文，150字以内",',
 '      "expressions": [',
 '        {"term": "英文词/短语/句型", "cn": "中文释义", "tip": "用法提示或搭配"}',
-'      ]',
+'      ],',
+'      "task": "【写作题专用】卷面上的写作要求/情境，中文原样转录；读后续写则把「原文之后的两段续写开头句」也原样写进来，用换行分隔",',
+'      "points": ["【写作题专用】审题要点，每条一句，如「人称：第一人称 I；时态：一般现在时 + 一般将来时」"],',
+'      "outline": ["【写作题专用】段落框架，每段一条，如「第一段：开门见山说明写信目的，一句话点到活动时间地点」"],',
+'      "sample": [',
+'        {"en": "参考范文第 1 段英文", "zh": "该段中文翻译"}',
+'      ],',
+'      "sampleSource": "【写作题专用】范文来源：卷面印了就写 paper，你自己写的就写 ai",',
 '    }',
 '  ]',
 '}',
 '',
 '【硬性规则】',
-'1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar 之一。这是最重要的一条，请先判断题型再动笔。',
+'1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar / appwrite / continuation 之一。这是最重要的一条，请先判断题型再动笔。',
 '2. paragraphs 按自然段切分。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
 '3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。',
-'4. 四种题型的字段差异照下面填：',
+'4. 六种题型的字段差异照下面填：',
 '   · reading：options 四个选项齐全；type 从「细节理解 / 推理判断 / 主旨大意 / 词义猜测 / 观点态度 / 篇章结构」里选。',
 '   · cloze：options 是四个词或短语（A/B/C/D）；type 写该空考什么，如「动词辨析 / 名词辨析 / 形容词辨析 / 副词辨析 / 介词短语 / 上下文逻辑」；hint 填空串。',
 '   · seven：options 从 A 到 G 七个选项全部列出；answer 是选中的那一个字母；evidence 填原文中该空的**前一句 + 后一句**（逐字摘自 en）；type 写「段落主题句 / 逻辑衔接 / 代词指代 / 词汇复现 / 过渡句」。',
 '   · grammar：**options 必须是空数组 []**；hint 填括号里的提示词原形（没有就填空串）；answer 填正确的词形（有提示词的写变形结果，如 finished / to finish / increasingly；没提示词的写该填的虚词，如 whose / a / which）；type 从「谓语动词·时态 / 谓语动词·语态 / 主谓一致 / 非谓语动词 / 词性转换 / 名词单复数 / 形容词副词比较级 / 介词 / 冠词 / 连词 / 代词 / 从句引导词 / 虚拟语气 / 倒装」里选；explain 中文，先说考点再说判断依据。',
+'   · appwrite / continuation（写作类）：**questions 必须是空数组 []**，写作题没有小题，全部内容放 task / points / outline / sample / expressions 五个字段里；paragraphs 放卷面给的英文材料 —— 读后续写放「原文」（逐段，配中文翻译），应用文若卷面全是中文要求、没有英文材料，paragraphs 就给空数组 []。',
 '5. answer 字段：若转录文本中已包含答案或答案解析就用它；若没有，请你作为资深教师判断最可能的答案。语法填空的答案必须是完整的单词或词形，不要只写首字母。',
 '6. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致；实在找不到就填空串，不要编造。',
 '7. explain 用中文，点明解题依据。阅读题要说明如何排除干扰项；完形和语法填空要说清语法、搭配或上下文逻辑依据。',
 '8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
 '9. 若某篇没有配题，questions 给空数组。',
-'10. 绝对不要把听力、写作、读后续写的内容放进 passages；如果转录里有，直接忽略。'
+'10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
+'11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇 —— 应用文约 80 词、读后续写约 150 词，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
+'12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等），outline 写 2～4 条段落框架（每段写什么、怎么衔接）。'
 ].join('\n');
 
 /* =========================================================
-   题型分类（阅读 / 完形 / 七选五 / 语法填空）
-   高考笔试部分就这四种，前端的彩色标签、题型速览、合并功能全靠这张表
+   题型分类（阅读 / 完形 / 七选五 / 语法填空 / 应用文写作 / 读后续写）
+   高考笔试部分就这几种，前端的彩色标签、题型速览、合并功能全靠这张表
    ========================================================= */
 const KIND_INFO = {
   reading: { name: '阅读理解', short: '阅读',  cls: 'tk-read',  hint: '一篇完整文章 + 若干单选题，通常是 A/B/C/D 四篇' },
   cloze:   { name: '完形填空', short: '完形',  cls: 'tk-cloze', hint: '文章中挖若干空，每空从 A/B/C/D 里选一个词' },
   seven:   { name: '七选五',   short: '七选五', cls: 'tk-seven', hint: '文章挖 5 个空，从 A～G 七个选项句里选 5 句填回' },
-  grammar: { name: '语法填空', short: '语法',  cls: 'tk-gram',  hint: '短文挖 10 个空，有提示词的变形、没提示词的填虚词' }
+  grammar: { name: '语法填空', short: '语法',  cls: 'tk-gram',  hint: '短文挖 10 个空，有提示词的变形、没提示词的填虚词' },
+  appwrite:     { name: '应用文写作', short: '应用文', cls: 'tk-appwrite', hint: '给情境写一封信/通知/演讲稿：讲审题要点、段落框架和参考范文' },
+  continuation: { name: '读后续写',   short: '续写',   cls: 'tk-cont',    hint: '给一段原文和两段开头句：讲情节线、伏笔呼应和续写范例' }
 };
-const KIND_ORDER = ['reading', 'cloze', 'seven', 'grammar'];
+const KIND_ORDER = ['reading', 'cloze', 'seven', 'grammar', 'appwrite', 'continuation'];
+/* 写作类：没有选项、没有"答案"，渲染走专用视图 */
+function isWriteKind(k) { return k === 'appwrite' || k === 'continuation'; }
 
 /* 兜底：AI 偶尔会漏写 kind，或写成近义词，这里统一归一化 */
 const KIND_ALIAS = {
   'reading': 'reading', 'read': 'reading', 'comprehension': 'reading', '阅读理解': 'reading', '阅读': 'reading',
   'cloze': 'cloze', 'clozetest': 'cloze', '完形': 'cloze', '完形填空': 'cloze',
   'seven': 'seven', 'sevenfive': 'seven', '75': 'seven', '七选五': 'seven', '七选5': 'seven', '阅读七选五': 'seven',
-  'grammar': 'grammar', 'fill': 'grammar', 'blank': 'grammar', '语法填空': 'grammar', '语法': 'grammar', '填空': 'grammar'
+  'grammar': 'grammar', 'fill': 'grammar', 'blank': 'grammar', '语法填空': 'grammar', '语法': 'grammar', '填空': 'grammar',
+  'appwrite': 'appwrite', 'writing': 'appwrite', 'written': 'appwrite', 'application': 'appwrite',
+  '应用文': 'appwrite', '应用文写作': 'appwrite', '写作': 'appwrite', '作文': 'appwrite', '书面表达': 'appwrite',
+  'continuation': 'continuation', 'continue': 'continuation', '续写': 'continuation',
+  '读后续写': 'continuation', '短文续写': 'continuation', '故事续写': 'continuation'
 };
 
 function kindOf(p) {
@@ -1020,12 +1136,11 @@ function kindOf(p) {
   return 'reading';
 }
 
-/* 写作（应用文/读后续写）和听力不属于四种讲解题型。
-   AI 偶尔会把它们也当成 passage 输出（kind 写 "writing"），
-   归一化时又会被兜底成 reading，平白多出一篇假阅读 —— 直接丢弃。 */
+/* 听力和口语不是笔试讲解题型（AI 偶尔会把它们也当成 passage 输出，平白多出一篇假阅读 —— 直接丢弃）。
+   注意：应用文写作 / 读后续写从 2026-09-24 起**支持讲解了**，不再丢弃。 */
 function isNonLessonKind(p) {
   const s = (String((p && p.kind) || '') + '|' + String((p && p.label) || '')).toLowerCase();
-  return /writing|listening|speaking|作文|写作|应用文|续写|听力|口语/.test(s);
+  return /listening|speaking|listeningcomprehension|听力|口语|朗读/.test(s);
 }
 function kindName(k) { return (KIND_INFO[k] || KIND_INFO.reading).name; }
 function kindShort(k) { return (KIND_INFO[k] || KIND_INFO.reading).short; }
@@ -1597,7 +1712,17 @@ const KIND_EVIDENCE = {
     /在(?:空白处|空格处)填入(?:适当的|1个)?(?:内容|单词)/, /单词的适当形式/, /括号内单词的适当形式/
   ],
   cloze: [/完\s*形\s*填\s*空/],
-  seven: [/七\s*选\s*五/, /选项中选出.{0,30}最佳选项.{0,60}多余/, /(?:A[～~\-]G|A-G)\s*七个?选项/]
+  seven: [/七\s*选\s*五/, /选项中选出.{0,30}最佳选项.{0,60}多余/, /(?:A[～~\-]G|A-G)\s*七个?选项/],
+  /* 写作两类（2026-09-24 起支持讲解）：正则故意写严一点 ——
+     阅读理解里出现"这是一篇应用文"不该被当成"缺了一道写作题" */
+  appwrite: [
+    /应用文写作|书面表达/, /假定你是\s*\S{1,10}/,
+    /(?:写|给|完成)(?:一封|一则|一篇|一份)\s*(?:英?文?\s*)?(?:信|邮件|通知|演讲稿|发言稿|倡议书|报道|启事|留言)/,
+    /(?:80|100)\s*词(?:左右|以上)/
+  ],
+  continuation: [
+    /读后续写|短文续写|故事续写/, /续\s*写/, /两段(?:的)?开头(?:句|语)/, /150\s*词(?:左右|以上)/
+  ]
 };
 
 /* 语法填空的排版指纹：连续的 56～65 题号、或一排带提示词的空 */
@@ -1632,6 +1757,9 @@ function expectKinds(text) {
   }
   if (KIND_EVIDENCE.cloze.some((re) => re.test(t))) out.cloze = true;
   if (KIND_EVIDENCE.seven.some((re) => re.test(t))) out.seven = true;
+  /* 写作两类：卷面确实有写作题却解析丢了，也要能提示补回 */
+  if (KIND_EVIDENCE.appwrite.some((re) => re.test(t))) out.appwrite = true;
+  if (KIND_EVIDENCE.continuation.some((re) => re.test(t))) out.continuation = true;
   return out;
 }
 
@@ -2301,15 +2429,26 @@ function normalizePassage(p) {
       term: String(e.term || '').trim(),
       cn: String(e.cn || '').trim(),
       tip: String(e.tip || '').trim()
-    }))
+    })),
+    /* ---- 写作题（应用文 / 读后续写）专用字段，其它题型留空即可 ---- */
+    task: String(p.task || '').trim(),                              /* 写作要求/情境（中文原样，续写则含两段开头句） */
+    points: (p.points || []).map((x) => String(x || '').trim()).filter(Boolean),      /* 审题要点 */
+    outline: (p.outline || []).map((x) => String(x || '').trim()).filter(Boolean),    /* 段落框架 */
+    sample: (p.sample || []).map((x) => ({                          /* 参考范文（逐段 英+中） */
+      en: String(x.en || '').trim(),
+      zh: String(x.zh || '').trim()
+    })).filter((x) => x.en),
+    sampleSource: (p.sampleSource === 'paper' || p.sampleSource === 'ai') ? p.sampleSource : ''   /* paper=卷面自带，ai=模型写的 */
   };
   /* 单选/完形/七选五的答案是大写字母；语法填空的答案是一个词，
      不能再用 charAt(0) 截断（overflow → o 这种 bug），所以两种分开处理 */
-  if (raw.kind === 'grammar' || looksLikeGrammar(raw)) {
+  if (raw.kind === 'grammar' || (!isWriteKind(kindOf(raw)) && looksLikeGrammar(raw))) {
     raw.kind = 'grammar';
   }
+  const wk = isWriteKind(kindOf(raw));   /* 归一化后再判断，AI 写成「写作 / 应用文」也算写作题 */
   raw.questions.forEach((q) => {
     if (raw.kind === 'grammar') return;
+    if (wk) return;   /* 写作题没有选项答案，别把要点文本截成一个字 */
     q.answer = q.answer.toUpperCase().charAt(0);
   });
   return raw;
@@ -2341,17 +2480,23 @@ function splitSentences(text) {
 
 const norm = (t) => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-/* 判断句子是否命中 evidence（evidence 可能跨多行/多句） */
-function sentHit(sent, evParts) {
+/* 判断句子是否命中 evidence（evidence 可能跨多行/多句）
+   顺带给个分数：整句被 evidence 包住（100+）比只对上片段（50+）更可信 ——
+   "找原句"跳动不准确，很大原因就是以前拿文档里第一句命中就去滚，而不是最像原句的那句。 */
+function sentHitScore(sent, evParts) {
   const s = norm(sent);
-  if (s.length < 3) return false;
+  if (s.length < 3) return 0;
+  let score = 0;
   for (let i = 0; i < evParts.length; i++) {
     const e = evParts[i];
     if (!e) continue;
-    if (e.indexOf(s) >= 0) return true;
-    if (s.indexOf(e) >= 0 && e.length >= 6) return true;
+    if (e.indexOf(s) >= 0) score = Math.max(score, 100 + Math.min(s.length, 90));
+    else if (s.indexOf(e) >= 0 && e.length >= 6) score = Math.max(score, 50 + Math.min(e.length, 90));
   }
-  return false;
+  return score;
+}
+function sentHit(sent, evParts) {
+  return sentHitScore(sent, evParts) > 0;
 }
 
 function evidenceParts(evidence) {
@@ -2369,6 +2514,9 @@ function evidenceParts(evidence) {
    渲染
    ========================================================= */
 function render() {
+  /* 写作题没有"单段精读"这种讲法：停在这个视图上时自动回到整篇 */
+  const p0 = S.passages[S.cur];
+  if (p0 && isWriteKind(kindOf(p0)) && S.view === 'single') S.view = 'split';
   renderTabs();
   renderView();
 }
@@ -2395,7 +2543,7 @@ function renderTabs() {
           + ' data-pi="' + it.pi + '"'
           + ' title="' + esc(nm + ' · ' + kindDesc(g.kind)) + '">'
           + '<span class="tk">' + esc(kindShort(g.kind)) + '</span>' + esc(nm)
-          + '<span class="meta">' + (it.p.questions.length ? it.p.questions.length + '题' : '0题') + '</span>'
+          + '<span class="meta">' + (isWriteKind(g.kind) ? '讲解' : (it.p.questions.length ? it.p.questions.length + '题' : '0题')) + '</span>'
           + '</span>';
       });
       return;
@@ -2406,11 +2554,13 @@ function renderTabs() {
       + ' title="' + esc(kindDesc(g.kind)) + '">'
       + '<span class="tk">' + esc(kindShort(g.kind)) + '</span>'
       + g.items.map(function (it) { return esc(it.p.label || ''); }).join(' / ')
-      + '<span class="meta">' + (qn ? qn + '题' : g.items.length + '篇') + '</span>'
+      + '<span class="meta">' + (isWriteKind(g.kind) ? '讲解' : (qn ? qn + '题' : g.items.length + '篇')) + '</span>'
       + '</span>';
   });
   box.innerHTML = html;
   $$('#vtabs .vtab').forEach((b) => b.classList.toggle('on', b.dataset.view === S.view));
+  /* 写作题不给"单段精读"这个按钮（没有逐段配题可讲） */
+  document.body.classList.toggle('write-mode', isWriteKind(curKind()));
 }
 
 /* 题型速览：一眼看清这份卷子收进来几种题型、各多少题、考了什么 */
@@ -2433,7 +2583,9 @@ function viewOverview() {
       + '<span class="tk">' + esc(kindName(g.kind)) + '</span>'
       + '<h3>' + esc(KIND_INFO[g.kind].name) + '</h3>'
       + '<div class="nums">收进 <b>' + g.items.length + '</b> 篇' + (labels ? '（' + esc(labels) + '）' : '')
-      + ' · 共 <b>' + st.questions + '</b> 空/题</div>'
+      + (isWriteKind(g.kind)
+          ? ' · 含要点与参考范文'
+          : ' · 共 <b>' + st.questions + '</b> 空/题') + '</div>'
       + (top ? '<div class="qs">考点：' + esc(top) + '</div>' : '<div class="qs">' + esc(kindDesc(g.kind)) + '</div>')
       + '<span class="go">进入讲解 →</span></div>';
   });
@@ -2485,7 +2637,7 @@ $('#content').addEventListener('click', (e) => {
    和云端的 progress 结构一致：{ view, cur, activeQ, kind } */
 function resumePoint() {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(cacheKey());
     if (!raw) return null;
     const d = JSON.parse(raw);
     /* 缓存必须和当前这份课件是同一份（标题一致才算），否则接着讲的是别人的卷子 */
@@ -2498,14 +2650,26 @@ function resumePoint() {
 
 function renderView() {
   const c = $('#content');
+  clearInk();   /* 换题 / 换视图 / 重渲染后内容位置变了，旧标注对不上，直接清掉 */
   document.body.classList.toggle('show-zh', S.showZh);
   document.body.classList.toggle('picking', !!S.picking);
   document.documentElement.style.setProperty('--fs', S.fs);
 
-  if (S.view === 'overview') { c.innerHTML = viewOverview(); renderQNav(); return; }
+  /* 同一篇 + 同一视图的重渲染（点题目、显示答案、改答案…）留住两栏原来的滚动位置。
+     以前每次重排都把左右栏弹回顶部，再由 focusEvidence 滑下去找句子 ——
+     所以"找原句"看着又跳又不准：先跳回顶，再长距离滑一段。 */
+  const key = S.view + '|' + S.cur;
+  const keep = (c.dataset.viewKey === key) ? paneTops() : null;
+
+  if (S.view === 'overview') {
+    c.innerHTML = viewOverview();
+    c.dataset.viewKey = key;
+    renderQNav();
+    return;
+  }
 
   const p = S.passages[S.cur];
-  if (!p) { c.innerHTML = ''; return; }
+  if (!p) { c.innerHTML = ''; c.dataset.viewKey = ''; return; }
 
   if (S.view === 'split')      c.innerHTML = viewSplit(p);
   else if (S.view === 'original') c.innerHTML = viewOriginal(p);
@@ -2513,7 +2677,23 @@ function renderView() {
   else if (S.view === 'background') c.innerHTML = viewBackground(p);
   else if (S.view === 'expressions') c.innerHTML = viewExpressions(p);
 
+  c.dataset.viewKey = key;
+  if (keep) restorePaneTops(keep);
   renderQNav();
+}
+
+/* 记下 / 还原本栏滚动位置（还原用瞬时，别再滑一次） */
+function paneTops() {
+  return Array.prototype.map.call(document.querySelectorAll('#content .pane'), function (p) { return p.scrollTop; });
+}
+function restorePaneTops(tops) {
+  const panes = document.querySelectorAll('#content .pane');
+  for (let i = 0; i < panes.length && i < tops.length; i++) {
+    const el = panes[i];
+    el.style.scrollBehavior = 'auto';
+    el.scrollTop = tops[i];
+    el.style.scrollBehavior = '';
+  }
 }
 
 /* 段落块（句子级 span） */
@@ -2521,9 +2701,10 @@ function parasHtml(p, evPartsForPara) {
   return p.paragraphs.map((para, pi) => {
     const sents = splitSentences(para.en);
     const html = sents.map((s, si) => {
-      const hit = evPartsForPara && evPartsForPara[pi] ? sentHit(s, evPartsForPara[pi]) : false;
-      return '<span class="s' + (hit ? ' hl' : '') + (S.picking ? ' pk' : '')
-        + '" data-pi="' + pi + '" data-si="' + si + '">' + esc(s) + '</span> ';
+      const sc = (evPartsForPara && evPartsForPara[pi]) ? sentHitScore(s, evPartsForPara[pi]) : 0;
+      return '<span class="s' + (sc ? ' hl' : '') + (S.picking ? ' pk' : '')
+        + '" data-pi="' + pi + '" data-si="' + si + '"' + (sc ? ' data-sc="' + sc + '"' : '') + '>'
+        + esc(s) + '</span> ';
     }).join('');
     return ''
       + '<div class="para" data-para="' + pi + '">'
@@ -2583,6 +2764,7 @@ const VIEW_TIP = {
 /* ---------- 视图：整篇（左右分栏） ---------- */
 function viewSplit(p) {
   const k = kindOf(p);
+  if (isWriteKind(k)) return viewWrite(p);   /* 写作题走专用布局：左材料+范文 / 右要求+要点 */
   const left = ''
     + '<div class="pane-head">'
     + '  <span class="t"><i>◆</i>' + esc(kindShort(k)) + ' · 左右分栏清晰讲解</span>'
@@ -2617,9 +2799,82 @@ function activeEvMap(p) {
   return m;
 }
 
+/* ---------- 视图：写作题（应用文写作 / 读后续写） ----------
+   写作题没有选项、没有"标准答案"，但有两样东西最值得投影：卷面材料 + 参考范文。
+   左栏放材料与范文（照样能开译文、调字号、用记号笔标注、双击改字），
+   右栏放写作要求 / 审题要点 / 段落框架 —— 就是上课要讲的那几条。 */
+function writeLeftHtml(p) {
+  const k = kindOf(p);
+  const isCont = k === 'continuation';
+  const hasSample = !!(p.sample && p.sample.length);
+
+  let html = ''
+    + '<div class="pane-head">'
+    + '  <span class="t"><i>◆</i>' + esc(isCont ? (p.paragraphs.length ? '原文 · 续写范例' : '续写范例') : '参考范文') + '</span>'
+    + kindChip(p)
+    + (p.genre ? '<span class="chip gray">' + esc(p.genre) + '</span>' : '')
+    + (p.topic ? '<span class="chip gray">' + esc(p.topic) + '</span>' : '')
+    + '<button class="toggle' + (S.showZh ? ' on' : '') + '" id="zhToggle"><span class="dot"></span>显示译文</button>'
+    + '</div>';
+
+  if (p.paragraphs.length) {
+    html += '<div class="wsep">' + (isCont ? '读后续写 · 卷面原文' : '题目材料（卷面原文）') + '</div>'
+          + parasHtml(p, null);   /* 写作题没有 evidence，不做高亮 */
+  }
+  if (hasSample) {
+    const tag = p.sampleSource === 'ai'
+      ? '<span class="wsample-tag">AI 范文 · 非官方答案</span>'
+      : (p.sampleSource === 'paper' ? '<span class="wsample-tag paper">卷面参考答案</span>' : '');
+    html += '<div class="wsep">参考范文' + tag + '</div>'
+          + parasHtml({ paragraphs: p.sample, questions: [] }, null);
+  }
+  if (!p.paragraphs.length && !hasSample) html += emptyWrite();
+  return html;
+}
+
+function writeRightHtml(p) {
+  const k = kindOf(p);
+  const isCont = k === 'continuation';
+  let html = '<div class="pane-head"><span class="t"><i>◆</i>' + (isCont ? '续写要点' : '写作要点') + '</span></div>';
+
+  if (p.task) {
+    html += '<div class="wbox"><h4>写作要求<span class="k">卷面原样</span></h4>'
+          + '<div class="wtask">' + esc(p.task).replace(/\n/g, '<br>') + '</div></div>';
+  }
+  if (p.points.length) {
+    html += '<div class="wbox"><h4>审题要点<span class="k">下笔前先定调</span></h4><ul class="wlist">'
+          + p.points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+  }
+  if (p.outline.length) {
+    html += '<div class="wbox"><h4>' + (isCont ? '两段怎么续' : '段落框架') + '<span class="k">每段写什么</span></h4><ul class="wlist">'
+          + p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+  }
+  if (p.expressions && p.expressions.length) {
+    html += '<div class="wbox"><h4>好词好句<span class="k">共 ' + p.expressions.length + ' 条 · 点上方「积累表达」看全部</span></h4><ul class="wlist">'
+          + p.expressions.slice(0, 6).map((e) => '<li><b>' + esc(e.term) + '</b> ' + esc(e.cn) + '</li>').join('')
+          + '</ul></div>';
+  }
+  if (!p.task && !p.points.length && !p.outline.length) html += emptyWrite();
+  return html;
+}
+
+function emptyWrite() {
+  return '<div style="padding:30px 10px;text-align:center;color:var(--text-3);font-size:.86rem;line-height:1.9">'
+       + '这篇写作题的内容还没解析出来。<br>上传时把「写作要求」那一段也拍进来（续写连两段开头句一起拍），重新解析即可。</div>';
+}
+
+function viewWrite(p) {
+  return '<div class="pane pane-left">' + writeLeftHtml(p) + '</div>'
+       + '<div class="divider" id="divider"></div>'
+       + '<div class="pane pane-right">' + writeRightHtml(p) + '</div>';
+}
+
 /* ---------- 视图：原文 ---------- */
 function viewOriginal(p) {
   const k = kindOf(p);
+  if (isWriteKind(k)) {
+    return '<div class="pane pane-left" style="flex:1;border-right:none">' + writeLeftHtml(p) + '</div>';
+  }
   return '<div class="pane pane-left" style="flex:1;border-right:none">'
     + '<div class="pane-head">'
     + '<span class="t"><i>◆</i>' + esc(p.label || '') + '原文</span>'
@@ -2653,8 +2908,8 @@ function viewSingle(p) {
       + '<span class="para-tag">第 ' + (pi + 1) + ' 段</span>'
       + '<div class="para-en" data-para="' + pi + '" title="双击可编辑">'
       + splitSentences(para.en).map((s) => {
-          const hit = qs.length && sentHit(s, (map[pi] || []).reduce((a, h) => a.concat(h.parts), []));
-          return '<span class="s' + (hit ? ' hl' : '') + '">' + esc(s) + '</span> ';
+          const sc = qs.length ? sentHitScore(s, (map[pi] || []).reduce((a, h) => a.concat(h.parts), [])) : 0;
+          return '<span class="s' + (sc ? ' hl' : '') + '" data-pi="' + pi + '"' + (sc ? ' data-sc="' + sc + '"' : '') + '>' + esc(s) + '</span> ';
         }).join('')
       + '</div>'
       + (para.zh ? '<div class="para-zh" style="display:block">' + esc(para.zh) + '</div>' : '')
@@ -2721,6 +2976,7 @@ function qHtml(q, kind) {
   const shown = q.__shown ? ' on' : '';
   const ansShown = q.__ans ? ' on' : '';
   const isPicking = S.picking && String(S.picking.no) === String(q.no);
+  const isEditing = !!q.__editing;
   const isAct = String(S.activeQ) === String(q.no) ? ' act' : '';
   return '<div class="qcard' + isAct + '" data-q="' + esc(q.no) + '">'
     + '<div class="qhead" data-jump="' + esc(q.no) + '">'
@@ -2732,6 +2988,9 @@ function qHtml(q, kind) {
     + '<div class="qbtns">'
     +   '<button class="qb' + shown + '" data-ev="' + esc(q.no) + '">📄 显示原文</button>'
     +   '<button class="qb' + ansShown + '" data-ans="' + esc(q.no) + '">✔ 显示答案</button>'
+    +   '<button class="qb' + (isEditing ? ' on' : '') + '" data-ansedit="' + esc(q.no) + '"'
+    +     ' title="' + (isEditing ? '取消，保持原答案' : '点这里，再点任意选项即可改成新答案') + '">'
+    +     (isEditing ? '✕ 取消' : '✎ 改答案') + '</button>'
     +   '<button class="qb warn' + (isPicking ? ' picking' : '') + '" data-repick="' + esc(q.no) + '">'
     +     (isPicking ? '请点左侧句子…' : '✎ 改对应句') + '</button>'
     + '</div>'
@@ -2744,11 +3003,16 @@ function qHtml(q, kind) {
     + '</div>';
 }
 
+/* 选项：讲解中点选项不再改答案（以前一点就把答案改掉，投影上学生根本看不清）。
+   要改答案，点这排按钮里「✔ 显示答案」右边的「✎ 改答案」，
+   按钮变「✕ 取消」的时候，点任意选项才生效，改完自动退出。 */
 function optsHtml(q) {
+  const editing = !!q.__editing;
   return q.options.map((o) => {
     let cls = 'opt';
     if (q.__ans && q.answer && o.key === q.answer) cls += ' correct';
     else if (q.__ans && q.answer) cls += ' wrong';
+    if (editing) cls += ' editing';
     return '<div class="' + cls + '" data-pickans="' + esc(o.key) + '" data-q="' + esc(q.no) + '">'
       + '<span class="k">' + esc(o.key) + '</span><span class="v">' + esc(o.text) + '</span></div>';
   }).join('');
@@ -2847,14 +3111,35 @@ $('#content').addEventListener('click', (e) => {
     return;
   }
 
-  /* 指定答案（点击选项） */
+  /* 「✎ 更改答案」：开关“改答案”状态。开着的时候点选项才真的改答案 */
+  const eb = t.closest('[data-ansedit]');
+  if (eb) {
+    const q = curQ(eb.dataset.ansedit);
+    if (!q) return;
+    q.__editing = !q.__editing;
+    if (q.__editing) {
+      q.__ans = true;
+      q.__shown = false;
+      S.activeQ = q.no;
+      toast('现在点任意选项，即可把答案改成它');
+    }
+    renderView();
+    return;
+  }
+
+  /* 点选项：只有在「更改答案」状态下才改，平时点了不动（防误触） */
   const op = t.closest('[data-pickans]');
   if (op) {
     const q = curQ(op.dataset.q);
     if (!q) return;
+    if (!q.__editing) {
+      if (q.__ans) toast('答案已锁定：要改请点正确答案右边的「✎ 更改答案」');
+      return;
+    }
     q.answer = op.dataset.pickans;
+    q.__editing = false;
     q.__ans = true;
-    toast('第 ' + q.no + ' 题答案已改为 ' + q.answer);
+    toast('第 ' + q.no + ' 题答案已改为 ' + q.answer, 'ok');
     renderView(); save();
     return;
   }
@@ -2865,6 +3150,7 @@ $('#content').addEventListener('click', (e) => {
     const q = curQ(ev.dataset.ev);
     if (!q) return;
     q.__shown = !q.__shown;
+    q.__editing = false;   /* 切换显示状态时顺手退出改答案态，避免状态打架 */
     if (q.__shown) {
       q.__ans = false;
       S.activeQ = q.no;
@@ -2882,6 +3168,7 @@ $('#content').addEventListener('click', (e) => {
     const q = curQ(an.dataset.ans);
     if (!q) return;
     q.__ans = !q.__ans;
+    q.__editing = false;   /* 同上：显示/隐藏答案时退出改答案态 */
     if (q.__ans) {
       q.__shown = false;
       S.activeQ = q.no;
@@ -2930,20 +3217,69 @@ function safeScroll(el, opts) {
   try { el.scrollIntoView(opts); } catch (e) { /* 忽略 */ }
 }
 
-/* 定位左侧高亮句：滚动 + 可选闪烁（flash 用于「显示原文」和切题，让学生一眼看到） */
+/* ============ 定位左侧高亮句（「找原句」） ============
+   三个改进，都是听着"跳动不准确、不自然"改出来的：
+   ① 选目标：取命中分最高的那句，而不是文档里第一句命中的 —— evidence 跨段时也能落到真正的原句；
+   ② 只滚左栏这一个容器，目标句停在视口偏上 1/3 处（下方留出空间看下文，比死居中更顺手）；
+   ③ 已经到位（差 < 24px）就不滚；右栏只在题目跑出视野时"瞬间"对齐，不参与平滑动画 ——
+      两栏同时平滑滚动会互相拉扯，正是以前那种"抖一下再滑"的观感。 */
 function focusEvidence(flash, qNo) {
   setTimeout(function () {
-    var marks = document.querySelectorAll('.s.hl');
-    if (marks.length) safeScroll(marks[0], { block: 'center', behavior: 'smooth' });
-    if (qNo != null) {
-      safeScroll(document.querySelector('.qcard[data-q="' + qNo + '"]'), { block: 'nearest', behavior: 'smooth' });
+    /* 右栏：题目还在视野里就完全不动 */
+    if (qNo != null) alignPaneMin(document.querySelector('.qcard[data-q="' + qNo + '"]'));
+
+    const marks = [].slice.call(document.querySelectorAll('.s.hl'));
+    if (!marks.length) return;
+
+    let target = marks[0];
+    for (let i = 1; i < marks.length; i++) {
+      if ((+marks[i].dataset.sc || 0) > (+target.dataset.sc || 0)) target = marks[i];
     }
-    if (!flash || !marks.length) return;
-    for (var i = 0; i < marks.length; i++) marks[i].classList.add('flash');
-    setTimeout(function () {
-      for (var j = 0; j < marks.length; j++) marks[j].classList.remove('flash');
-    }, 2700);
-  }, 40);
+    scrollPaneTo(target, 0.32);
+
+    if (!flash) return;
+    target.classList.add('flash');   /* 只闪主目标那一句，其余保持稳定高亮，不一起乱抖 */
+    setTimeout(function () { target.classList.remove('flash'); }, 1600);
+  }, 30);
+}
+
+/* 把元素滚到所在栏的 ratio 高度处（默认偏上 1/3）。
+   距离超过一屏半就直接到位：长距离慢慢滑，投影上要滑一两秒、学生中途看不到落点，
+   这才是"不自然"的来源；近距离（同一段附近微调）才用平滑，手感顺。 */
+function scrollPaneTo(el, ratio) {
+  const pane = el.closest('.pane');
+  if (!pane) return;
+  const pr = pane.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const want = pane.scrollTop + (r.top - pr.top) - pane.clientHeight * (ratio == null ? 0.32 : ratio);
+  const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  const top = Math.max(0, Math.min(max, want));
+  const dist = Math.abs(top - pane.scrollTop);
+  if (dist < 24) return;   /* 已经在位，别再动一下 */
+  if (dist > pane.clientHeight * 1.4) {
+    pane.style.scrollBehavior = 'auto';   /* 远距离：瞬时到位（顺带绕开 CSS 的 smooth） */
+    pane.scrollTop = top;
+    pane.style.scrollBehavior = '';
+    return;
+  }
+  try { pane.scrollTo({ top: top, behavior: 'smooth' }); }
+  catch (e) { pane.scrollTop = top; }
+}
+
+/* 元素完全跑出视野才滚，且瞬间到位（不做动画，免得跟左栏的平滑滚动打架） */
+function alignPaneMin(el) {
+  if (!el) return;
+  const pane = el.closest('.pane');
+  if (!pane) return;
+  const pr = pane.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.top >= pr.top + 6 && r.bottom <= pr.bottom - 6) return;
+  const want = pane.scrollTop + (r.top - pr.top) - 54;
+  const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  const top = Math.max(0, Math.min(max, want));
+  pane.style.scrollBehavior = 'auto';
+  pane.scrollTop = top;
+  pane.style.scrollBehavior = '';
 }
 
 function curQ(no) {
@@ -3666,16 +4002,27 @@ function doMergeKinds() {
 $('#btnMerge').addEventListener('click', runMergeKinds);
 
 function cleanPassages() {
-  return S.passages.map((p) => ({
-    kind: kindOf(p), label: p.label, genre: p.genre, topic: p.topic,
-    paragraphs: p.paragraphs.map((x) => ({ en: x.en, zh: x.zh })),
-    questions: p.questions.map((q) => ({
-      no: q.no, stem: q.stem, options: q.options, answer: q.answer,
-      hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type
-    })),
-    background: p.background,
-    expressions: p.expressions
-  }));
+  return S.passages.map((p) => {
+    const o = {
+      kind: kindOf(p), label: p.label, genre: p.genre, topic: p.topic,
+      paragraphs: p.paragraphs.map((x) => ({ en: x.en, zh: x.zh })),
+      questions: p.questions.map((q) => ({
+        no: q.no, stem: q.stem, options: q.options, answer: q.answer,
+        hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type
+      })),
+      background: p.background,
+      expressions: p.expressions
+    };
+    /* 写作题（应用文 / 读后续写）专用字段：不带上就会在存云端 / 导出 JSON 时丢掉 */
+    if (isWriteKind(kindOf(p))) {
+      o.task = p.task;
+      o.points = p.points;
+      o.outline = p.outline;
+      o.sample = p.sample;
+      o.sampleSource = p.sampleSource;
+    }
+    return o;
+  });
 }
 
 $('#btnImport').addEventListener('click', () => {
@@ -3695,6 +4042,8 @@ function loadData(data) {
   S.passages = mergeSameKind((data.passages || []).map(normalizePassage));
   S.title = data.title || '英语试卷讲解';
   S.cur = 0; S.activeQ = null; S.picking = null;
+  /* 换了新卷子：作废滚动位置的"同一篇"记忆，否则会沿用上一份内容的滚动位置 */
+  const cc0 = $('#content'); if (cc0) cc0.dataset.viewKey = '';
   /* 导入的卷子只要不止一种题型，同样先给题型速览 */
   const kinds = {};
   S.passages.forEach((p) => { kinds[kindOf(p)] = 1; });
@@ -3719,9 +4068,15 @@ function download(filename, text) {
    ========================================================= */
 const CACHE_KEY = 'reading_locator_v1';
 
+/* 缓存按登录人隔离：键里带上当前老师姓名，
+   换人登录各看各的讲解进度，不会再串号 */
+function cacheKey() {
+  return CACHE_KEY + '::' + (curUser() || '未登录');
+}
+
 function save() {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
+    localStorage.setItem(cacheKey(), JSON.stringify({
       title: S.title, engine: S.engine, fs: S.fs, showZh: S.showZh, view: S.view,
       cur: S.cur, activeQ: S.activeQ, passages: cleanPassages()
     }));
@@ -3730,7 +4085,7 @@ function save() {
 
 function restore() {
   let raw = null;
-  try { raw = localStorage.getItem(CACHE_KEY); } catch (e) { return false; }
+  try { raw = localStorage.getItem(cacheKey()); } catch (e) { return false; }
   if (!raw) return false;
   try {
     const d = JSON.parse(raw);
@@ -4346,6 +4701,236 @@ async function delLesson(id, title) {
 }
 
 $('#btnLibrary').addEventListener('click', openLessonPanel);
+
+/* =========================================================
+   记号笔：红/蓝细笔 + 黄荧光 + 橡皮 + 清屏
+   做法：整页铺一张 fixed 画布，笔迹按“视口坐标”存进数组；
+   某一栏滚动时，只把属于那一栏的笔迹平移同样的量 ——
+   所以画在原文上的圈会跟着原文走，不会跑位。
+   标注是一次性的：切题、换视图、刷新即清空（课件本身不受影响）。
+   ========================================================= */
+const INK_STYLE = {
+  red:    { color: '#e23b3b', w: 3,  alpha: 1   },
+  blue:   { color: '#2b5fa8', w: 3,  alpha: 1   },
+  yellow: { color: '#ffd640', w: 16, alpha: .45 }
+};
+const INK = { mode: '', color: 'red', strokes: [], cur: null, tops: {} };
+
+const inkCv = document.getElementById('inkCanvas');
+const inkCtx = inkCv ? inkCv.getContext('2d') : null;
+let inkDpr = 1, inkDrawing = false;
+
+function inkPanes() {
+  return Array.prototype.slice.call(document.querySelectorAll('#content .pane'));
+}
+function inkPaneIdxAt(x, y) {
+  const ps = inkPanes();
+  for (let i = 0; i < ps.length; i++) {
+    const r = ps[i].getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
+  }
+  return -1;
+}
+function inkSnapshotTops() {
+  INK.tops = {};
+  inkPanes().forEach(function (p, i) { INK.tops[i] = p.scrollTop; });
+}
+/* 画布尺寸跟随窗口（乘 dpr，投影上线条才不发虚） */
+function fitInk() {
+  if (!inkCv || !inkCtx) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  inkDpr = Math.min(window.devicePixelRatio || 1, 2);
+  inkCv.width = Math.round(w * inkDpr);
+  inkCv.height = Math.round(h * inkDpr);
+  inkCtx.setTransform(inkDpr, 0, 0, inkDpr, 0, 0);
+  inkLines();
+}
+function inkDrawStroke(ctx2, s) {
+  const pts = s.pts || [];
+  if (!pts.length) return;
+  ctx2.save();
+  ctx2.globalAlpha = (s.alpha == null) ? 1 : s.alpha;
+  ctx2.strokeStyle = s.color;
+  ctx2.fillStyle = s.color;
+  ctx2.lineWidth = s.w;
+  ctx2.lineCap = 'round';
+  ctx2.lineJoin = 'round';
+  if (pts.length === 1) {
+    ctx2.beginPath();
+    ctx2.arc(pts[0][0], pts[0][1], Math.max(s.w / 2, 1.5), 0, Math.PI * 2);
+    ctx2.fill();
+  } else {
+    ctx2.beginPath();
+    ctx2.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx2.lineTo(pts[i][0], pts[i][1]);
+    ctx2.stroke();
+  }
+  ctx2.restore();
+}
+function inkLines() {
+  if (!inkCtx) return;
+  inkCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  INK.strokes.forEach(function (s) { inkDrawStroke(inkCtx, s); });
+  if (INK.cur) inkDrawStroke(inkCtx, INK.cur);
+}
+function clearInk() {
+  if (!INK.strokes.length && !INK.cur) return;
+  INK.strokes = [];
+  INK.cur = null;
+  inkLines();
+}
+/* 橡皮：擦到哪擦哪，被擦断的地方自动断成两截，整笔擦净就消失 */
+function inkEraseAt(x, y) {
+  const R = 16, R2 = R * R;
+  const out = [];
+  let hit = false;
+  INK.strokes.forEach(function (s) {
+    let seg = [];
+    function flush() {
+      if (seg.length) {
+        out.push({ color: s.color, w: s.w, alpha: s.alpha, pane: s.pane, pts: seg });
+        seg = [];
+      }
+    }
+    (s.pts || []).forEach(function (p) {
+      const dx = p[0] - x, dy = p[1] - y;
+      if (dx * dx + dy * dy <= R2) { hit = true; flush(); return; }
+      seg.push(p);
+    });
+    flush();
+  });
+  if (hit) { INK.strokes = out; inkLines(); }
+}
+function inkSetMode(m) {
+  INK.mode = (INK.mode === m) ? '' : m;
+  document.body.classList.toggle('pen-mode', INK.mode === 'pen' || INK.mode === 'highlight');
+  document.body.classList.toggle('pen-erase', INK.mode === 'erase');
+  inkPaintBar();
+}
+function inkPaintBar() {
+  const bar = document.getElementById('penBar');
+  if (!bar) return;
+  bar.classList.toggle('busy', !!INK.mode);   /* 用着笔时工具条不透明，方便随时切/关 */
+  Array.prototype.forEach.call(bar.querySelectorAll('[data-ink]'), function (b) {
+    b.classList.toggle('on', b.dataset.ink === INK.mode);
+  });
+  Array.prototype.forEach.call(bar.querySelectorAll('.dot'), function (b) {
+    b.classList.toggle('on', b.dataset.inkColor === INK.color);
+  });
+}
+
+if (inkCv && inkCtx) {
+  inkCv.addEventListener('pointerdown', function (e) {
+    if (!INK.mode) return;
+    e.preventDefault();
+    try { inkCv.setPointerCapture(e.pointerId); } catch (err) {}
+    inkSnapshotTops();
+    inkDrawing = true;
+    if (INK.mode === 'erase') { inkEraseAt(e.clientX, e.clientY); return; }
+    const st = (INK.mode === 'highlight') ? INK_STYLE.yellow : (INK_STYLE[INK.color] || INK_STYLE.red);
+    const s = { color: st.color, w: st.w, alpha: st.alpha, pane: inkPaneIdxAt(e.clientX, e.clientY), pts: [[e.clientX, e.clientY]] };
+    INK.strokes.push(s);
+    INK.cur = s;
+    inkLines();
+  });
+  inkCv.addEventListener('pointermove', function (e) {
+    if (!inkDrawing || !INK.mode) return;
+    if (INK.mode === 'erase') { inkEraseAt(e.clientX, e.clientY); return; }
+    if (!INK.cur) return;
+    INK.cur.pts.push([e.clientX, e.clientY]);
+    inkLines();
+  });
+  function inkUp() { inkDrawing = false; INK.cur = null; }
+  inkCv.addEventListener('pointerup', inkUp);
+  inkCv.addEventListener('pointercancel', inkUp);
+  /* 开着笔时滚轮照样能滚页面：把滚轮交给鼠标底下那一栏 */
+  inkCv.addEventListener('wheel', function (e) {
+    const ps = inkPanes();
+    for (let i = 0; i < ps.length; i++) {
+      const r = ps[i].getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+        ps[i].scrollTop += e.deltaY;
+        e.preventDefault();
+        return;
+      }
+    }
+  }, { passive: false });
+  window.addEventListener('resize', fitInk);
+  /* 滚动时标注跟着原文走 */
+  document.addEventListener('scroll', function (e) {
+    const el = e.target;
+    if (!el || !el.classList || !el.classList.contains('pane')) return;
+    if (!INK.strokes.length) return;
+    const idx = inkPanes().indexOf(el);
+    if (idx < 0) return;
+    const prev = (INK.tops[idx] == null) ? el.scrollTop : INK.tops[idx];
+    const d = el.scrollTop - prev;
+    INK.tops[idx] = el.scrollTop;
+    if (!d) return;
+    INK.strokes.forEach(function (s) {
+      if (s.pane !== idx) return;
+      s.pts.forEach(function (p) { p[1] -= d; });
+    });
+    inkLines();
+  }, true);
+  fitInk();
+}
+
+const penBarEl = document.getElementById('penBar');
+if (penBarEl) {
+  penBarEl.addEventListener('click', function (e) {
+    const b = e.target.closest('[data-ink]');
+    if (b) { inkSetMode(b.dataset.ink); return; }
+    const d = e.target.closest('[data-ink-color]');
+    if (d) {
+      /* 点颜色 = 拿起这支笔：黄点＝荧光笔，红蓝点＝细笔 */
+      INK.color = d.dataset.inkColor;
+      const want = d.dataset.inkColor === 'yellow' ? 'highlight' : 'pen';
+      if (INK.mode !== want) inkSetMode(want);
+      inkPaintBar();
+      return;
+    }
+    if (e.target.closest('#btnClearInk')) {
+      if (!INK.strokes.length) { toast('屏幕上还没有标注'); return; }
+      clearInk();
+      toast('已清屏', 'ok');
+      return;
+    }
+    if (e.target.closest('#btnFull'))    { toggleFullscreen(); return; }
+    if (e.target.closest('#btnExitFs'))  { exitFullscreen();  return; }
+  });
+}
+const btnFullTopEl = document.getElementById('btnFullTop');
+if (btnFullTopEl) btnFullTopEl.addEventListener('click', toggleFullscreen);
+
+/* ============ 全屏讲解：教室电脑上去掉地址栏，原文+题目占满整屏 ============ */
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function enterFullscreen() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!fn) { toast('这个浏览器不支持网页全屏，按 F11 也能全屏'); return; }
+  try {
+    const r = fn.call(el);
+    if (r && r.catch) r.catch(function () { toast('浏览器没允许网页全屏，按 F11 效果一样'); });
+  } catch (err) { toast('浏览器没允许网页全屏，按 F11 效果一样'); }
+}
+function exitFullscreen() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen;
+  if (fn && isFullscreen()) { try { fn.call(document); } catch (err) {} }
+}
+function toggleFullscreen() { isFullscreen() ? exitFullscreen() : enterFullscreen(); }
+function syncFullscreenClass() {
+  document.body.classList.toggle('focus', isFullscreen());
+  /* 进/出全屏后，顶上留白变了，旧标注的位置就对不上了，直接清掉（老师进全屏后再画） */
+  clearInk();
+  /* 全屏切换后画布尺寸变了，两次校正（动画结束后再来一次） */
+  setTimeout(fitInk, 200);
+  setTimeout(fitInk, 620);
+}
+document.addEventListener('fullscreenchange', syncFullscreenClass);
+document.addEventListener('webkitfullscreenchange', syncFullscreenClass);
 
 /* =========================================================
    启动
