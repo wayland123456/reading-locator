@@ -2097,65 +2097,105 @@ const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|(?
 function splitTranscript(text) {
   const t = String(text || '').trim();
   if (!t) return [];
-  /* 整卷很小就别切，切了反而增加请求数（阈值下调，避免一篇阅读+一篇语法填空挤在一次请求里） */
-  if (t.length < 1100) return [t];
+  /* 整卷很小就别切，切了反而增加请求数 */
+  if (t.length < 1100) return [{ text: t, sec: '' }];
   const lines = t.split(/\n/);
-  const blocks = [];
+  const raw = [];
   let cur = [];
+  let sec = '';
   lines.forEach((ln) => {
     const s = ln.trim();
-    /* 大题标记必须：①行首命中 ②自身很短 ③不是纯字母选项行 ④不是纯题号行
-       ⑤后面一行看起来像正文（不是另一串选项），避免把选项群切开 */
     const bareLetter = /^[A-DＡ-Ｄ][.、:：]?$/.test(s);
     const bareNo = /^\d{1,2}[.、]?$/.test(s);
-    /* ⅱ.篇级断点：单独成行的「A」「B」「C」也是切点 —— 否则三篇阅读挤在一块请求里，
-       输出一长就把末尾那篇（通常是 C 篇）吃掉，老师看到的就只剩 A、B 两篇。 */
-    const isHead = (SECTION_RE.test(ln) && s.length < 40 && !bareLetter && !bareNo)
-      || (bareLetter && cur.join('\n').trim().length > 320);
-    /* 断块门槛：当前块已有实质内容（原 400 太钝，两小节短文常常各只有 300 字） */
+    const bySec = SECTION_RE.test(ln) && s.length < 40 && !bareLetter && !bareNo;
+    /* 篇级断点：单独成行的「A」「B」「C」也是切点 —— 否则四篇阅读挤在一块请求里，
+       输出一长就把末尾那篇（通常是 C、D 篇）吃掉 */
+    const isHead = bySec || (bareLetter && cur.join('\n').trim().length > 320);
     if (isHead && cur.join('\n').trim().length > 220) {
-      blocks.push(cur.join('\n').trim());
+      raw.push({ text: cur.join('\n').trim(), sec: sec });
       cur = [];
+    }
+    if (bySec) {
+      /* 只认「第X部分」为部分级标题并重置归属；「第X节」是小节，不覆盖 ——
+         否则「听力·第二节」会被当成独立块，白跑一次请求 */
+      if (/第[一二三四五六七八九十]+部分|^Part\s*[ⅠⅡⅢⅣV1-5]/i.test(s)) sec = s;
+      else if (!sec) sec = s;
     }
     cur.push(ln);
   });
-  if (cur.join('\n').trim()) blocks.push(cur.join('\n').trim());
-  /* 切得太碎（>8 块）说明标记识别过度，退回整块 */
-  if (blocks.length > 8 || blocks.length < 2) return [t];
-  /* 保险：任何一块如果短得不像一道题（<60 字），说明切歪了，退回整块
-     宁可让 AI 一次判两种题型，也不要切碎导致内容丢失 */
-  if (blocks.some(function (b) { return b.length < 60; })) return [t];
-  return blocks;
+  if (cur.join('\n').trim()) raw.push({ text: cur.join('\n').trim(), sec: sec });
+  /* 切得太碎说明标记识别过度：平均一块不到 220 字就退回整块 */
+  let sum = 0;
+  raw.forEach(function (b) { sum += b.text.length; });
+  const avg = raw.length ? sum / raw.length : 0;
+  if (raw.length < 2 || avg < 220) return hardPack(t, '');
+  /* 卷首前言（页眉 / 学校名 / 注意事项）不含任何题目，跳过省一次请求。
+     判定：位于所有大题标记之前（sec 为空）且不足 800 字 —— 只跳过第一块，不误伤正文 */
+  const body = raw.filter(function (b, i) { return !(i === 0 && !b.sec && b.text.length < 800); });
+  const list0 = body.length ? body : raw;
+  /* 听力段不解析：讲了也没用、还白白多两次请求。
+     但整卷只剩听力时不能过滤光，否则一篇都出不来 */
+  const kept = list0.filter(function (b) { return !/听力/.test(b.sec); });
+  const list = kept.length ? kept : list0;
+  if (kept.length !== list0.length) console.log('[分批解析] 已跳过听力部分，省下 ' + (list0.length - kept.length) + ' 次请求');
+  /* 最终保险：单块超过 5200 字必然被 max_tokens 截断，就地再切一刀
+     （2026-09-24：整卷 23000 字只切出 1 块 → 一次请求直接截断，
+      D 篇 / 七选五 / 完形 / 语法填空全丢，就是这个兜底缺失导致的） */
+  const out = [];
+  list.forEach(function (b) {
+    if (b.text.length > 5200) {
+      hardSplit(b.text, 3000).forEach(function (x) { out.push({ text: x, sec: b.sec }); });
+    } else out.push(b);
+  });
+  return out;
+}
+
+/* 按字数硬切（优先在换行处断），用于「没认出任何大题标记」的卷子兜底 */
+function hardSplit(text, size) {
+  const lines = String(text || '').split(/\n/);
+  const out = [];
+  let cur = [];
+  lines.forEach(function (ln) {
+    cur.push(ln);
+    if (cur.join('\n').length >= size) { out.push(cur.join('\n').trim()); cur = []; }
+  });
+  if (cur.join('\n').trim()) out.push(cur.join('\n').trim());
+  return out.filter(function (x) { return x.length > 40; });
+}
+function hardPack(t, sec) {
+  return t.length > 6000
+    ? hardSplit(t, 3000).map(function (x) { return { text: x, sec: sec }; })
+    : [{ text: t, sec: sec }];
 }
 
 /* 分块解析：依次请求，任一块失败不拖垮全局（其余块照常出结果） */
 async function parseInChunks(transcript) {
   const chunks = splitTranscript(transcript);
   if (chunks.length === 1) {
-    const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[0]) }], 8192);
+    const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[0].text) }], 8192);
     const d = jsonFromText(raw);
     /* 单块也要盘点：一次请求塞整卷时，末尾题型最容易被吃掉 */
-    return await autoRescueMissing(chunks[0], d);
+    return await autoRescueMissing(chunks[0].text, d);
   }
-  console.log('[分批解析] 共 ' + chunks.length + ' 块：' + chunks.map((c) => c.length + '字').join(' / '));
+  console.log('[分批解析] 共 ' + chunks.length + ' 块：' + chunks.map(function (c) { return c.text.length + '字' + (c.sec ? '（' + c.sec.slice(0, 8) + '）' : ''); }).join(' / '));
   const merged = { title: '', passages: [] };
   const fails = [];
   for (let i = 0; i < chunks.length; i++) {
-    setRunLabel('正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分…');
+    setRunLabel('正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分' + (chunks[i].sec ? '（' + chunks[i].sec.slice(0, 10) + '）' : '') + '…');
     try {
-      const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i]) }], 8192);
+      const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i].text) }], 8192);
       const d = jsonFromText(raw);
       const got = (d && d.passages) || [];
       if (!merged.title && d && d.title) merged.title = d.title;
       got.forEach((p) => merged.passages.push(p));
       /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空会静默消失 */
       if (!got.length) {
-        console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunks[i].slice(0, 80));
-        fails.push({ i: i + 1, why: '没解析出内容', text: chunks[i] });
+        console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunks[i].text.slice(0, 80));
+        fails.push({ i: i + 1, why: '没解析出内容', text: chunks[i].text });
       }
     } catch (err) {
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + err.message);
-      fails.push({ i: i + 1, why: err.message, text: chunks[i] });
+      fails.push({ i: i + 1, why: err.message, text: chunks[i].text });
     }
     if (i < chunks.length - 1) await sleep(300);
   }
