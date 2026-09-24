@@ -1776,10 +1776,31 @@ function jsonFromText(raw) {
 const KIND_EVIDENCE = {
   grammar: [
     /语法\s*填\s*空/, /第二节\s*\S{0,6}语法/, /阅读下面(?:短文|材料|对话)[^。]{0,80}填入(?:适当|1个)/i,
-    /在(?:空白处|空格处)填入(?:适当的|1个)?(?:内容|单词)/, /单词的适当形式/, /括号内单词的适当形式/
+    /在(?:空白处|空格处)填入(?:适当的|1个)?(?:内容|单词)/, /单词的适当形式/, /括号内单词的适当形式/,
+    /* 2026-09-24 补：「在空白处填入 1 个适当的单词或括号内单词的正确形式」——
+       数字和量词之间常常带空格（卷面写「1 个」而不是「1个」），旧正则把「1个」
+       写死了，于是整卷明明有语法填空也盘点不到、缺了也不触发补解析。 */
+    /在(?:空白处|空格处)填入/, /用括号内所给单词的适当形式/, /括号内单词的正确形式/
   ],
-  cloze: [/完\s*形\s*填\s*空/],
-  seven: [/七\s*选\s*五/, /选项中选出.{0,30}最佳选项.{0,60}多余/, /(?:A[～~\-]G|A-G)\s*七个?选项/],
+  cloze: [
+    /完\s*形\s*填\s*空/,
+    /* 2026-09-24 补（这一条是「完形永远不显示」的根因）：
+       新高考卷 —— 包括这份武汉九月调研卷 —— 完形部分【根本不写「完形填空」四个字】，
+       标题只有「第一节 （共15小题；每小题1分）」，后面跟一句指令语。
+       只认「完形填空」的后果：① 题型盘点发现不了完形丢失 ② 补解析永远不触发，
+       表现就是「每次都少一篇完形，且程序一点提示都没有」。
+       下面两条是完形专属措辞 —— 阅读写的是「从每题所给的…选出最佳选项」、
+       没有「填入空白处」，七选五写的是「从短文后的选项中」，都不会误伤。 */
+    /从(?:每题|各题|短文后各题)所给的[^。]{0,40}填入空白处/,
+    /(?:A|Ａ)\s*[、,，]\s*(?:B|Ｂ)\s*[、,，]\s*(?:C|Ｃ)\s*[、,，]\s*(?:D|Ｄ)[^。]{0,30}填入空白处/
+  ],
+  seven: [
+    /七\s*选\s*五/, /选项中选出.{0,30}最佳选项.{0,60}多余/, /(?:A[～~\-]G|A-G)\s*七个?选项/,
+    /* 2026-09-24 补：卷面同样很少写「七选五」，靠指令语认 ——
+       原文常带 OCR 错字（「选出」被认成「迭出」），所以不锁动词，只锁
+       「选项…两项…多余」这个特征 + 「短文后的选项」这个专有说法。 */
+    /选项(?:中|里)[^。]{0,20}两项[^。]{0,10}多余/, /短文后的选项/
+  ],
   /* 写作两类（2026-09-24 起支持讲解）：正则故意写严一点 ——
      阅读理解里出现"这是一篇应用文"不该被当成"缺了一道写作题" */
   appwrite: [
@@ -1810,6 +1831,43 @@ function grammarFingerprint(text) {
   return { nos: nos, hints: hints, holes: holes, phrases: phrases, numbered: numbered };
 }
 
+/* 完形填空的排版指纹 —— 不依赖「完形填空」四个字，靠号段和选项排版认。
+   2026-09-24 新增，原因见上面 KIND_EVIDENCE.cloze 的注释。
+   ① 号段：空号落在 41～55 是完形专属（阅读 21～35、七选五 36～40、语法 56～65）；
+      卷面转写成 ___41___ 或 ______ (41) 都认，写成「41. A. xxx」也认。
+   ② 指令语：只有完形会同时出现「A、B、C、D 四个选项」和「填入空白处」。 */
+function looksLikeClozeText(text) {
+  const t = String(text || '');
+  const holeNos = (t.match(/_{2,}\s*\(?\s*(4[1-9]|5[0-5])\s*\)?/g) || []).length;
+  const optNos = (t.match(/(?:^|\n)\s*(4[1-9]|5[0-5])\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g) || []).length;
+  if (holeNos + optNos >= 3) return true;
+  if (KIND_EVIDENCE.cloze.some(function (re) { return re.test(t); })) return true;
+  return false;
+}
+/* 完形「挖空」的更强证据：短文段落里确实带空（阅读的原文段落没有空） */
+function hasHolesInParas(p) {
+  return ((p && p.paragraphs) || []).some(function (x) {
+    return /_{2,}/.test(String((x && x.en) || ''));
+  });
+}
+/* 排版纠错：模型把完形标成 reading 时，按排版改回来。
+   判据很保守 —— 10 题以上 + 每题都带选项 + 短文里确实挖了空，三者同时成立才动手
+   （阅读一篇最多 5 题；语法填空 options 是空数组；七选五只有 5 题 —— 都不会误伤）。
+   不做这一步的话，「完形被吞进阅读」看起来和「完形丢了」一模一样，很难排查。 */
+function fixKindsByLayout(passages) {
+  (passages || []).forEach(function (p) {
+    if (kindOf(p) !== 'reading') return;
+    const qs = p.questions || [];
+    if (qs.length < 10) return;
+    if (!qs.every(function (q) { return q.options && q.options.length >= 3; })) return;
+    if (!hasHolesInParas(p)) return;
+    p.kind = 'cloze';
+    if (!p.label || /^[A-DＡ-Ｄ]$/.test(String(p.label).trim())) p.label = '完形';
+    console.warn('[排版纠错] 这一篇按排版是完形填空，已从 reading 改正为 cloze');
+  });
+  return passages;
+}
+
 function expectKinds(text) {
   const t = String(text || '');
   const out = {};
@@ -1822,7 +1880,7 @@ function expectKinds(text) {
     /* 空号落在 51～70 是语法填空的专属号段，3 个以上就足够断定 */
     else if (f.numbered >= 3) out.grammar = true;
   }
-  if (KIND_EVIDENCE.cloze.some((re) => re.test(t))) out.cloze = true;
+  if (looksLikeClozeText(t)) out.cloze = true;
   if (KIND_EVIDENCE.seven.some((re) => re.test(t))) out.seven = true;
   /* 写作两类：卷面确实有写作题却解析丢了，也要能提示补回 */
   if (KIND_EVIDENCE.appwrite.some((re) => re.test(t))) out.appwrite = true;
@@ -2094,6 +2152,61 @@ function finishSteps() {
    这就是「明明传了语法填空却只剩阅读」的根因。 */
 const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|(?:[一二三四五六七八九十]+|[ⅠⅡⅢⅣⅤIVX]+)\s*[、.．]\s*(?:完形|七选五|语法|阅读|写作|应用文|短文|听力)|Part\s*[ⅠⅡⅢⅣV1-5](?:\s|$|[、.．])|完形填空|七选五|语法填空|阅读理解|阅读下列短文|阅读\s*[（(]?\s*[A-DＡ-Ｄ]|Reading\s+Comprehension)/i;
 
+/* =========================================================
+   每块转录文本的「题型预判」+ 并发工具
+   ========================================================= */
+/* 分块解析时，先按排版把题型定下来，再在提示词里告诉模型 ——
+   2026-09-24：整卷分块后，完形那块的开头是
+   「第一节 （共15小题；每小题1分）阅读下面短文，从每题所给的 A、B、C、D 四个选项中
+   选出可以填入空白处的最佳选项」，和阅读理解的指令语只差「填入空白处」几个字，
+   模型很容易判成 reading —— 表现就是「传了完形却看不到完形」。
+   这里只对最容易和阅读混淆的三种题型（完形/语法/七选五）下强提示，写作类不下。 */
+const CHUNK_KIND_HINT = {
+  cloze: '本段是**完形填空**：一段文章里挖了若干空，每空给 A/B/C/D 四个词或短语。'
+    + 'kind 必须是 "cloze"，label 用「完形」，questions 的 no 用卷面题号（通常是 41～55）。',
+  grammar: '本段是**语法填空**：一段短文挖了约 10 个空，有的空括号里给了提示词。'
+    + 'kind 必须是 "grammar"，**options 必须是空数组 []**，hint 填括号里的提示词原形。',
+  seven: '本段是**七选五**：文章挖 5 个空，文后给出 A～G 七个选项句。'
+    + 'kind 必须是 "seven"，options 要列出 A～G 全部七句，answer 是选中的那个字母。'
+};
+function guessKindOfChunk(text) {
+  const t = String(text || '');
+  /* 七选五的判据要放在完形前面：七选五的指令语里也有「填入空白处」 */
+  if (/七\s*选\s*五|短文后的选项|选项中(?:有)?(?:两项|2\s*项)(?:是|为)?多余|(?:A[～~\-－]G|A-G)\s*七?个?选项/.test(t)) return 'seven';
+  if (looksLikeClozeText(t)) return 'cloze';
+  if (/语法\s*填\s*空|在(?:空白处|空格处)填入/.test(t)) return 'grammar';
+  return '';
+}
+/* 分块解析用的提示词：通用 PARSE_PROMPT + 本题型的强提示（没预判出来就用通用版） */
+function chunkPromptOf(text) {
+  const base = PARSE_PROMPT.replace('{{TEXT}}', text);
+  const k = guessKindOfChunk(text);
+  if (!k || !CHUNK_KIND_HINT[k]) return base;
+  return base + '\n\n【本次特别要求】上面这段转录文本经程序按排版预判属于「' + kindName(k) + '」。'
+    + CHUNK_KIND_HINT[k] + '（若你通读后证据确实相反，以正文为准。）';
+}
+
+/* 有限并发跑一批任务：整条流水线里「逐张识图」和「逐块解析」是最慢的两段，
+   串行跑一张整卷要六七分钟，而且第一块的耗时后面全在干等。
+   并发跑能把总时长压到 1/2～1/3；免费模型偶发限流由 aiCallRaw 内部轮换 + 重试兜底。 */
+function mapLimited(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const workers = [];
+  const n = Math.max(1, Math.min(limit, items.length));
+  for (let w = 0; w < n; w++) {
+    workers.push((async function () {
+      for (;;) {
+        const i = next++;
+        if (i >= items.length) return;
+        try { out[i] = await fn(items[i], i); }
+        catch (e) { out[i] = { __err: e }; }
+      }
+    })());
+  }
+  return Promise.all(workers).then(function () { return out; });
+}
+
 function splitTranscript(text) {
   const t = String(text || '').trim();
   if (!t) return [];
@@ -2168,38 +2281,109 @@ function hardPack(t, sec) {
     : [{ text: t, sec: sec }];
 }
 
-/* 分块解析：依次请求，任一块失败不拖垮全局（其余块照常出结果） */
+/* =========================================================
+   分块解析的并发度与输出额度
+   ========================================================= */
+/* 解析是整条流水线最慢的一段（9 块串行 = 三四分钟）。并发 3 把总时长压到 1/3 左右。
+   免费档偶发限流由 aiCallRaw 的模型轮换 + 有界重试兜底；若某天高峰频繁「模型繁忙」，
+   把这个数改回 1 就退化成原来的串行行为。 */
+const PARSE_CONC = 3;
+/* 单块给多少输出额度，由块的大小决定 —— 完形块（15 空 × 4 选项 + 每空解析）
+   是全部块里输出最重的一块，固定给 8192 很容易被截断：JSON 尾巴断掉 →
+   整块解析成 0 篇 → 完形填空就这么凭空消失。按字数先给足，也省掉「截断后再重试」的耗时。 */
+function parseBudget(text) {
+  const n = String(text || '').length;
+  if (n > 2200) return 14000;
+  if (n > 1200) return 11000;
+  return 8192;
+}
+/* 解析一块，返回 { d, got } */
+async function parseOneChunk(text) {
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text) }], parseBudget(text));
+  const d = jsonFromText(raw);
+  return { d: d, got: (d && d.passages) || [] };
+}
+
+/* 分块解析：并发请求，任一块失败不拖垮全局（其余块照常出结果）。
+   失败的块会自动再试一轮，不再只弹一个「⚠ 补解析」按钮等人点 ——
+   老师多半看不到那个按钮，整个题型就这么静默没了。 */
 async function parseInChunks(transcript) {
   const chunks = splitTranscript(transcript);
   if (chunks.length === 1) {
-    const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[0].text) }], 8192);
-    const d = jsonFromText(raw);
-    /* 单块也要盘点：一次请求塞整卷时，末尾题型最容易被吃掉 */
-    return await autoRescueMissing(chunks[0].text, d);
-  }
-  console.log('[分批解析] 共 ' + chunks.length + ' 块：' + chunks.map(function (c) { return c.text.length + '字' + (c.sec ? '（' + c.sec.slice(0, 8) + '）' : ''); }).join(' / '));
-  const merged = { title: '', passages: [] };
-  const fails = [];
-  for (let i = 0; i < chunks.length; i++) {
-    setRunLabel('正在解析第 ' + (i + 1) + '/' + chunks.length + ' 部分' + (chunks[i].sec ? '（' + chunks[i].sec.slice(0, 10) + '）' : '') + '…');
-    try {
-      const raw = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', chunks[i].text) }], 8192);
-      const d = jsonFromText(raw);
-      const got = (d && d.passages) || [];
-      if (!merged.title && d && d.title) merged.title = d.title;
-      got.forEach((p) => merged.passages.push(p));
-      /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空会静默消失 */
-      if (!got.length) {
-        console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunks[i].text.slice(0, 80));
-        fails.push({ i: i + 1, why: '没解析出内容', text: chunks[i].text });
-      }
-    } catch (err) {
-      console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + err.message);
-      fails.push({ i: i + 1, why: err.message, text: chunks[i].text });
+    let d = null, err = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await parseOneChunk(chunks[0].text);
+        d = r.d; err = null;
+        if (r.got.length) break;
+      } catch (e) { err = e; d = null; }
+      if (attempt === 0) await sleep(400);
     }
-    if (i < chunks.length - 1) await sleep(300);
+    if (err && !d) throw err;
+    const one = d || { passages: [] };
+    fixKindsByLayout(one.passages);
+    /* 单块也要盘点：一次请求塞整卷时，末尾题型最容易被吃掉 */
+    return await autoRescueMissing(chunks[0].text, one);
+  }
+  console.log('[分批解析] 共 ' + chunks.length + ' 块（并发 ' + PARSE_CONC + '）：'
+    + chunks.map(function (c) { return c.text.length + '字' + (c.sec ? '（' + c.sec.slice(0, 8) + '）' : ''); }).join(' / '));
+  const merged = { title: '', passages: [] };
+  let doneN = 0;
+  const results = await mapLimited(chunks, PARSE_CONC, async function (chunk, i) {
+    try {
+      const r = await parseOneChunk(chunk.text);
+      return { i: i, d: r.d, got: r.got };
+    } catch (e) {
+      return { i: i, err: e, got: [] };
+    } finally {
+      doneN++;
+      setRunLabel('正在解析第 ' + doneN + '/' + chunks.length + ' 部分（并发 ' + PARSE_CONC + '）…');
+    }
+  });
+  /* 按块序合并，保证篇目顺序稳定 */
+  const fails = [];
+  results.forEach(function (r, i) {
+    if (r && r.__err) r = { err: r.__err, got: [] };
+    const chunk = chunks[i];
+    if (!r || r.err) {
+      const why = (r && r.err && r.err.message) || '未知错误';
+      console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + why);
+      fails.push({ i: i + 1, why: why, text: chunk.text });
+      return;
+    }
+    if (r.d && r.d.title && !merged.title) merged.title = r.d.title;
+    /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空/完形会静默消失 */
+    if (!r.got.length) {
+      console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunk.text.slice(0, 80));
+      fails.push({ i: i + 1, why: '没解析出内容', text: chunk.text });
+      return;
+    }
+    r.got.forEach(function (p) { merged.passages.push(p); });
+  });
+  /* 失败的块自动重试一轮（并发 2）—— 完形块输出最重，第一轮偶发截断/超时 */
+  if (fails.length) {
+    console.log('[分批解析] 自动重试 ' + fails.length + ' 个失败块');
+    setRunLabel('有 ' + fails.length + ' 部分没解析出来，正在自动重试…');
+    const again = await mapLimited(fails, 2, async function (f) {
+      try {
+        const r = await parseOneChunk(f.text);
+        return { ok: r.got, d: r.d };
+      } catch (e) { return { ok: [], err: e }; }
+    });
+    const still = [];
+    again.forEach(function (r, i) {
+      if (r && r.ok && r.ok.length) {
+        if (r.d && r.d.title && !merged.title) merged.title = r.d.title;
+        r.ok.forEach(function (p) { merged.passages.push(p); });
+        console.log('[分批解析] 重试成功，补回第 ' + fails[i].i + ' 块（' + r.ok.length + ' 篇）');
+      } else still.push(fails[i]);
+    });
+    fails.length = 0;
+    still.forEach(function (f) { fails.push(f); });
   }
   if (!merged.passages.length) throw new Error('解析结果为空，请重试');
+  /* 先把被标错题型的篇目按排版纠正过来，再做「缺题型」盘点 */
+  fixKindsByLayout(merged.passages);
   /* 有丢块就把「丢的那段原文」留下来，让老师能一键补解析，而不是干瞪眼 */
   merged.__fails = fails;
   if (fails.length) {
@@ -2339,19 +2523,24 @@ async function runPipeline() {
     }
     let reusedPages = 0, redonePages = 0, fellBackPages = 0;
 
-    for (let i = 0; i < order.length; i++) {
-      const fid = order[i];
+    /* 逐张识图改并发（PAGE_CONC = 2）：一份 10 张的卷子串行要两三分钟，
+       并发 2 差不多能省掉一半。结果仍按「页序」收集，顺序不会乱。
+       单张失败时的重试/退避逻辑原样保留（限流要多等一会儿再试）。 */
+    const PAGE_CONC = 2;
+    let pageDone = 0;
+    const outcomes = new Array(order.length);
+    await mapLimited(order, PAGE_CONC, async function (fid, i) {
       const rec = S.pageTexts[fid];
       /* 只认「本引擎」留下的缓存；旧格式（纯字符串）无从判断来源，一并作废重识别 */
       const cacheOk = !!(rec && typeof rec === 'object' && rec.e === S.engine);
       const oldText = (rec && typeof rec === 'object') ? rec.t : (typeof rec === 'string' ? rec : '');
-      if (cacheOk) { texts.push(rec.t); reusedPages++; continue; }
+      if (cacheOk) { outcomes[i] = { text: rec.t, reuse: true }; return; }
       const F = S.files.filter(function (f) { return f.id === fid; })[0];
-      if (!F) { badPages.push(i + 1); continue; }
+      if (!F) { outcomes[i] = { bad: true }; return; }
       let got = '';
       for (let attempt = 0; attempt < PAGE_TRIES && !got; attempt++) {
-        setRunLabel('正在识别第 ' + (i + 1) + '/' + total + ' 张图片'
-          + (attempt ? '（模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
+        setRunLabel('正在识别图片 ' + pageDone + '/' + total
+          + (attempt ? '（第 ' + (i + 1) + ' 张模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
         try {
           /* 从第 2 次起换更小更省的图（大图被网关掐断时，小图往往能过） */
           const url = attempt === 0
@@ -2372,21 +2561,25 @@ async function runPipeline() {
           }
         }
       }
-      if (got) {
-        texts.push(got);
-        S.pageTexts[fid] = { e: S.engine, t: got };   /* 记下是哪个引擎识别的 */
-        redonePages++;
-      } else if (oldText) {
+      if (got) outcomes[i] = { text: got };
+      else if (oldText) outcomes[i] = { text: oldText, fallback: true };
+      else outcomes[i] = { bad: true };
+      pageDone++;
+      setRunLabel('正在识别图片 ' + pageDone + '/' + total + '…');
+    });
+    /* 并发跑完再按页序统一汇总/写缓存，避免多张同时改 S.pageTexts */
+    outcomes.forEach(function (o, i) {
+      if (!o || o.bad) { badPages.push(i + 1); return; }
+      if (o.reuse) { texts.push(o.text); reusedPages++; return; }
+      texts.push(o.text);
+      S.pageTexts[order[i]] = { e: S.engine, t: o.text };   /* 记下是哪个引擎识别的 */
+      if (o.fallback) {
         /* 新引擎这次没读出来（多半是限流），退回旧结果 —— 总比整页内容凭空丢掉强。
            注意不算「失败页」：页面内容还在，不弹那个「这一页没识别出来」的框。 */
-        texts.push(oldText);
-        S.pageTexts[fid] = { e: S.engine, t: oldText };
         fellBackPages++;
         console.warn('[转写] 第 ' + (i + 1) + ' 张新引擎没读出来，回退旧结果');
-      } else {
-        badPages.push(i + 1);
-      }
-    }
+      } else redonePages++;
+    });
     /* 这一批用的是哪个引擎，记下来：下次换了引擎就作废重识别 */
     S.pageTextsEngine = S.engine;
     if (redonePages || fellBackPages) {
