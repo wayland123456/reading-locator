@@ -664,6 +664,15 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell}
   opacity:.5;transition:opacity .18s;
 }
 .pen-bar:hover,.pen-bar.busy{opacity:1}
+/* 拖动手柄：挡住内容时可以整条挪开；touch-action:none 让触摸屏拖动不会顺带滚页面 */
+.pen-bar .grip{
+  cursor:move;display:inline-flex;align-items:center;justify-content:center;
+  min-width:14px;height:24px;margin-right:3px;padding:0 1px;
+  color:var(--text-3,#9aa4b2);font-size:12px;line-height:1;letter-spacing:-1px;
+  user-select:none;-webkit-user-select:none;touch-action:none;opacity:.8;
+}
+.pen-bar .grip:hover{opacity:1;color:var(--brand,#4f46e5)}
+.pen-bar.dragging{opacity:1;transition:none;box-shadow:0 16px 38px rgba(20,30,50,.32)}
 /* 平时只显示图标（窄，少挡内容），鼠标移上去或正在用笔时才展开文字 */
 .pen-bar .lbl{display:none;margin-left:4px}
 .pen-bar:hover .lbl,.pen-bar.busy .lbl{display:inline}
@@ -701,6 +710,27 @@ body.focus #btnExitFs{display:inline-flex}
 .qbtns .qb[data-ansedit]:not(.on):hover{background:var(--primary);border-color:var(--primary);color:#fff}
 .opt.editing{cursor:pointer}
 .opt.editing:hover{box-shadow:inset 0 0 0 1px var(--primary)}
+
+/* ===== 读后续写：情节脉络 + 十句骨架 ===== */
+.wsub{margin:9px 0 5px;font-size:.76rem;font-weight:700;color:var(--text-3,#8a94a6);letter-spacing:.02em}
+.wplot{margin:0;padding-left:20px}
+.wplot li{margin:0 0 5px;font-size:.88rem;line-height:1.7}
+.wkv{display:flex;gap:8px;align-items:flex-start;margin:7px 0;font-size:.86rem;line-height:1.65}
+.wkv b{flex:none;color:var(--brand-d,#4f46e5);font-weight:700}
+.wkv span{color:var(--text-2,#4d5c6d)}
+.wten{display:flex;flex-direction:column;gap:7px}
+.wten-row{display:flex;gap:9px;padding:8px 10px;border-radius:10px;
+  background:var(--panel-2,#f6f7fb);border:1px solid var(--border,#e5e8ef)}
+.wten-row.fixed{background:var(--brand-l,#eef2ff);border-color:var(--brand-b,#c7d2fe)}
+.wten-no{flex:none;width:32px;text-align:center;font-weight:800;font-size:.95rem;color:var(--text,#1f2937)}
+.wten-no i{display:block;margin-top:2px;font-style:normal;font-size:.66rem;font-weight:700;color:var(--brand-d,#4f46e5)}
+.wten-no i.u{color:var(--text-3,#8a94a6)}
+.wten-body{flex:1;min-width:0}
+.wten-role{font-size:.8rem;font-weight:700;color:var(--brand-d,#4f46e5);margin-bottom:2px}
+.wten-row:not(.fixed) .wten-role{color:var(--text-2,#4d5c6d)}
+.wten-c{font-size:.87rem;line-height:1.65}
+.wten-pat{margin-top:3px;font-size:.78rem;color:var(--brand-d,#4f46e5)}
+.wten-tip{margin-top:2px;font-size:.76rem;color:var(--text-3,#8a94a6)}
 </style>
 </head>
 <body class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
@@ -834,6 +864,7 @@ body.focus #btnExitFs{display:inline-flex}
 <!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右下角浮动工具条 -->
 <canvas id="inkCanvas" aria-hidden="true"></canvas>
 <div class="pen-bar" id="penBar">
+  <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到右下角）">⋮⋮</span>
   <button class="pb" data-ink="pen" title="记号笔：红/蓝两色细笔">🖊<span class="lbl">笔</span></button>
   <button class="pb" data-ink="highlight" title="荧光笔：粗、半透明，划句子用">▨<span class="lbl">荧光</span></button>
   <button class="pb" data-ink="erase" title="橡皮擦：擦到哪擦哪，整笔擦净即消失">🧽<span class="lbl">橡皮</span></button>
@@ -1089,6 +1120,8 @@ const PARSE_PROMPT = [
 '      "task": "【写作题专用】卷面上的写作要求/情境，中文原样转录；读后续写则把「原文之后的两段续写开头句」也原样写进来，用换行分隔",',
 '      "points": ["【写作题专用】审题要点，每条一句，如「人称：第一人称 I；时态：一般现在时 + 一般将来时」"],',
 '      "outline": ["【写作题专用】段落框架，每段一条，如「第一段：开门见山说明写信目的，一句话点到活动时间地点」"],',
+'      "plotLine": {"summary": ["【读后续写专用】原文第 1 段大意（中文一句）", "第 2 段大意"], "conflict": "矛盾点在第几段、是什么", "arc": "用一句话把开端→发展→高潮→结局串起来", "openers": ["卷面给的第一段开头句", "卷面给的第二段开头句"]},',
+'      "tenSents": [{"no": 1, "fixed": true, "role": "醒悟", "content": "这一句写什么（中文）", "pattern": "句式公式", "tip": "给学生的一句提示"}],',
 '      "sample": [',
 '        {"en": "参考范文第 1 段英文", "zh": "该段中文翻译"}',
 '      ],',
@@ -1114,7 +1147,14 @@ const PARSE_PROMPT = [
 '9. 若某篇没有配题，questions 给空数组。',
 '10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
 '11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇 —— 应用文约 80 词、读后续写约 150 词，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
-'12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等），outline 写 2～4 条段落框架（每段写什么、怎么衔接）。'
+'12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等），outline 写 2～4 条段落框架（每段写什么、怎么衔接）。',
+'13. **读后续写必须额外填 plotLine 和 tenSents**（这是讲续写的主线，不能省）：',
+'   · plotLine：summary 按原文自然段逐段写中文大意（每段一句）；conflict 点明矛盾点在第几段；',
+'     arc 用一句话串起「开端 → 发展 → 高潮 → 结局」；openers 照抄卷面给的两段开头句。',
+'   · tenSents：固定 10 句。句 1 / 5 / 6 / 9 / 10 是**定句**（fixed = true），功能依次为',
+'     「醒悟（惭愧）」「行动（放下骄傲）」「紧张」「和好」「升华」；句 2 / 3 / 4 / 7 / 8 是**不定句**',
+'     （fixed = false），功能依次为「修复动机」「障碍1（忐忑）」「行动1」「障碍2（冷淡）」「行动2（道歉）」。',
+'     每句都要给 pattern（该句配的句式公式，如「无灵主语：A wave of + 情绪名词 + swept over sb」）。'
 ].join('\n');
 
 /* =========================================================
@@ -2513,6 +2553,12 @@ function normalizePassage(p) {
     task: String(p.task || '').trim(),                              /* 写作要求/情境（中文原样，续写则含两段开头句） */
     points: (p.points || []).map((x) => String(x || '').trim()).filter(Boolean),      /* 审题要点 */
     outline: (p.outline || []).map((x) => String(x || '').trim()).filter(Boolean),    /* 段落框架 */
+    plotLine: p.plotLine && typeof p.plotLine === 'object' ? p.plotLine : null,   /* 情节脉络（续写） */
+    tenSents: (Array.isArray(p.tenSents) ? p.tenSents : []).map((s) => ({        /* 十句骨架（续写） */
+      no: s && s.no, fixed: !!(s && s.fixed),
+      role: String((s && s.role) || '').trim(), content: String((s && s.content) || '').trim(),
+      pattern: String((s && s.pattern) || '').trim(), tip: String((s && s.tip) || '').trim()
+    })).filter((s) => s.content || s.role || s.pattern),
     sample: (p.sample || []).map((x) => ({                          /* 参考范文（逐段 英+中） */
       en: String(x.en || '').trim(),
       zh: String(x.zh || '').trim()
@@ -2920,6 +2966,41 @@ function writeRightHtml(p) {
     html += '<div class="wbox"><h4>写作要求<span class="k">卷面原样</span></h4>'
           + '<div class="wtask">' + esc(p.task).replace(/\n/g, '<br>') + '</div></div>';
   }
+  /* 情节脉络（读后续写专用）：先帮学生把原文故事捋顺，再谈怎么写 */
+  if (isCont && p.plotLine) {
+    const pl = p.plotLine;
+    let ph = '';
+    if (pl.summary && pl.summary.length) {
+      ph += '<div class="wsub">原文脉络</div><ol class="wplot">'
+        + pl.summary.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol>';
+    }
+    if (pl.conflict) ph += '<div class="wkv"><b>矛盾点</b><span>' + esc(pl.conflict) + '</span></div>';
+    if (pl.arc) ph += '<div class="wkv"><b>情节线</b><span>' + esc(pl.arc) + '</span></div>';
+    if (pl.openers && pl.openers.length) {
+      ph += '<div class="wsub">两段段首句</div><ul class="wlist">'
+        + pl.openers.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+    }
+    if (ph) html += '<div class="wbox"><h4>情节脉络<span class="k">先捋顺故事</span></h4>' + ph + '</div>';
+  }
+
+  /* 十句骨架（读后续写专用）：5 个定句 + 5 个不定句，每句挂一个句式 */
+  if (isCont && p.tenSents && p.tenSents.length) {
+    let th = '<div class="wten">';
+    p.tenSents.forEach((s) => {
+      const fx = !!s.fixed;
+      th += '<div class="wten-row' + (fx ? ' fixed' : '') + '">'
+        + '<div class="wten-no">' + esc(s.no == null ? '' : s.no) + (fx ? '<i>定</i>' : '<i class="u">不定</i>') + '</div>'
+        + '<div class="wten-body">'
+        + (s.role ? '<div class="wten-role">' + esc(s.role) + '</div>' : '')
+        + (s.content ? '<div class="wten-c">' + esc(s.content) + '</div>' : '')
+        + (s.pattern ? '<div class="wten-pat">句式：' + esc(s.pattern) + '</div>' : '')
+        + (s.tip ? '<div class="wten-tip">' + esc(s.tip) + '</div>' : '')
+        + '</div></div>';
+    });
+    th += '</div>';
+    html += '<div class="wbox"><h4>十句骨架<span class="k">5 定 + 5 不定 · 每句挂一个句式</span></h4>' + th + '</div>';
+  }
+
   if (p.points.length) {
     html += '<div class="wbox"><h4>审题要点<span class="k">下笔前先定调</span></h4><ul class="wlist">'
           + p.points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
@@ -5175,6 +5256,86 @@ syncZoomUI();
 renderKeyHint();
 paintUser();
 window.addEventListener('beforeunload', save);
+
+/* ===== 记号笔工具条：可拖动 =====
+   工具条固定在右下角，投屏时常常正好压住题目。给它一个手柄，
+   按住就能整条挪走；位置记在本机，下次打开还在原处；双击手柄回到右下角。 */
+function initPenBarDrag() {
+  var bar = document.getElementById('penBar');
+  var grip = document.getElementById('penGrip');
+  if (!bar || !grip) return;
+  var LS = 'reading_locator_penbar_pos';
+  var dragging = false, offX = 0, offY = 0;
+
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  /* 恢复上次位置 */
+  try {
+    var saved = JSON.parse(window.localStorage.getItem(LS) || 'null');
+    if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
+      bar.style.right = 'auto'; bar.style.bottom = 'auto';
+      bar.style.left = saved.left + 'px'; bar.style.top = saved.top + 'px';
+    }
+  } catch (e) {}
+
+  grip.addEventListener('pointerdown', function (ev) {
+    ev.preventDefault(); ev.stopPropagation();
+    var r = bar.getBoundingClientRect();
+    /* 第一次拖：把 right/bottom 换算成 left/top，之后统一用 left/top 定位 */
+    if (!bar.style.left || bar.style.left === 'auto') {
+      bar.style.right = 'auto'; bar.style.bottom = 'auto';
+      bar.style.left = r.left + 'px'; bar.style.top = r.top + 'px';
+    }
+    offX = ev.clientX - r.left;
+    offY = ev.clientY - r.top;
+    dragging = true;
+    bar.classList.add('dragging');
+    try { grip.setPointerCapture(ev.pointerId); } catch (e) {}
+  });
+
+  grip.addEventListener('pointermove', function (ev) {
+    if (!dragging) return;
+    var w = bar.offsetWidth, h = bar.offsetHeight;
+    bar.style.left = clamp(ev.clientX - offX, 4, window.innerWidth - w - 4) + 'px';
+    bar.style.top = clamp(ev.clientY - offY, 4, window.innerHeight - h - 4) + 'px';
+  });
+
+  function endDrag(ev) {
+    if (!dragging) return;
+    dragging = false;
+    bar.classList.remove('dragging');
+    try { grip.releasePointerCapture(ev.pointerId); } catch (e) {}
+    try {
+      var r = bar.getBoundingClientRect();
+      window.localStorage.setItem(LS, JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) }));
+    } catch (e) {}
+  }
+  grip.addEventListener('pointerup', endDrag);
+  grip.addEventListener('pointercancel', endDrag);
+
+  /* 拖出屏幕外（比如换了小显示器）自动拉回来 */
+  window.addEventListener('resize', function () {
+    if (!bar.style.left) return;
+    var r = bar.getBoundingClientRect();
+    if (r.right > window.innerWidth - 2 || r.bottom > window.innerHeight - 2 || r.left < 0 || r.top < 0) {
+      bar.style.left = clamp(r.left, 4, Math.max(4, window.innerWidth - r.width - 4)) + 'px';
+      bar.style.top = clamp(r.top, 4, Math.max(4, window.innerHeight - r.height - 4)) + 'px';
+    }
+  });
+
+  /* 双击手柄 = 复位到默认右下角 */
+  grip.addEventListener('dblclick', function (ev) {
+    ev.stopPropagation();
+    bar.style.left = ''; bar.style.top = '';
+    bar.style.right = ''; bar.style.bottom = '';
+    try { window.localStorage.removeItem(LS); } catch (e) {}
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPenBarDrag);
+} else {
+  initPenBarDrag();
+}
 </script>
 </body>
 </html>
