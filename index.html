@@ -26,6 +26,8 @@
   --ok-soft:#e7f7ee;
   --err:#d64545;
   --fs:1;
+  /* 课堂整页缩放：后排看不清 / 投屏时把内容整体放大（--fs 只管文字，这个连排版一起放大） */
+  --zoom:1;
   --radius:10px;
   --shadow:0 1px 3px rgba(24,44,72,.07), 0 6px 20px rgba(24,44,72,.06);
 }
@@ -116,7 +118,10 @@ input,select,textarea{font-family:inherit;color:inherit}
 
 /* ---------------- 主体 ---------------- */
 .main{height:calc(100vh - 92px);overflow:hidden;position:relative}
-#content{height:100%;overflow:hidden;display:flex}
+/* 整页缩放只作用在内容区：工具条 / 题目导航在 .main 之外，保持原大小不跟着变大。
+   高度就写 100% 即可 —— 实测在 zoom 之下，元素自身的高度会被当成【视觉高度】直接生效，
+   若再除一次 --zoom 会小掉一个倍率，屏幕下方留出一大片空白。 */
+#content{height:100%;overflow:hidden;display:flex;zoom:var(--zoom)}
 
 .pane{height:100%;overflow-y:auto;padding:18px 20px 80px;scroll-behavior:smooth}
 .pane-left{flex:1 1 52%;min-width:280px;background:var(--panel)}
@@ -679,6 +684,15 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell}
 .pen-bar .dot[data-ink-color="red"]{background:#e23b3b}
 .pen-bar .dot[data-ink-color="blue"]{background:#2b5fa8}
 .pen-bar .dot[data-ink-color="yellow"]{background:#ffd640}
+/* 整页缩放读数：点一下复位 100% */
+.pen-bar .zoom-pct{
+  font-family:inherit;font-size:.78rem;font-weight:800;color:var(--text-2);
+  min-width:62px;text-align:center;padding:6px 7px;border-radius:9px;
+  background:var(--panel-2);border:1px solid var(--border);cursor:pointer;
+  font-variant-numeric:tabular-nums;white-space:nowrap;transition:.14s;
+}
+.pen-bar .zoom-pct:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.pen-bar .zoom-pct.max{background:#fff4e5;border-color:#f0d49a;color:#a9741a}
 #btnExitFs{display:none}
 body.focus #btnExitFs{display:inline-flex}
 
@@ -717,7 +731,7 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="logo" data-page-node-id="pvYxCJFogItWDyLbqqEDm0">📖</span>
   <span class="brand" data-page-node-id="C7e13Ab8YDj7bAysRD8xlv">英语阅读讲解器</span>
   <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题" data-page-node-id="LcwYz6p0tdzQQdwDyKUy6y">
-  <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi">点题目定位 · 双击原文可改 · 每题可改对应句</span>
+  <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi">点题目定位 · 双击原文可改 · 后排看不清就 Ctrl＋滚轮放大整页</span>
   <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
   <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
   <select class="tb-sel" id="modelSelTop" title="解析引擎" data-page-node-id="Relsu60R5Ns09B4jBrkqkB">
@@ -829,8 +843,14 @@ body.focus #btnExitFs{display:inline-flex}
   <button class="dot" data-ink-color="blue" title="蓝色"></button>
   <button class="dot" data-ink-color="yellow" title="黄色（荧光笔色）"></button>
   <span class="sep"></span>
-  <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏">⛶<span class="lbl">全屏</span></button>
+  <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏（进去后右下角可以整页放大）">⛶<span class="lbl">全屏</span></button>
   <button class="pb" id="btnExitFs" title="退出全屏（ESC 也行）">✕<span class="lbl">退出全屏</span></button>
+  <span class="sep"></span>
+  <!-- 整页缩放：后排看不清时把内容整体放大（文字 + 排版一起大）。
+       全屏下顶栏是收起的，所以这一组必须留在悬浮条上，鼠标/触摸/键盘都能调。 -->
+  <button class="pb" id="btnZoomOut" title="整页缩小（Ctrl + 滚轮 / 双指内捏）">−<span class="lbl">缩小</span></button>
+  <button class="zoom-pct" id="zoomPct" title="当前整页缩放比例，点一下复位到 100%">🔍 100%</button>
+  <button class="pb" id="btnZoomIn" title="整页放大，后排也看得清（Ctrl + 滚轮 / 双指外拨）">＋<span class="lbl">放大</span></button>
 </div>
 
 <div class="qnav" id="qnav" data-page-node-id="vGCKOiNwgZHDiPSnHKamG6">
@@ -1283,6 +1303,7 @@ const S = {
   activeQ: null,
   picking: null,     // {pi, qi} 正在为该题指定对应句
   fs: 1,
+  zoom: 1,           // 整页缩放（后排看不清时用；和 fs 只管文字不同，这个是连排版一起放大）
   showZh: false,
   files: [],         // {id, name, dataUrl}  —— 只用于缩略图显示
   /* 本次上传的图片「页序」（存 id，不存对象）：
@@ -1293,6 +1314,12 @@ const S = {
      用途：某一张因模型限流失败时，点重试只重跑失败的那张，
      已经识别成功的直接复用（整卷重跑又慢、又容易被限流再打断一次）。 */
   pageTexts: {},
+  /* pageTexts 里每一页的文字是**哪个引擎**识别的。换了引擎就作废重识别，
+     否则「经济 → 标准 max」这种升级会静默复用旧模型的识别结果。 */
+  pageTextsEngine: '',
+  /* 最近一次识别出来的整卷文字（只存内存，不写缓存）。
+     图片解析完会被清掉，留一份文字是为了支持「换模型重新解析一遍」不用重拍照。 */
+  lastTranscript: '',
 };
 
 const $  = (s, r) => (r || document).querySelector(s);
@@ -2182,7 +2209,23 @@ function stopRunClock() {
 }
 
 async function runPipeline() {
-  if (!S.files.length) return;
+  if (!S.files.length) {
+    /* 解析成功后图片会被清空。老师这时改了引擎想再跑一遍，点「开始解析」以前是
+       静默什么都不做 —— 看着就像"程序卡住了"。这里必须说清楚能做什么。 */
+    if (S.lastTranscript) {
+      showNotice('这份卷子的<b>图片已经清空了</b>（识别成功后就不再留着）。'
+        + '<div class="sub">· 只是想<b>换个模型重新解析文字</b>：点下面的按钮，用当前「'
+        + esc(ENGINES[S.engine].label) + '」把刚才那份文字重跑一遍，不用重新拍照。<br>'
+        + '· 想<b>换识图模型重新认字</b>：得点顶栏「＋ 上传图片」把照片再传一次。</div>',
+        'warn', '用「' + ENGINES[S.engine].label + '」重新解析文字',
+        () => { hideNotice(); runFromTextCore(S.lastTranscript, S.title); });
+    } else {
+      showNotice('还没有可识别的图片。'
+        + '<div class="sub">把试卷拍照或截图拖进来，或点顶栏「＋ 上传图片」；'
+        + '有电子版的话点「📄 上传文档」更省事。</div>', 'warn');
+    }
+    return;
+  }
   $('#btnRun').disabled = true;
   $('#btnClear').disabled = true;
   progressState = { show: true, done: [], active: 0 };
@@ -2205,10 +2248,24 @@ async function runPipeline() {
     if (!S.pageOrder || !S.pageOrder.length) S.pageOrder = S.files.map(function (f) { return f.id; });
     const order = S.pageOrder.slice();
     const total = order.length;
+
+    /* ⚠️ 转写缓存必须连着「是哪个引擎识别的」一起记。
+       以前只存文字，老师把引擎从「经济」换成「标准·VL-Max」再跑一次时，
+       程序会直接复用旧模型识别出来的文字、新模型根本没看图片 ——
+       表现就是「改了引擎、等了半天，网页还是老样子」。 */
+    const engineChanged = !!S.pageTextsEngine && S.pageTextsEngine !== S.engine;
+    if (engineChanged) {
+      toast('已换用「' + ENGINES[S.engine].label + '」，这次会重新识别图片（不再沿用旧结果）');
+    }
+    let reusedPages = 0, redonePages = 0, fellBackPages = 0;
+
     for (let i = 0; i < order.length; i++) {
       const fid = order[i];
-      /* 上一轮已经识别成功的这一张直接复用（重试失败页时不用把整卷重跑一遍） */
-      if (S.pageTexts[fid]) { texts.push(S.pageTexts[fid]); continue; }
+      const rec = S.pageTexts[fid];
+      /* 只认「本引擎」留下的缓存；旧格式（纯字符串）无从判断来源，一并作废重识别 */
+      const cacheOk = !!(rec && typeof rec === 'object' && rec.e === S.engine);
+      const oldText = (rec && typeof rec === 'object') ? rec.t : (typeof rec === 'string' ? rec : '');
+      if (cacheOk) { texts.push(rec.t); reusedPages++; continue; }
       const F = S.files.filter(function (f) { return f.id === fid; })[0];
       if (!F) { badPages.push(i + 1); continue; }
       let got = '';
@@ -2235,8 +2292,26 @@ async function runPipeline() {
           }
         }
       }
-      if (got) { texts.push(got); S.pageTexts[fid] = got; }
-      else badPages.push(i + 1);
+      if (got) {
+        texts.push(got);
+        S.pageTexts[fid] = { e: S.engine, t: got };   /* 记下是哪个引擎识别的 */
+        redonePages++;
+      } else if (oldText) {
+        /* 新引擎这次没读出来（多半是限流），退回旧结果 —— 总比整页内容凭空丢掉强。
+           注意不算「失败页」：页面内容还在，不弹那个「这一页没识别出来」的框。 */
+        texts.push(oldText);
+        S.pageTexts[fid] = { e: S.engine, t: oldText };
+        fellBackPages++;
+        console.warn('[转写] 第 ' + (i + 1) + ' 张新引擎没读出来，回退旧结果');
+      } else {
+        badPages.push(i + 1);
+      }
+    }
+    /* 这一批用的是哪个引擎，记下来：下次换了引擎就作废重识别 */
+    S.pageTextsEngine = S.engine;
+    if (redonePages || fellBackPages) {
+      console.log('[转写] 重新识别 ' + redonePages + ' 张，复用 ' + reusedPages + ' 张'
+        + (fellBackPages ? '，回退旧结果 ' + fellBackPages + ' 张' : ''));
     }
     if (!texts.length) {
       /* 一张都没成功 → 常驻面板，把原因说清楚并给重试入口 */
@@ -2266,6 +2341,10 @@ async function runPipeline() {
 
     /* --- 2~4. 结构化解析（整卷自动分批，避免输出被截断丢题型） --- */
     const transcript = texts.join('\n\n');
+    /* 留一份转写原文（只存内存、不写缓存，省得撑爆 localStorage）：
+       图片在解析成功后会被清掉，老师事后想「换更好的模型重新解析一遍」时，
+       还能靠它跳过识图直接把文字重跑一次，不用重新拍照。 */
+    S.lastTranscript = transcript;
     setStep(2);
     const data = await parseInChunks(transcript);
 
@@ -2308,7 +2387,7 @@ async function runPipeline() {
     stopRunClock();
     $('#btnRun').disabled = false;
     $('#btnClear').disabled = false;
-    $('#topHint').textContent = '点题目定位 · 双击原文可改 · 每题可改对应句';
+    $('#topHint').textContent = '点题目定位 · 双击原文可改 · 后排看不清就 Ctrl＋滚轮放大整页';
   }
 }
 
@@ -3246,12 +3325,19 @@ function focusEvidence(flash, qNo) {
 /* 把元素滚到所在栏的 ratio 高度处（默认偏上 1/3）。
    距离超过一屏半就直接到位：长距离慢慢滑，投影上要滑一两秒、学生中途看不到落点，
    这才是"不自然"的来源；近距离（同一段附近微调）才用平滑，手感顺。 */
+/* 元素相对所在栏顶部的偏移，单位统一成【布局像素】。
+   ⚠️ 整页缩放打开后 getBoundingClientRect() 给的是视觉像素（已乘 zoom），
+   而 pane.scrollTop / clientHeight / scrollHeight 是布局像素（未乘 zoom）。
+   不除这个 zoom，倍率一开大落点就偏得离谱（实测 150% 时偏出 1 屏、200% 时偏出 3 屏）。 */
+function layoutDelta(el, pane) {
+  const z = (S && S.zoom) || 1;
+  return (el.getBoundingClientRect().top - pane.getBoundingClientRect().top) / z;
+}
+
 function scrollPaneTo(el, ratio) {
   const pane = el.closest('.pane');
   if (!pane) return;
-  const pr = pane.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
-  const want = pane.scrollTop + (r.top - pr.top) - pane.clientHeight * (ratio == null ? 0.32 : ratio);
+  const want = pane.scrollTop + layoutDelta(el, pane) - pane.clientHeight * (ratio == null ? 0.32 : ratio);
   const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
   const top = Math.max(0, Math.min(max, want));
   const dist = Math.abs(top - pane.scrollTop);
@@ -3274,7 +3360,9 @@ function alignPaneMin(el) {
   const pr = pane.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   if (r.top >= pr.top + 6 && r.bottom <= pr.bottom - 6) return;
-  const want = pane.scrollTop + (r.top - pr.top) - 54;
+  /* 同样要换算回布局像素（见 layoutDelta 的说明） */
+  const z = (S && S.zoom) || 1;
+  const want = pane.scrollTop + (r.top - pr.top) / z - 54;
   const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
   const top = Math.max(0, Math.min(max, want));
   pane.style.scrollBehavior = 'auto';
@@ -3440,7 +3528,10 @@ async function addFiles(fileList) {
   if (!arr.length) { toast('请选择图片文件', 'err'); return; }
   /* 图片列表是空的 → 老师开始传一份新卷子：把上一份的页序和转写缓存清掉，
      否则新卷子会把上一份识别过的文字也拼进去 */
-  if (!S.files.length) { S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; }
+  if (!S.files.length) {
+    S.pageOrder = []; S.pageTexts = {}; S.pageTextsEngine = ''; S._badFileIds = [];
+    S.lastTranscript = '';   /* 换了新卷子，上一份的转写文字不能再拿去重解析 */
+  }
   /* 已经有了一份讲解结果时再传新图：必须把上传覆盖层显示出来。
      否则 emptyState 一有结果就被隐藏，缩略图和「开始解析」按钮都在它里面、
      老师传了图却看不到任何变化，页面上一直是上次的旧结果 ——
@@ -3877,7 +3968,7 @@ $('#thumbs').addEventListener('click', (e) => {
 });
 
 $('#btnClear').addEventListener('click', () => {
-  S.files = []; S.pageOrder = []; S.pageTexts = {}; S._badFileIds = []; renderThumbs();
+  S.files = []; S.pageOrder = []; S.pageTexts = {}; S.pageTextsEngine = ''; S._badFileIds = []; S.lastTranscript = ''; renderThumbs();
 });
 
 /* 「返回当前讲解」：老师传了新图又改变主意，点它收起上传覆盖层、回到原结果 */
@@ -4077,7 +4168,7 @@ function cacheKey() {
 function save() {
   try {
     localStorage.setItem(cacheKey(), JSON.stringify({
-      title: S.title, engine: S.engine, fs: S.fs, showZh: S.showZh, view: S.view,
+      title: S.title, engine: S.engine, fs: S.fs, zoom: S.zoom, showZh: S.showZh, view: S.view,
       cur: S.cur, activeQ: S.activeQ, passages: cleanPassages()
     }));
   } catch (e) { /* 超配额忽略 */ }
@@ -4094,6 +4185,9 @@ function restore() {
     S.passages = mergeSameKind(d.passages.map(normalizePassage));
     S.title = d.title || '';
     S.fs = d.fs || 1;
+    /* 整页缩放也一起还原：上次调到 150% 的班，下次打开还是 150%，不用每节课重调 */
+    S.zoom = (typeof d.zoom === 'number' && d.zoom >= PAGE_ZOOM.min && d.zoom <= PAGE_ZOOM.max)
+      ? zoomRound(d.zoom) : 1;
     S.showZh = !!d.showZh;
     S.engine = ENGINES[d.engine] ? d.engine : 'free';
     $('#modelSel').value = S.engine;
@@ -4849,7 +4943,8 @@ if (inkCv && inkCtx) {
     for (let i = 0; i < ps.length; i++) {
       const r = ps[i].getBoundingClientRect();
       if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-        ps[i].scrollTop += e.deltaY;
+        /* 滚轮 deltaY 是视觉像素，scrollTop 是布局像素 —— 开了整页缩放要除回来 */
+        ps[i].scrollTop += e.deltaY / ((S && S.zoom) || 1);
         e.preventDefault();
         return;
       }
@@ -4864,7 +4959,8 @@ if (inkCv && inkCtx) {
     const idx = inkPanes().indexOf(el);
     if (idx < 0) return;
     const prev = (INK.tops[idx] == null) ? el.scrollTop : INK.tops[idx];
-    const d = el.scrollTop - prev;
+    /* scrollTop 是布局像素，画布是视觉像素 —— 缩放开着时要乘上倍率，笔迹才不会跟原文脱开 */
+    const d = (el.scrollTop - prev) * ((S && S.zoom) || 1);
     INK.tops[idx] = el.scrollTop;
     if (!d) return;
     INK.strokes.forEach(function (s) {
@@ -4933,9 +5029,149 @@ document.addEventListener('fullscreenchange', syncFullscreenClass);
 document.addEventListener('webkitfullscreenchange', syncFullscreenClass);
 
 /* =========================================================
+   整页缩放（后排看不清 / 投屏时用）
+   ------------------------------------------------------------------
+   和顶栏的 A＋ / A－ 分工不同：
+     · A＋ / A－  只放大文字（--fs），排版不变，正常讲解用；
+     · 这里整页缩放（--zoom），文字和排版一起变大，后排看不清时用。
+   四种操作方式都通：工具条按钮、Ctrl + 滚轮、Ctrl + ＋/－、触摸屏双指外拨/内捏。
+   ========================================================= */
+const PAGE_ZOOM = { min: 0.7, max: 2.6, step: 0.1 };
+let zoomToastTimer = null;
+
+/* 数字取整到 1 位小数，避免 0.1 累加浮点误差（1.2000000000000002 这种） */
+function zoomRound(v) { return Math.round(v * 100) / 100; }
+
+function setPageZoom(v, opts) {
+  const o = opts || {};
+  const next = Math.min(PAGE_ZOOM.max, Math.max(PAGE_ZOOM.min, zoomRound(v)));
+  const changed = next !== S.zoom;
+  S.zoom = next;
+  applyPageZoom();
+  syncZoomUI();
+  if (changed && !o.silent) {
+    /* 连续调整（滚轮 / 双指）时不要刷屏，用一个短节流的 toast */
+    if (zoomToastTimer) clearTimeout(zoomToastTimer);
+    zoomToastTimer = setTimeout(function () {
+      const pct = Math.round(S.zoom * 100);
+      if (pct >= 250) toast('已放到最大 ' + pct + '%（再大内容会换行，反而不好读）');
+      else if (pct <= 70) toast('已缩到最小 ' + pct + '%');
+      else toast('整页 ' + pct + '%');
+    }, 260);
+  }
+  if (o.save !== false) save();
+  return changed;
+}
+function stepPageZoom(dir) { return setPageZoom(S.zoom + dir * PAGE_ZOOM.step); }
+
+function applyPageZoom() {
+  document.documentElement.style.setProperty('--zoom', S.zoom);
+  /* 内容整体动了，之前画在画布上的笔迹坐标就对不上了 —— 和全屏切换同一个处理：清掉重画。
+     老师是在调好大小之后才开始标注的，所以这里清屏不会打断上课节奏。 */
+  if (typeof clearInk === 'function') clearInk();
+  if (typeof fitInk === 'function') { setTimeout(fitInk, 60); setTimeout(fitInk, 260); }
+}
+function syncZoomUI() {
+  const el = document.getElementById('zoomPct');
+  if (!el) return;
+  const pct = Math.round(S.zoom * 100);
+  el.textContent = '🔍 ' + pct + '%';
+  el.classList.toggle('max', pct >= 250);
+  const out = document.getElementById('btnZoomOut');
+  const inB = document.getElementById('btnZoomIn');
+  if (out) out.disabled = S.zoom <= PAGE_ZOOM.min;
+  if (inB) inB.disabled = S.zoom >= PAGE_ZOOM.max;
+}
+
+(function wirePageZoom() {
+  const bar = document.getElementById('penBar');
+  if (bar) {
+    bar.addEventListener('click', function (e) {
+      if (e.target.closest('#btnZoomIn'))  { stepPageZoom(1);  return; }
+      if (e.target.closest('#btnZoomOut')) { stepPageZoom(-1); return; }
+      if (e.target.closest('#zoomPct')) {
+        if (S.zoom === 1) { toast('已经是 100%'); return; }
+        setPageZoom(1);
+        toast('整页缩放已复位 100%', 'ok');
+        return;
+      }
+    });
+  }
+
+  /* Ctrl + 滚轮 / 触控板双指滑动 / 触摸屏双指外拨（Chromium 都会派发 ctrlKey 的 wheel）。
+     捕获阶段先处理，免得被画布那个"把滚轮转发给原文栏"的逻辑吃掉。
+
+     ⚠️ 这里必须「攒够滚动量再走一步」：鼠标滚轮一格是 ±100，而触控板和触摸屏
+     一次手势会连发几十个 ±1～±8 的小 delta。若按每个事件各走一步，
+     双指外拨会在半秒内冲到最大倍率，完全没法微调。 */
+  let zoomAccum = 0;
+  const ACCUM_PX = 100;    /* 攒够 100 的滚动量走一步（≈ 鼠标滚轮一格） */
+  const ACCUM_STEP = 0.08; /* 每步 8% */
+  document.addEventListener('wheel', function (e) {
+    if (!e.ctrlKey) return;
+    /* 只在教室讲解场景（全屏 或 已经有内容）里接管，上传页 / 弹窗里不抢浏览器的缩放 */
+    if (!isFullscreen() && !S.passages.length) return;
+    if (document.getElementById('modal').classList.contains('on')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    /* deltaY < 0 = 往外拨 / 往上滚 = 放大 */
+    zoomAccum += -e.deltaY;
+    let guard = 0;
+    while (Math.abs(zoomAccum) >= ACCUM_PX && guard++ < 8) {
+      const dir = zoomAccum > 0 ? 1 : -1;
+      setPageZoom(S.zoom + dir * ACCUM_STEP);
+      zoomAccum -= dir * ACCUM_PX;
+      /* 到顶/到底了就把余量清掉，免得反方向时要先"还债" */
+      if (S.zoom <= PAGE_ZOOM.min || S.zoom >= PAGE_ZOOM.max) { zoomAccum = 0; break; }
+    }
+  }, { passive: false, capture: true });
+
+  /* 键盘：Ctrl + ＋ / － / 0 —— 讲台上用键盘最稳 */
+  document.addEventListener('keydown', function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || (e.target && e.target.isContentEditable)) return;
+    if (document.getElementById('modal').classList.contains('on')) return;
+    /* 主键盘 = / 数字键盘 + / 以及带 Shift 的加号都要认 */
+    const k = e.key;
+    if (k === '=' || k === '+' || e.code === 'NumpadAdd') { e.preventDefault(); stepPageZoom(1); return; }
+    if (k === '-' || k === '_' || e.code === 'NumpadSubtract') { e.preventDefault(); stepPageZoom(-1); return; }
+    if (k === '0' || e.code === 'Numpad0') {
+      e.preventDefault();
+      setPageZoom(1);
+      toast('整页缩放已复位 100%', 'ok');
+    }
+  });
+
+  /* 触摸屏（希沃一体机）双指外拨/内捏 —— 有些环境不派发 ctrl+wheel，这里兜一手 */
+  let pinch = null;
+  function touchDist(t) {
+    return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  }
+  document.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 2) { pinch = null; return; }
+    if (document.getElementById('modal').classList.contains('on')) { pinch = null; return; }
+    pinch = { d0: touchDist(e.touches), z0: S.zoom };
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!pinch || e.touches.length !== 2) return;
+    const d = touchDist(e.touches);
+    if (!pinch.d0) return;
+    e.preventDefault();
+    setPageZoom(pinch.z0 * (d / pinch.d0));
+  }, { passive: false });
+  document.addEventListener('touchend', function (e) {
+    if (e.touches.length < 2) pinch = null;
+  });
+})();
+
+/* =========================================================
    启动
    ========================================================= */
 restore();
+/* 整页缩放：把恢复出来的比例真正应用到页面上（restore 里只恢复数值） */
+applyPageZoom();
+syncZoomUI();
 renderKeyHint();
 paintUser();
 window.addEventListener('beforeunload', save);
