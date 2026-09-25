@@ -1930,6 +1930,14 @@ function rescuePrompt(kind, seg) {
     + '\n只输出 ' + name + ' 这一项，不要输出其他题型的 passages。';
 }
 
+/* 补解析一次。额度用 parseBudget 按段长度给 —— 原来写死 8192，
+   而完形这种大题输出要两万字符，必然被截断，补解析自然次次失败。 */
+async function rescueOne(kind, seg) {
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(kind, seg) }], parseBudget(seg));
+  const d = jsonFromText(raw);
+  return (d && d.passages) || [];
+}
+
 /* 解析完盘点：少了哪种题型就单独补解析，全程自动 */
 async function autoRescueMissing(transcript, data) {
   const expected = expectKinds(transcript);
@@ -1945,19 +1953,30 @@ async function autoRescueMissing(transcript, data) {
     const seg = extractKindSegment(transcript, k);
     if (!seg) { stillMissing.push(k); continue; }
     setRunLabel('' + kindName(k) + '没解析出来，正在单独补解析…');
+    let got = [];
     try {
-      const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(k, seg) }], 8192);
-      const d = jsonFromText(raw);
-      const got = (d && d.passages) || [];
-      if (got.length) {
-        got.forEach(function (p) { data.passages.push(p); });
-        rescued.push(k);
-        console.log('[题型盘点] 已补回 ' + kindName(k) + '：' + got.length + ' 篇');
-      } else {
-        stillMissing.push(k);
+      got = await rescueOne(k, seg);
+      /* 整段补不出来（多半是输出太长被截断）→ 按题号拆开、逐份补，最后合并。
+         完形 15 空一次要吐两万字符，超出免费模型上限，不拆必然失败。 */
+      if (!got.length && (k === 'cloze' || k === 'grammar')) {
+        const parts = splitBigExercise(seg);
+        if (parts) {
+          setRunLabel('' + kindName(k) + '内容较长，改成拆开分段补解析…');
+          for (let j = 0; j < parts.length; j++) {
+            const sub = await rescueOne(k, parts[j]);
+            if (sub.length) got = got.concat(sub);
+            if (j < parts.length - 1) await sleep(200);
+          }
+        }
       }
     } catch (err) {
       console.warn('[题型盘点] 补解析 ' + kindName(k) + ' 失败：' + err.message);
+    }
+    if (got.length) {
+      got.forEach(function (p) { data.passages.push(p); });
+      rescued.push(k);
+      console.log('[题型盘点] 已补回 ' + kindName(k) + '：' + got.length + ' 篇');
+    } else {
       stillMissing.push(k);
     }
     await sleep(200);
@@ -1987,15 +2006,17 @@ function showMissingKindsModal(missing) {
     const h = document.createElement('div');
     h.style.cssText = 'font-size:.9rem;line-height:1.9;margin-bottom:12px';
     h.innerHTML = '这份卷子里识别出 <b style="color:#c0392b">' + missing.map(kindName).join('、')
-      + '</b> 的字样，但没能解析成题目。<br>程序已经单独重试过一次，还是没成功。';
+      + '</b> 的内容（文字已经认出来了），但没能整理成题目。<br>'
+      + '程序已经单独重试过，完形 / 语法这类大题还会拆开分段重试，仍然没成功。';
     box.appendChild(h);
     const p = document.createElement('div');
     p.style.cssText = 'font-size:.84rem;line-height:1.9;color:#555';
-    p.innerHTML = '<b>最可能的原因</b>：这一部分的图片没拍全、拍糊了，或者根本没传进来。<br><br>'
+    p.innerHTML = '<b>最可能的原因</b>：这一大题的输出最长（完形 15 空、语法 10 空要逐个写选项和解析），'
+      + '免费模型写到一半超时或被截断 —— 不是图片的问题；少数情况才是这一页拍糊了、没拍全。<br><br>'
       + '<b>怎么办（任选一个）</b>：<br>'
-      + '① 把这一页单独拍一张清楚的照片，重新上传<br>'
-      + '② 点右上角橙色 <b>⚠ 补解析</b> 按钮再试一次<br>'
-      + '③ 点右上角的 <b>📄</b>（粘贴试卷文本），把这部分文字粘进去直接解析';
+      + '① 点右上角橙色 <b>⚠ 补解析</b> 再试一次（模型不忙的时段成功率更高）<br>'
+      + '② 点右上角的 <b>📄</b>（粘贴试卷文本），把这部分文字粘进去直接解析<br>'
+      + '③ 把这一页单独拍一张清楚的照片，重新上传';
     box.appendChild(p);
   });
 }
@@ -2263,6 +2284,52 @@ function splitTranscript(text) {
   return out;
 }
 
+/* =========================================================
+   大题再细分
+   ========================================================= */
+/* 实测（2026-09-24 真实接口跑武汉九调）：
+   完形 15 空一次写完需要 2 万字符以上的输出，而免费档 glm 的输出上限约 13000 字符
+   （≈8192 token）—— 必然被截断，JSON 尾巴断掉 → 整块解析成 0 篇 → 完形永远出不来。
+   折半成 8 题实测也要 13083 字符，**刚好卡在截断线上**（耗时 82 秒，finish=length），同样失败。
+   所以这里按 6 题一份切：单份输出约 9 千字符，能稳定写完。
+   每份都带上完整短文（合并时 uniqParas 自动去掉重复的短文，题号也不会重复）。
+   这是「完形块反复解析不出来」的根治办法。 */
+const EXERCISE_PER_CHUNK = 6;
+function splitBigExercise(text) {
+  const t = String(text || '');
+  /* 题目行的起点：独立成行的「41. A.」 */
+  const re = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
+  const marks = []; let m;
+  while ((m = re.exec(t))) marks.push(m.index);
+  if (marks.length < EXERCISE_PER_CHUNK + 1) return null;
+  const body = t.slice(0, marks[0]).trim();
+  /* 题干太短说明切出来的不是题目列表，别乱动 */
+  if (body.length < 120) return null;
+  const out = [];
+  for (let i = 0; i < marks.length; i += EXERCISE_PER_CHUNK) {
+    const to = i + EXERCISE_PER_CHUNK < marks.length ? marks[i + EXERCISE_PER_CHUNK] : t.length;
+    const seg = t.slice(marks[i], to).trim();
+    if (seg) out.push(body + '\n\n' + seg);
+  }
+  return out.length > 1 ? out : null;
+}
+/* 只对「完形 / 语法填空」这类一道大题装很多空、输出特别长的块做细分 */
+function expandBigChunks(list) {
+  const out = [];
+  (list || []).forEach(function (b) {
+    const k = guessKindOfChunk(b.text);
+    if (k === 'cloze' || k === 'grammar') {
+      const parts = splitBigExercise(b.text);
+      if (parts) {
+        parts.forEach(function (x) { out.push({ text: x, sec: b.sec }); });
+        return;
+      }
+    }
+    out.push(b);
+  });
+  return out;
+}
+
 /* 按字数硬切（优先在换行处断），用于「没认出任何大题标记」的卷子兜底 */
 function hardSplit(text, size) {
   const lines = String(text || '').split(/\n/);
@@ -2308,7 +2375,9 @@ async function parseOneChunk(text) {
    失败的块会自动再试一轮，不再只弹一个「⚠ 补解析」按钮等人点 ——
    老师多半看不到那个按钮，整个题型就这么静默没了。 */
 async function parseInChunks(transcript) {
-  const chunks = splitTranscript(transcript);
+  /* 先按大题切块，再把完形/语法这类「一道题装很多空」的块按 6 题一份细分 ——
+     否则单块输出必然超过模型上限被截断（详见 splitBigExercise 注释） */
+  const chunks = expandBigChunks(splitTranscript(transcript));
   if (chunks.length === 1) {
     let d = null, err = null;
     for (let attempt = 0; attempt < 2; attempt++) {
