@@ -1919,13 +1919,33 @@ function extractKindSegment(text, kind) {
 /* 补解析时加的强约束：这段只有某一种题型，别再判错 */
 function rescuePrompt(kind, seg) {
   const name = kindName(kind);
+  /* 2026-09-25 修（「两篇作文解析乱掉」的根因）：
+     以前只判了 grammar / cloze 两种，**剩下的全部落到「只有七选五」那个分支** ——
+     于是应用文写作、读后续写第一次没解析出来、走自动补解析时，
+     程序会拿着「kind 必须是 seven，options 必须列出 A～G 七个选项句」的提示词去解析作文，
+     模型照着这个错提示输出，结构完全错位，页面上看就是「作文乱成一团」。
+     现在七选五只认 seven 分支，写作两类各给专属说明。 */
   const force = kind === 'grammar'
     ? '这段内容**只有语法填空**，是短文挖 10 个空、部分空括号里给了提示词那种。'
       + '**必须输出且只输出一个 passages 项，kind 必须是 "grammar"，options 必须是空数组 []**，'
       + 'questions 里的 no 用卷面题号（56～65），hint 填括号里的提示词原形，answer 填完整词形（不能只写首字母）。'
     : (kind === 'cloze'
       ? '这段内容**只有完形填空**，kind 必须是 "cloze"，每空带 A/B/C/D 四个选项。'
-      : '这段内容**只有七选五**，kind 必须是 "seven"，options 必须列出 A～G 七个选项句。');
+      : (kind === 'seven'
+        ? '这段内容**只有七选五**，kind 必须是 "seven"，options 必须列出 A～G 七个选项句。'
+        : (kind === 'appwrite'
+          ? '这段内容**只有应用文写作**（给一个情境，要求写一封信 / 通知 / 演讲稿 / 建议信等）。'
+            + '**kind 必须是 "appwrite"，label 用「应用文写作」，questions 必须是空数组 []** —— 写作题没有小题、没有选项。'
+            + '内容按上面「写作类」的字段要求填：task（写作要求原样）/ points（要点）/ outline（段落框架）/ '
+            + 'sample（参考范文，英文配中文翻译）/ expressions（高分句式与短语）；'
+            + 'paragraphs 放卷面给的英文材料，若卷面全是中文要求就给空数组 []。'
+          : (kind === 'continuation'
+            ? '这段内容**只有读后续写**（一段没写完的故事原文 + 两段续写开头句）。'
+              + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []** —— 续写没有小题、没有选项。'
+              + '内容按上面「写作类」的字段要求填：task（写作要求）/ plotLine（情节脉络：summary / conflict / arc / openers）/ '
+              + 'outline / sample（续写范例两段，英文配中文翻译）/ expressions；'
+              + 'paragraphs 放故事原文（逐段，配中文翻译）。'
+            : '这段内容**只有「' + name + '」这一种题型**，kind 必须是 "' + kind + '"。'))));
   return PARSE_PROMPT.replace('{{TEXT}}', seg) + '\n\n【本次特别要求】' + force
     + '\n只输出 ' + name + ' 这一项，不要输出其他题型的 passages。';
 }
@@ -1971,6 +1991,16 @@ async function autoRescueMissing(transcript, data) {
       }
     } catch (err) {
       console.warn('[题型盘点] 补解析 ' + kindName(k) + ' 失败：' + err.message);
+    }
+    /* 2026-09-25 加：补回来的必须确实是这个题型 —— 类型不符的宁可丢掉，
+       也不要塞进页面（以前会把七选五结构硬填进写作题，看起来就是「作文乱成一团」）。 */
+    if (got.length) {
+      const wrong = got.filter(function (p) { return kindOf(p) !== k; });
+      if (wrong.length) {
+        console.warn('[题型盘点] 补解析 ' + kindName(k) + ' 返回了 ' + wrong.length
+          + ' 篇类型不符的内容（' + wrong.map(function (p) { return kindOf(p); }).join('、') + '），已丢弃');
+      }
+      got = got.filter(function (p) { return kindOf(p) === k; });
     }
     if (got.length) {
       got.forEach(function (p) { data.passages.push(p); });
