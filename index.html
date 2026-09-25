@@ -1813,7 +1813,8 @@ const KIND_EVIDENCE = {
     /(?:80|100)\s*词(?:左右|以上)/
   ],
   continuation: [
-    /读后续写|短文续写|故事续写/, /续\s*写/, /两段(?:的)?开头(?:句|语)/, /150\s*词(?:左右|以上)/
+    /读后续写|短文续写|故事续写|读后读写/, /续\s*写/, /两段(?:的)?开头(?:句|语)/,
+    /段落开头(?:句|语)/, /根据其内容和所给(?:段落)?开头(?:句|语)/, /续\s*写\s*两\s*段/, /150\s*词(?:左右|以上)/
   ]
 };
 
@@ -1956,10 +1957,46 @@ function rescuePrompt(kind, seg) {
 
 /* 补解析一次。额度用 parseBudget 按段长度给 —— 原来写死 8192，
    而完形这种大题输出要两万字符，必然被截断，补解析自然次次失败。 */
-async function rescueOne(kind, seg) {
-  const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(kind, seg) }], parseBudget(seg));
+async function rescueOne(kind, seg, extraNote) {
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(kind, seg) + (extraNote || '') }], parseBudget(seg));
   const d = jsonFromText(raw);
   return (d && d.passages) || [];
+}
+
+/* =========================================================
+   写作题「两步法」（2026-09-25）
+   一次要 6 个字段（写作要求 / 审题要点 / 段落框架 / 情节脉络 / 卷面原文 / 参考范文）
+   输出又长又杂，模型常常只完成一部分 —— 最典型的就是「只给了好词好句，范文和要求全没有」。
+   拆成两次、每次只要一半，和「完形拆成 6 题一份才成功」是同一个道理。
+   代码里再把两次的结果合并成一个 passage。
+   ========================================================= */
+const WRITE_STEP_A = '\n\n【本次特别要求 · 只做第一步】这一段是写作题。这一次**只输出骨架字段**：'
+  + 'task（写作要求，卷面原样照抄）、points（审题要点）、outline（段落框架）；'
+  + '读后续写再给 plotLine（情节脉络：summary / conflict / arc / openers）和 paragraphs（故事原文逐段 + 中文翻译）。'
+  + '**这一次不要写范文 —— sample 必须是空数组 []，expressions 也给空数组 []。**'
+  + 'kind / label / questions 照常（写作题 questions 必须是空数组 []）。';
+const WRITE_STEP_B = '\n\n【本次特别要求 · 只做第二步】这一段是写作题。这一次**只写范文和好词好句**：'
+  + 'sample（参考范文，按题目要求写足词数，英文正文 + 逐段中文翻译）、'
+  + 'expressions（高分句式与短语，3～6 条）。'
+  + '**task / points / outline 这一次不用重复，留空或给空数组即可。**'
+  + 'kind / label / questions 照常（写作题 questions 必须是空数组 []）。';
+
+async function rescueWriteTwoStep(kind, seg) {
+  let skel = [], samp = [];
+  try { skel = await rescueOne(kind, seg, WRITE_STEP_A); }
+  catch (e) { console.warn('[写作两步] 第一步失败：' + e.message); }
+  try { samp = await rescueOne(kind, seg, WRITE_STEP_B); }
+  catch (e) { console.warn('[写作两步] 第二步失败：' + e.message); }
+  if (!skel.length && !samp.length) return [];
+  const a = skel[0] || {}, b = samp[0] || {};
+  const out = Object.assign({}, a);
+  out.kind = kind;
+  out.label = a.label || (kind === 'continuation' ? '读后续写' : '应用文写作');
+  out.questions = [];
+  if ((!a.sample || !a.sample.length) && b.sample && b.sample.length) out.sample = b.sample;
+  if ((!a.expressions || !a.expressions.length) && b.expressions && b.expressions.length) out.expressions = b.expressions;
+  console.log('[写作两步] 骨架字段：' + Object.keys(a).join('/') + ' ｜ 范文块：' + Object.keys(b).join('/'));
+  return [out];
 }
 
 /* 解析完盘点：少了哪种题型就单独补解析，全程自动 */
@@ -1988,6 +2025,15 @@ async function autoRescueMissing(transcript, data) {
     let got = [];
     try {
       got = await rescueOne(k, seg);
+      /* 写作题补回来还是「空壳」（只给了好词好句、没有要求和范文）→ 换两步法：
+         先单独要骨架（要求 / 要点 / 框架 / 脉络 / 原文），再单独要范文和好词好句，
+         代码里合并。一次要 6 个字段模型给不全，拆开就稳了。 */
+      if (isWriteKind(k) && (!got.length || hasThinWrite(got))) {
+        setRunLabel('' + kindName(k) + '内容不全，正在分两步重做（先要点、再范文）…');
+        const two = await rescueWriteTwoStep(k, seg);
+        /* 谁完整度高用谁：两步法也可能只补回一半，但那一半比上一版多 */
+        if (two.length) got = [betterWrite(got[0], two[0])];
+      }
       /* 整段补不出来（多半是输出太长被截断）→ 按题号拆开、逐份补，最后合并。
          完形 15 空一次要吐两万字符，超出免费模型上限，不拆必然失败。 */
       if (!got.length && (k === 'cloze' || k === 'grammar')) {
@@ -2027,6 +2073,25 @@ async function autoRescueMissing(transcript, data) {
       stillMissing.push(k);
     }
     await sleep(200);
+  }
+  /* 第二级盘点：题型在，但题号缺了几个（完形最后三题最典型）。
+     只针对完形 / 语法填空这种「一道大题十几个空」的题型。 */
+  const qFixed = [];
+  try {
+    const bigKinds = ['cloze', 'grammar'].filter(function (k) { return expected[k]; });
+    for (let j = 0; j < bigKinds.length; j++) {
+      const k = bigKinds[j];
+      const seg2 = extractKindSegment(transcript, k) || transcript;
+      const n = await rescueMissingQuestions(k, seg2, data.passages);
+      if (n > 0) {
+        qFixed.push(kindName(k) + n + ' 题');
+        console.log('[题号盘点] ' + kindName(k) + ' 已补回 ' + n + ' 题');
+      }
+    }
+  } catch (e) { console.warn('[题号盘点] 失败：' + e.message); }
+  if (qFixed.length) {
+    toast('已自动补回缺题：' + qFixed.join('、'), 'ok', 6000);
+    try { window.__rescuedKinds = (window.__rescuedKinds || []).concat(qFixed); } catch (e) {}
   }
   if (rescued.length) {
     toast('已自动补回：' + rescued.map(kindName).join('、'), 'ok', 6000);
@@ -2263,9 +2328,15 @@ function looksLikeAppwriteText(t) {
     || /(?:写|给|完成)(?:一封|一则|一篇|一份)\s*(?:英?文?\s*)?(?:信|邮件|通知|演讲稿|发言稿|倡议书|报道|启事|留言)/.test(t);
 }
 function looksLikeContinuationText(t) {
-  return /读后续写|短文续写|故事续写/.test(t)
+  return /读后续写|短文续写|故事续写|读后读写/.test(t)
     || /两段(?:的)?开头(?:句|语)/.test(t)
-    || /续写词数|150\s*词(?:左右|以上)/.test(t);
+    || /段落开头(?:句|语)/.test(t)
+    || /续\s*写\s*两\s*段|续写词数/.test(t)
+    /* 2026-09-25 补：整卷切块实测里续写那块预判不出来（判成了 -），
+       原因就是卷面只写「阅读下面材料，根据其内容和所给段落开头语续写两段」，
+       上面几条一个都没踩中。把这句指令语的特征词补进来。 */
+    || /根据其内容和所给(?:段落)?开头(?:句|语)/.test(t)
+    || /150\s*词(?:左右|以上)/.test(t);
 }
 function guessKindOfChunk(text) {
   const t = String(text || '');
@@ -2393,6 +2464,108 @@ function splitBigExercise(text) {
   }
   return out.length > 1 ? out : null;
 }
+
+/* =========================================================
+   题号级补漏（2026-09-25）
+   完形 15 空按 6 题一份拆成 6/6/3 三份并发解析，只要**末尾那一份**被限流或截断，
+   题型盘点看到「完形已经有了」（前 12 题都在）就不补 ——
+   表现正是「完形最后三题的答案和解析整段消失，而且没有任何提示」。
+   所以盘点得分两级：先看题型在不在，再看题号全不全。
+   ========================================================= */
+/* 从某大题原文里数出卷面上一共有哪几个题号 */
+function exerciseNosOf(seg) {
+  const t = String(seg || '');
+  const set = {};
+  let m;
+  /* ① 独立成行的题行：「41. A. xxx」 */
+  const re1 = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
+  while ((m = re1.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
+  /* ② 行内挖空带号：______ (41) / ___41___（语法填空和部分完形这么排） */
+  const re2 = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?/g;
+  while ((m = re2.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
+  return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+}
+/* 卷面上有、解析结果里却没有的题号 */
+function missingNosOf(seg, kind, passages) {
+  const want = exerciseNosOf(seg);
+  if (want.length < 5) return [];
+  const got = {};
+  (passages || []).forEach(function (p) {
+    if (kindOf(p) !== kind) return;
+    (p.questions || []).forEach(function (q) {
+      const n = Number(q.no);
+      if (n >= 21 && n <= 75) got[n] = 1;
+    });
+  });
+  const miss = want.filter(function (n) { return !got[n]; });
+  /* 一个号都没对上 = 模型压根没按卷面题号写，不是「缺几题」，别瞎补 */
+  if (miss.length >= want.length) return [];
+  return miss;
+}
+/* 从大题原文里只抠出指定题号的那几题 —— 短文带上，模型要有上下文才选得对答案 */
+function sliceExerciseByNos(seg, nos) {
+  const t = String(seg || '');
+  const re = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
+  const marks = []; let m;
+  while ((m = re.exec(t))) marks.push({ at: m.index, no: Number(m[1]) });
+  if (!marks.length) return '';
+  const want = {}; nos.forEach(function (n) { want[n] = 1; });
+  const body = t.slice(0, marks[0].at).trim();
+  const parts = [];
+  marks.forEach(function (x, i) {
+    if (!want[x.no]) return;
+    const to = i + 1 < marks.length ? marks[i + 1].at : t.length;
+    parts.push(t.slice(x.at, to).trim());
+  });
+  if (!parts.length) return '';
+  return (body ? body + '\n\n' : '') + parts.join('\n\n');
+}
+/* 只补缺的那几题，补回来后按题号插回原篇并重新排序 */
+async function rescueMissingQuestions(kind, seg, passages) {
+  let miss = [];
+  try { miss = missingNosOf(seg, kind, passages); } catch (e) { return 0; }
+  if (!miss.length) return 0;
+  console.warn('[题号盘点] ' + kindName(kind) + ' 卷面上有 ' + exerciseNosOf(seg).length
+    + ' 题，解析结果里缺第 ' + miss.join('、') + ' 题');
+  if (miss.length > 10) { console.warn('[题号盘点] 缺得太多，按整段重解更稳，跳过题号级补漏'); return 0; }
+  const sub = sliceExerciseByNos(seg, miss);
+  if (!sub || sub.length < 40) return 0;
+  setRunLabel('' + kindName(kind) + '缺第 ' + miss.join('、') + ' 题，正在单独补解析…');
+  const note = '\n\n【本次特别要求 · 只补缺的题】这一大题前面已经解析过，'
+    + '只差卷面上第 ' + miss.join('、') + ' 题。'
+    + '**这一次只输出这几题**，questions 里 no 必须用卷面题号（' + miss.join('、') + '），'
+    + '每题的 answer 和 explain（解析）都要写完整，一个都不许空着。'
+    + 'kind 必须是 "' + kind + '"，短文照常放在 paragraphs 里。';
+  let got = [];
+  try { got = await rescueOne(kind, sub, note); }
+  catch (e) { console.warn('[题号盘点] 补第 ' + miss.join('、') + ' 题失败：' + e.message); return 0; }
+  const fresh = [];
+  got.forEach(function (p) {
+    if (kindOf(p) !== kind) return;
+    (p.questions || []).forEach(function (q) {
+      const n = Number(q.no);
+      if (!n || miss.indexOf(n) < 0) return;
+      if (!String(q.answer || '').trim()) return;   /* 没答案的不算补上 */
+      fresh.push(q);
+    });
+  });
+  if (!fresh.length) return 0;
+  let target = null;
+  (passages || []).forEach(function (p) { if (!target && kindOf(p) === kind) target = p; });
+  if (target) {
+    target.questions = (target.questions || [])
+      .filter(function (q) { return miss.indexOf(Number(q.no)) < 0; })
+      .concat(fresh)
+      .sort(function (a, b) { return Number(a.no) - Number(b.no); });
+  } else {
+    const p0 = got.filter(function (p) { return kindOf(p) === kind; })[0];
+    if (!p0) return 0;
+    p0.questions = fresh;
+    passages.push(p0);
+  }
+  return fresh.length;
+}
+
 /* 只对「完形 / 语法填空」这类一道大题装很多空、输出特别长的块做细分 */
 function expandBigChunks(list) {
   const out = [];
@@ -2460,10 +2633,40 @@ function parseBudget(text) {
 function isThinWrite(p) {
   if (!isWriteKind(kindOf(p))) return false;
   const np = normalizePassage(p);
-  return !np.task && !np.sample.length && !np.outline.length && !np.points.length;
+  /* 2026-09-25 收紧：以前是「四个字段全空才算空壳」，于是
+     「只有写作要求、没有范文」和「只有范文、没有写作要求」都被当成合格放过去了 ——
+     页面上就是「作文只有半截」。提示词里写死了 task 和 sample 一个都不能少，
+     这里照同样的标准判，缺一个就重做。 */
+  return !np.task || !np.sample.length;
 }
 function hasThinWrite(list) {
   return (list || []).some(isThinWrite);
+}
+/* 写作题「完整度打分」（2026-09-25）：
+   两步法 / 重做的结果未必十全十美，可能只是「比上一遍多给了范文」。
+   以前非黑即白（不是空壳才要），结果两边都半残时反而把更好的那一版丢了 ——
+   改成谁分高用谁，保证老师看到的永远是内容最多的那一版。 */
+function writeScore(p) {
+  if (!p || !isWriteKind(kindOf(p))) return 0;
+  let np;
+  try { np = normalizePassage(p); } catch (e) { return 0; }
+  let s = 0;
+  if (np.task) s += 2;                          /* 写作要求最关键 */
+  if (np.sample.length) s += 2;                 /* 范文次之 */
+  if (np.outline.length) s += 1;
+  if (np.points.length) s += 1;
+  if (np.expressions.length) s += 1;
+  if ((np.paragraphs || []).length) s += 1;
+  return s;
+}
+function betterWrite(a, b) {
+  const sa = writeScore(a), sb = writeScore(b);
+  return sb > sa ? b : a;
+}
+/* 从一批解析结果里挑出那篇写作题 */
+function pickWrite(list) {
+  const arr = (list || []).filter(function (p) { return isWriteKind(kindOf(p)); });
+  return arr[0] || null;
 }
 /* 重做写作题时的强提示：把「必须给的字段」再点一遍 */
 const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上面这一段**整段都是写作题**。'
@@ -2518,7 +2721,9 @@ async function parseInChunks(transcript) {
         console.warn('[分块解析] 第 ' + (i + 1) + ' 块是写作题但字段残缺，换强提示重做');
         try {
           const again = await parseOneChunk(chunk.text, WRITE_RETRY_NOTE);
-          if (again.got.length && !hasThinWrite(again.got)) r = again;
+          /* 谁完整度高用谁：重做也可能只比上一版多给了范文 */
+          /* 谁完整度高用谁：重做也可能只比上一版多给了范文 */
+          if (again.got.length && writeScore(betterWrite(pickWrite(r.got), pickWrite(again.got))) > writeScore(pickWrite(r.got))) r = again;
         } catch (e2) {
           console.warn('[分块解析] 写作题重做失败：' + e2.message);
         }
@@ -3047,10 +3252,29 @@ function normalizePassage(p) {
     raw.kind = 'grammar';
   }
   const wk = isWriteKind(kindOf(raw));   /* 归一化后再判断，AI 写成「写作 / 应用文」也算写作题 */
+
+  /* 2026-09-25 补（「第 50 题答案写成 G、正确答案是 go beyond」的根因）：
+     模型偶尔把语法填空整篇标成 cloze / reading（分类漂了），下面这行就无条件
+     charAt(0)，把 "go beyond" 截成一个 "G" —— 页面上看着就是「答案错得离谱」。
+     判据：整篇一道选项都没有，却有长度超过 1 的答案 —— 那必然是填空类，按语法填空处理。 */
+  if (!wk && raw.kind !== 'grammar') {
+    const noOpt = !raw.questions.some(function (q) { return (q.options || []).length >= 2; });
+    const wordy = raw.questions.some(function (q) { return String(q.answer || '').trim().length > 1; });
+    if (noOpt && wordy && raw.questions.length >= 3) {
+      raw.kind = 'grammar';
+      console.warn('[排版纠错] 这一篇没有选项、答案是词不是字母，按语法填空处理（避免把答案截成首字母）');
+    }
+  }
+
   raw.questions.forEach((q) => {
     if (raw.kind === 'grammar') return;
     if (wk) return;   /* 写作题没有选项答案，别把要点文本截成一个字 */
-    q.answer = q.answer.toUpperCase().charAt(0);
+    const a = String(q.answer || '').trim();
+    /* 只有「确实是一个字母选项」才规整成大写字母。
+       单词 / 短语答案（go beyond、was attracted）一律原样保留，绝不截断。 */
+    if (/^[A-G]$/i.test(a)) { q.answer = a.toUpperCase(); return; }
+    if (/^[A-G][.、．:：\s]/.test(a) && a.length <= 4) { q.answer = a.toUpperCase().charAt(0); return; }
+    q.answer = a.length > 1 ? a : a.toUpperCase();
   });
   return raw;
 }
