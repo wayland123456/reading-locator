@@ -2574,8 +2574,11 @@ async function runPipeline() {
     const texts = [];
     const badPages = [];
     if (!S.pageTexts) S.pageTexts = {};
-    const PAGE_TRIES = 4;
-    const BUSY_WAIT = [0, 6000, 12000, 18000];
+    /* 2026-09-25 调：4 次/6-12-18 秒在高峰期不够 —— 完形那页常常连撞 4 次 429 后
+       被整页跳过，老师看到的就是「弹个框说有 N 页没识别出来，完形凭空消失」。
+       改成 5 次、退避 8/18/35/60 秒：高峰期多等一会儿基本都能过。 */
+    const PAGE_TRIES = 5;
+    const BUSY_WAIT = [0, 8000, 18000, 35000, 60000];
     /* 按「页序」走，而不是按当前缩略图列表 —— 重试时列表里只剩失败的那张，
        识别成功的页要从缓存里按原页序接回来，否则转录文本会缺页。 */
     if (!S.pageOrder || !S.pageOrder.length) S.pageOrder = S.files.map(function (f) { return f.id; });
@@ -2594,48 +2597,90 @@ async function runPipeline() {
 
     /* 逐张识图改并发（PAGE_CONC = 2）：一份 10 张的卷子串行要两三分钟，
        并发 2 差不多能省掉一半。结果仍按「页序」收集，顺序不会乱。
-       单张失败时的重试/退避逻辑原样保留（限流要多等一会儿再试）。 */
+
+       2026-09-25 加「限流自适应降级」：并发 2 在模型被限流时是反效果 ——
+       请求挤在一起，本来能过的那张也跟着一起 429，完形那页就这么整页没了。
+       所以：一旦有任意一张撞上限流，后面立刻改成排队串行、每张起手先缓 2.5 秒，
+       跑完再对失败页自动补一轮（串行 + 间隔 5 秒）。
+       **不限流时行为完全不变**，速度一点不受影响；只有真撞上限流才慢下来。 */
     const PAGE_CONC = 2;
+    let ocrThrottled = false;                 /* 本轮是否撞过限流 */
+    let ocrChain = Promise.resolve();         /* 降级后的串行队列 */
+    function ocrSlot(task) {
+      const run = ocrChain.then(task, task);
+      ocrChain = run.then(function () {}, function () {});
+      return run;
+    }
     let pageDone = 0;
     const outcomes = new Array(order.length);
-    await mapLimited(order, PAGE_CONC, async function (fid, i) {
+    /* 单张识图。passNo = 2 表示是「补跑那一轮」，不再计入进度 */
+    const runOne = async function (fid, i, passNo) {
       const rec = S.pageTexts[fid];
       /* 只认「本引擎」留下的缓存；旧格式（纯字符串）无从判断来源，一并作废重识别 */
       const cacheOk = !!(rec && typeof rec === 'object' && rec.e === S.engine);
       const oldText = (rec && typeof rec === 'object') ? rec.t : (typeof rec === 'string' ? rec : '');
-      if (cacheOk) { outcomes[i] = { text: rec.t, reuse: true }; return; }
+      if (cacheOk) return { text: rec.t, reuse: true };
       const F = S.files.filter(function (f) { return f.id === fid; })[0];
-      if (!F) { outcomes[i] = { bad: true }; return; }
-      let got = '';
-      for (let attempt = 0; attempt < PAGE_TRIES && !got; attempt++) {
-        setRunLabel('正在识别图片 ' + pageDone + '/' + total
-          + (attempt ? '（第 ' + (i + 1) + ' 张模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
-        try {
-          /* 从第 2 次起换更小更省的图（大图被网关掐断时，小图往往能过） */
-          const url = attempt === 0
-            ? F.dataUrl
-            : (F.file ? await prepareImage(F.file, attempt === 1 ? 1200 : 900, 0.78) : F.dataUrl);
-          const content = [
-            { type: 'image_url', image_url: { url: url } },
-            { type: 'text', text: TRANSCRIBE_PROMPT }
-          ];
-          const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
-          if (t && t.trim()) got = t.trim();
-        } catch (err) {
-          const em = String(err.message || '');
-          console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + em);
-          if (attempt < PAGE_TRIES - 1) {
-            /* 限流（繁忙）等久一点再试，其它错误（网络抖动等）等短一点 */
-            await sleep(BUSY_RE.test(em) ? BUSY_WAIT[attempt + 1] : 2000);
+      if (!F) return { bad: true };
+      const doRecognize = async function () {
+        /* 已经被限流过 → 起手先缓 2.5 秒再发请求，别往枪口上撞 */
+        if (ocrThrottled) await sleep(2500);
+        let got = '';
+        for (let attempt = 0; attempt < PAGE_TRIES && !got; attempt++) {
+          setRunLabel('正在识别图片 ' + (passNo === 2 ? '补跑 ' : '') + pageDone + '/' + total
+            + (attempt ? '（第 ' + (i + 1) + ' 张模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
+          try {
+            /* 第 1 次就压到 1600px：手机原图动辄 4000px，最容易被网关掐断；
+               试卷上的字 1600px 完全够认，压缩后反而更快更稳。
+               第 2 次起继续降（1200 / 900），大图过不去时小图往往能过。 */
+            const url = F.file
+              ? await prepareImage(F.file, attempt === 0 ? 1600 : (attempt === 1 ? 1200 : 900),
+                attempt === 0 ? 0.82 : 0.78)
+              : F.dataUrl;
+            const content = [
+              { type: 'image_url', image_url: { url: url } },
+              { type: 'text', text: TRANSCRIBE_PROMPT }
+            ];
+            const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
+            if (t && t.trim()) got = t.trim();
+          } catch (err) {
+            const em = String(err.message || '');
+            console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + em);
+            /* 撞上限流 → 立刻降级：后面所有图改串行、起手先缓 */
+            if (BUSY_RE.test(em)) ocrThrottled = true;
+            if (attempt < PAGE_TRIES - 1) {
+              /* 限流（繁忙）等久一点再试，其它错误（网络抖动等）等短一点 */
+              await sleep(BUSY_RE.test(em) ? BUSY_WAIT[attempt + 1] : 2000);
+            }
           }
         }
+        if (got) return { text: got };
+        if (oldText) return { text: oldText, fallback: true };
+        return { bad: true };
+      };
+      /* 已降级 → 排队串行执行；否则照常并发 */
+      const res = ocrThrottled ? await ocrSlot(doRecognize) : await doRecognize();
+      if (passNo !== 2) {
+        pageDone++;
+        setRunLabel('正在识别图片 ' + pageDone + '/' + total + '…');
       }
-      if (got) outcomes[i] = { text: got };
-      else if (oldText) outcomes[i] = { text: oldText, fallback: true };
-      else outcomes[i] = { bad: true };
-      pageDone++;
-      setRunLabel('正在识别图片 ' + pageDone + '/' + total + '…');
+      return res;
+    };
+    await mapLimited(order, PAGE_CONC, async function (fid, i) {
+      outcomes[i] = await runOne(fid, i, 1);
     });
+    /* 2026-09-25：被限流时，失败的页自动再补跑一轮（串行、间隔 5 秒）。
+       以前这一步只能靠老师自己点「重试这 N 张」—— 高峰期他往往点完还是 429，
+       干脆程序自己多扛一轮；仍然不行才弹框说明。 */
+    const badIdx = [];
+    outcomes.forEach(function (o, i) { if (!o || o.bad) badIdx.push(i); });
+    if (badIdx.length && ocrThrottled) {
+      setRunLabel('模型繁忙，已自动放慢速度，补识别 ' + badIdx.length + ' 张…');
+      for (let j = 0; j < badIdx.length; j++) {
+        if (j) await sleep(5000);
+        outcomes[badIdx[j]] = await runOne(order[badIdx[j]], badIdx[j], 2);
+      }
+    }
     /* 并发跑完再按页序统一汇总/写缓存，避免多张同时改 S.pageTexts */
     outcomes.forEach(function (o, i) {
       if (!o || o.bad) { badPages.push(i + 1); return; }
@@ -2673,6 +2718,9 @@ async function runPipeline() {
       showNotice('⚠ 第 <b>' + badPages.join('、') + ' 张</b>没能识别出来，这一页已跳过，其余正常解析。'
         + '<div class="sub">少掉的内容（常常是一整页的完形填空或语法填空）就在这一页 —— '
         + '所以下面看不到它，不是程序没归类。<br>'
+        + (ocrThrottled
+          ? '这次撞上了识图模型限流，程序已<b>自动放慢速度补跑过一轮</b>（每张多等 8～60 秒）仍然没过 —— 不是你的图片有问题。<br>'
+          : '')
         + '已经识别成功的页面都记住了，点按钮只重跑没成功的那张，整卷不用重来。</div>',
         'warn', '重试这 ' + badPages.length + ' 张', () => { hideNotice(); runPipeline(); });
     } else {
