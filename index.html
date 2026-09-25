@@ -3019,9 +3019,13 @@ function evidenceParts(evidence) {
    渲染
    ========================================================= */
 function render() {
-  /* 写作题没有"单段精读"这种讲法：停在这个视图上时自动回到整篇 */
+  /* 写作题只支持「题型速览」和「左右分栏」两种视图（没有原题、背景、积累表达这些栏目）。
+     2026-09-25 修：以前只把 single 拉回 split —— 如果老师正停在「原文 / 背景 / 积累表达」
+     视图上（看阅读篇时切过去的），再点写作题，视图会原样留着，
+     而写作题在这些视图下没有任何栏目可显示，内容区一片空白 ——
+     表现就是「点了写作题没反应」。现在非 overview / split 一律拉回 split。 */
   const p0 = S.passages[S.cur];
-  if (p0 && isWriteKind(kindOf(p0)) && S.view === 'single') S.view = 'split';
+  if (p0 && isWriteKind(kindOf(p0)) && S.view !== 'overview' && S.view !== 'split') S.view = 'split';
   renderTabs();
   renderView();
 }
@@ -3176,11 +3180,24 @@ function renderView() {
   const p = S.passages[S.cur];
   if (!p) { c.innerHTML = ''; c.dataset.viewKey = ''; return; }
 
-  if (S.view === 'split')      c.innerHTML = viewSplit(p);
-  else if (S.view === 'original') c.innerHTML = viewOriginal(p);
-  else if (S.view === 'single')   c.innerHTML = viewSingle(p);
-  else if (S.view === 'background') c.innerHTML = viewBackground(p);
-  else if (S.view === 'expressions') c.innerHTML = viewExpressions(p);
+  /* 2026-09-25 加兜底：视图名不在已知列表里时也要渲染出内容 ——
+     以前五个 else if 一个都不进，c.innerHTML 压根不赋值，内容区一动不动，
+     老师看到的就是「点了没反应」。现在未知视图一律按左右分栏渲染。
+     外面再包一层 try/catch：万一哪一篇的字段不对导致渲染抛错，
+     至少把错误显示在页面上 + 记进控制台，而不是静默卡住。 */
+  try {
+    if (S.view === 'original')          c.innerHTML = viewOriginal(p);
+    else if (S.view === 'single')       c.innerHTML = viewSingle(p);
+    else if (S.view === 'background')   c.innerHTML = viewBackground(p);
+    else if (S.view === 'expressions')  c.innerHTML = viewExpressions(p);
+    else                                c.innerHTML = viewSplit(p);
+  } catch (e) {
+    console.error('[渲染出错] 视图=' + S.view + ' 篇序号=' + S.cur + ' 题型=' + kindOf(p), e);
+    c.innerHTML = '<div style="padding:30px;color:#b8446a;line-height:1.9">'
+      + '这一篇渲染时出错了：' + esc(String((e && e.message) || e)) + '<br>'
+      + '<span style="color:#888">错误已记进控制台（F12 → Console）。'
+      + '点右上角「⚠ 补解析」重来一次通常能过。</span></div>';
+  }
 
   c.dataset.viewKey = key;
   if (keep) restorePaneTops(keep);
