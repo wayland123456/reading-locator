@@ -1169,7 +1169,11 @@ const KIND_INFO = {
   appwrite:     { name: '应用文写作', short: '应用文', cls: 'tk-appwrite', hint: '给情境写一封信/通知/演讲稿：讲审题要点、段落框架和参考范文' },
   continuation: { name: '读后续写',   short: '续写',   cls: 'tk-cont',    hint: '给一段原文和两段开头句：讲情节线、伏笔呼应和续写范例' }
 };
-const KIND_ORDER = ['reading', 'cloze', 'seven', 'grammar', 'appwrite', 'continuation'];
+/* 2026-09-25 调整：改成**高考卷面的实际顺序** ——
+   阅读理解(21～35) → 七选五(36～40) → 完形填空(41～55) → 语法填空(56～65) → 应用文写作 → 读后续写。
+   原来把完形排在七选五前面，于是顶部标签、速览页卡片、左右翻页都跟卷面顺序对不上，
+   讲评时顺着点会来回跳。 */
+const KIND_ORDER = ['reading', 'seven', 'cloze', 'grammar', 'appwrite', 'continuation'];
 /* 写作类：没有选项、没有"答案"，渲染走专用视图 */
 function isWriteKind(k) { return k === 'appwrite' || k === 'continuation'; }
 
@@ -1962,7 +1966,15 @@ async function rescueOne(kind, seg) {
 async function autoRescueMissing(transcript, data) {
   const expected = expectKinds(transcript);
   const have = {};
-  (data.passages || []).forEach(function (p) { have[kindOf(p)] = 1; });
+  /* 「空壳」写作不算数 —— 它占着 kind 但没有任何内容（只有好词好句），
+     要让它落进 missing，好走下面的补解析重来一遍（补解析现在带写作专用提示词） */
+  (data.passages || []).forEach(function (p) {
+    if (isThinWrite(p)) {
+      console.warn('[题型盘点] 发现空壳写作题（' + kindName(kindOf(p)) + '：缺写作要求 / 范文），按缺失处理');
+      return;
+    }
+    have[kindOf(p)] = 1;
+  });
   const missing = Object.keys(expected).filter(function (k) { return !have[k]; });
   if (!missing.length) { try { window.__missingKinds = []; } catch (e) {} return data; }
   console.warn('[题型盘点] 卷面上有但没解析出来的题型：' + missing.join('、'));
@@ -2000,9 +2012,14 @@ async function autoRescueMissing(transcript, data) {
         console.warn('[题型盘点] 补解析 ' + kindName(k) + ' 返回了 ' + wrong.length
           + ' 篇类型不符的内容（' + wrong.map(function (p) { return kindOf(p); }).join('、') + '），已丢弃');
       }
-      got = got.filter(function (p) { return kindOf(p) === k; });
+      /* 类型不符的丢掉；补回来还是「空壳」的也算没补上，别拿它充数 */
+      got = got.filter(function (p) { return kindOf(p) === k && !isThinWrite(p); });
     }
     if (got.length) {
+      /* 把原来那个空壳剔掉，免得同一篇写作题在页面上出现两次 */
+      data.passages = (data.passages || []).filter(function (p) {
+        return !(kindOf(p) === k && isThinWrite(p));
+      });
       got.forEach(function (p) { data.passages.push(p); });
       rescued.push(k);
       console.log('[题型盘点] 已补回 ' + kindName(k) + '：' + got.length + ' 篇');
@@ -2211,17 +2228,50 @@ const SECTION_RE = /^\s*(?:第[一二三四五六七八九十]+[节部分]\s*|(?
    「第一节 （共15小题；每小题1分）阅读下面短文，从每题所给的 A、B、C、D 四个选项中
    选出可以填入空白处的最佳选项」，和阅读理解的指令语只差「填入空白处」几个字，
    模型很容易判成 reading —— 表现就是「传了完形却看不到完形」。
-   这里只对最容易和阅读混淆的三种题型（完形/语法/七选五）下强提示，写作类不下。 */
+   这里对最容易和阅读混淆的题型下强提示。
+
+   2026-09-25 补（「作文内容没解析出来」的根因之一）：
+   写作两类以前**没有任何强提示** —— 分块解析时模型不知道这段是写作题，
+   于是常常只吐一个 label + 好词好句，写作要求 / 审题要点 / 段落框架 / 范文全都不给，
+   页面上就是「这篇写作题的内容还没解析出来」，而右栏只有孤零零的「好词好句」。
+   续写更麻烦：它前面那段故事原文长得很像阅读理解，整块容易被判成 reading。
+   所以这里也给写作两类下强提示，并明确点出「这几个字段一个都不能省」。 */
 const CHUNK_KIND_HINT = {
   cloze: '本段是**完形填空**：一段文章里挖了若干空，每空给 A/B/C/D 四个词或短语。'
     + 'kind 必须是 "cloze"，label 用「完形」，questions 的 no 用卷面题号（通常是 41～55）。',
   grammar: '本段是**语法填空**：一段短文挖了约 10 个空，有的空括号里给了提示词。'
     + 'kind 必须是 "grammar"，**options 必须是空数组 []**，hint 填括号里的提示词原形。',
   seven: '本段是**七选五**：文章挖 5 个空，文后给出 A～G 七个选项句。'
-    + 'kind 必须是 "seven"，options 要列出 A～G 全部七句，answer 是选中的那个字母。'
+    + 'kind 必须是 "seven"，options 要列出 A～G 全部七句，answer 是选中的那个字母。',
+  appwrite: '本段是**应用文写作**：给一个情境（多为中文说明，如「假定你是李华…」），'
+    + '要求写一封信 / 通知 / 演讲稿 / 建议信等，通常注明「80 词左右」。'
+    + '**kind 必须是 "appwrite"，label 用「应用文写作」，questions 必须是空数组 []** —— 写作题没有小题、没有选项。'
+    + '内容必须填满这几个字段：task（写作要求，卷面原样照抄）、points（审题要点，逐条）、'
+    + 'outline（段落框架：分几段、每段写什么）、sample（参考范文，英文正文逐段 + 中文翻译）、'
+    + 'expressions（高分句式与短语，3～6 条）。**task 和 sample 一个都不能少。**',
+  continuation: '本段是**读后续写**：一段没写完的英文故事 + 两段续写开头句，要求续写 150 词左右。'
+    + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []**。'
+    + '内容必须填满这几个字段：paragraphs（故事原文，逐段，配中文翻译）、task（写作要求，卷面原样）、'
+    + 'plotLine（情节脉络：summary 原文脉络逐条 / conflict 矛盾点 / arc 情节线 / openers 两段段首句）、'
+    + 'outline（两段各写什么）、sample（续写范例，两段，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
+    + '**task 和 sample 一个都不能少。**'
 };
+/* 写作两类的排版判据（分块解析 / 完整性校验都用它） */
+function looksLikeAppwriteText(t) {
+  return /应用文写作|书面表达/.test(t)
+    || /假定你是\s*\S{1,12}/.test(t)
+    || /(?:写|给|完成)(?:一封|一则|一篇|一份)\s*(?:英?文?\s*)?(?:信|邮件|通知|演讲稿|发言稿|倡议书|报道|启事|留言)/.test(t);
+}
+function looksLikeContinuationText(t) {
+  return /读后续写|短文续写|故事续写/.test(t)
+    || /两段(?:的)?开头(?:句|语)/.test(t)
+    || /续写词数|150\s*词(?:左右|以上)/.test(t);
+}
 function guessKindOfChunk(text) {
   const t = String(text || '');
+  /* 写作两类放最前面：续写前面那段英文故事长得很像阅读，放后面会被整块判成 reading */
+  if (looksLikeContinuationText(t)) return 'continuation';
+  if (looksLikeAppwriteText(t)) return 'appwrite';
   /* 七选五的判据要放在完形前面：七选五的指令语里也有「填入空白处」 */
   if (/七\s*选\s*五|短文后的选项|选项中(?:有)?(?:两项|2\s*项)(?:是|为)?多余|(?:A[～~\-－]G|A-G)\s*七?个?选项/.test(t)) return 'seven';
   if (looksLikeClozeText(t)) return 'cloze';
@@ -2402,9 +2452,32 @@ function parseBudget(text) {
   if (n > 1200) return 11000;
   return 8192;
 }
-/* 解析一块，返回 { d, got } */
-async function parseOneChunk(text) {
-  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text) }], parseBudget(text));
+/* ---------- 写作题「空壳」判定（2026-09-25） ----------
+   空壳 = 既没有写作要求(task)、又没有范文(sample)、也没有段落框架和要点，
+   只剩一个 label + 几条好词好句。这种结果落地后，页面上就是
+   「这篇写作题的内容还没解析出来」，右栏孤零零挂着「好词好句」——
+   老师看到的正是这个。判出来就重做一遍，不能让空壳就这么落地。 */
+function isThinWrite(p) {
+  if (!isWriteKind(kindOf(p))) return false;
+  const np = normalizePassage(p);
+  return !np.task && !np.sample.length && !np.outline.length && !np.points.length;
+}
+function hasThinWrite(list) {
+  return (list || []).some(isThinWrite);
+}
+/* 重做写作题时的强提示：把「必须给的字段」再点一遍 */
+const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上面这一段**整段都是写作题**。'
+  + '上一遍你只给了好词好句，**没有给写作要求和参考范文，这是不合格的**，请重做。'
+  + '必须包含：task（写作要求，逐字照抄卷面，不许空着、不许只写一句概括）、'
+  + 'sample（参考范文，按题目要求写足词数，英文正文 + 逐段中文翻译）、'
+  + 'outline（段落框架：分几段、每段写什么）。'
+  + '读后续写还必须给 plotLine（情节脉络）和 paragraphs（故事原文逐段 + 中文翻译）。'
+  + 'expressions（好词好句）只是附加项，**不能拿它顶替 task 和 sample**。'
+  + '\nkind / label / questions 仍按上面的要求：写作题 questions 必须是空数组 []。';
+
+/* 解析一块，返回 { d, got }。extraNote 用于「写作题重做」时追加更硬的要求 */
+async function parseOneChunk(text, extraNote) {
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text) + (extraNote || '') }], parseBudget(text));
   const d = jsonFromText(raw);
   return { d: d, got: (d && d.passages) || [] };
 }
@@ -2438,7 +2511,18 @@ async function parseInChunks(transcript) {
   let doneN = 0;
   const results = await mapLimited(chunks, PARSE_CONC, async function (chunk, i) {
     try {
-      const r = await parseOneChunk(chunk.text);
+      let r = await parseOneChunk(chunk.text);
+      /* 写作块解析成「空壳」（缺写作要求 / 范文）→ 立刻换强提示重做一次。
+         以前这种情况直接落地，页面上就是「作文内容没解析出来」+ 右栏几条好词好句。 */
+      if (hasThinWrite(r.got)) {
+        console.warn('[分块解析] 第 ' + (i + 1) + ' 块是写作题但字段残缺，换强提示重做');
+        try {
+          const again = await parseOneChunk(chunk.text, WRITE_RETRY_NOTE);
+          if (again.got.length && !hasThinWrite(again.got)) r = again;
+        } catch (e2) {
+          console.warn('[分块解析] 写作题重做失败：' + e2.message);
+        }
+      }
       return { i: i, d: r.d, got: r.got };
     } catch (e) {
       return { i: i, err: e, got: [] };
