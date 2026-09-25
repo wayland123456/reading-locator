@@ -2389,7 +2389,15 @@ const PARSE_CONC = 3;
    是全部块里输出最重的一块，固定给 8192 很容易被截断：JSON 尾巴断掉 →
    整块解析成 0 篇 → 完形填空就这么凭空消失。按字数先给足，也省掉「截断后再重试」的耗时。 */
 function parseBudget(text) {
-  const n = String(text || '').length;
+  const t = String(text || '');
+  const n = t.length;
+  /* 2026-09-25：写作题要吐「写作要求 + 审题要点 + 段落框架 + 范文（英文 + 中文翻译）+ 高分句式」，
+     输出量比同样长度的阅读题大得多。按字数算它只有几百字 → 原来只给 8192，
+     常常写到一半被截断 → 整块解析成 0 篇 → 掉进补解析那条路，
+     补出来的质量明显差一档（这就是「作文效果不如昨晚」的另一半原因）。
+     认出是写作题就直接给足。 */
+  if (KIND_EVIDENCE.appwrite.some(function (re) { return re.test(t); })
+    || KIND_EVIDENCE.continuation.some(function (re) { return re.test(t); })) return 16000;
   if (n > 2200) return 14000;
   if (n > 1200) return 11000;
   return 8192;
@@ -2660,12 +2668,16 @@ async function runPipeline() {
           setRunLabel('正在识别图片 ' + (passNo === 2 ? '补跑 ' : '') + pageDone + '/' + total
             + (attempt ? '（第 ' + (i + 1) + ' 张模型繁忙，第 ' + (attempt + 1) + ' 次尝试…）' : '…'));
           try {
-            /* 第 1 次就压到 1600px：手机原图动辄 4000px，最容易被网关掐断；
-               试卷上的字 1600px 完全够认，压缩后反而更快更稳。
-               第 2 次起继续降（1200 / 900），大图过不去时小图往往能过。 */
+            /* 第 1 次压到 2400px（不是更小）：
+               2026-09-25 中午先试过 1600 —— 结果完形（英文大字）没问题，
+               **作文那页（中文说明 + 小字）反而糊了、识别质量掉下来**，
+               正是「昨晚作文好、今天作文不行」的原因。2400 对 A4 试卷约 260 dpi，
+               中文小字完全够认，同时比手机原图（动辄 4000px）小一半，不容易被网关掐断。
+               注意 prepareImage 只缩不放：原图本来不到 2400 就保持原样。
+               第 2 次起继续降（1600 / 1200 / 900），大图过不去时小图往往能过。 */
             const url = F.file
-              ? await prepareImage(F.file, attempt === 0 ? 1600 : (attempt === 1 ? 1200 : 900),
-                attempt === 0 ? 0.82 : 0.78)
+              ? await prepareImage(F.file, attempt === 0 ? 2400 : (attempt === 1 ? 1600 : (attempt === 2 ? 1200 : 900)),
+                attempt === 0 ? 0.85 : 0.78)
               : F.dataUrl;
             const content = [
               { type: 'image_url', image_url: { url: url } },
