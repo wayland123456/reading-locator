@@ -1336,7 +1336,20 @@ function groupByKind(passages) {
       background: arr.map(function (p) { return p.background; }).filter(Boolean).join(' '),
       expressions: uniqParas(arr.flatMap(function (p) {
         return (p.expressions || []).map(function (e) { return { en: String(e.term || ''), zh: e.cn, tip: e.tip }; });
-      })).map(function (x) { return { term: x.en, cn: x.zh, tip: x.tip }; })
+      })).map(function (x) { return { term: x.en, cn: x.zh, tip: x.tip }; }),
+      /* 2026-09-27 补：写作字段以前合并时整个蒸发 —— 同类写作出现 2 篇（模型把应用文拆成
+         碎片 / 空壳 + 正篇）触发合并后，points/outline/sample 全变 undefined，
+         渲染裸读 p.points.length 直接崩（表现：「这一篇渲染时出错了」，作文整页消失）。
+         合并策略：字符串 / 对象取最完整的一篇，数组拼接去重；listen（听力切段映射）同理。 */
+      task: arr.map(function (p) { return p.task; }).filter(Boolean)[0] || '',
+      points: arr.flatMap(function (p) { return p.points || []; }).filter(function (x, i, a) { return a.indexOf(x) === i; }),
+      outline: arr.flatMap(function (p) { return p.outline || []; }).filter(function (x, i, a) { return a.indexOf(x) === i; }),
+      tenSents: arr.flatMap(function (p) { return p.tenSents || []; }),
+      plotLine: arr.map(function (p) { return p.plotLine; }).filter(Boolean)[0] || null,
+      analysis: arr.map(function (p) { return p.analysis; }).filter(Boolean)[0] || null,
+      sample: arr.map(function (p) { return p.sample; }).filter(function (s) { return s && s.length; })[0] || [],
+      sampleSource: arr.map(function (p) { return p.sampleSource; }).filter(Boolean)[0] || '',
+      listen: arr.map(function (p) { return p.listen; }).filter(Boolean)[0] || null
     };
     out.push(merged);
   });
@@ -3054,6 +3067,9 @@ function startRunClock(label) {
 }
 function setRunLabel(label) {
   _runLabel = label;
+  /* 2026-09-27 修：没 startRunClock 就调 setRunLabel 时 _runT0=0，耗时 = Date.now()/1000
+     ≈ 17.9 亿秒（把 Unix 时间戳当耗时显示了）。兜底补上起点。 */
+  if (!_runT0) _runT0 = Date.now();
   const el = $('#topHint');
   if (el) el.textContent = label + '（已用时 ' + Math.round((Date.now() - _runT0) / 1000) + ' 秒）';
 }
@@ -3774,6 +3790,12 @@ function renderView() {
 
   const p = S.passages[S.cur];
   if (!p) { c.innerHTML = ''; c.dataset.viewKey = ''; return; }
+
+  /* 2026-09-27 兜底：模型偶尔省略空数组字段（如应用文没有英文材料时省 paragraphs），
+     渲染层多处裸读 .length，缺字段就整页崩（「这一篇渲染时出错了」）。渲染前统一补齐。 */
+  ['paragraphs', 'questions', 'points', 'outline', 'expressions', 'sample', 'tenSents'].forEach(function (k) {
+    if (!Array.isArray(p[k])) p[k] = [];
+  });
 
   /* 2026-09-25 加兜底：视图名不在已知列表里时也要渲染出内容 ——
      以前五个 else if 一个都不进，c.innerHTML 压根不赋值，内容区一动不动，
