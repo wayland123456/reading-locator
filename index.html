@@ -1071,6 +1071,7 @@ const PARSE_PROMPT = [
 '6. kind = "continuation"（读后续写）：给一段没写完的故事原文 + 两段续写开头句，要求续写「150 词左右」。**同样没有选项。**',
 '判断要点：**有 A～G 七个选项句、文章里挖 5 个空 = seven**；**短文挖约 10 个空、部分空带括号提示词、完全没有选项 = grammar**；**文章挖空且每空有 A～D 选项 = cloze**；**出现「假定你是李华」「写一封信/通知/演讲稿」「80 词左右」= appwrite**；**出现「读后续写」「续写」「两段开头句」「150 词左右」或给了一段没写完的故事 = continuation**；**整篇文章配若干独立单选 = reading**。',
 '注意：写作题只有卷面上确实印了才输出，绝不要凭空虚构一道写作题。',
+'重要：这段文本是按题号切出来的一部分（短文是完整短文，题目只有其中几题）。**只解析题目列表里出现的题号**——短文挖空里的其他题号（如 (49)(50)…）属于别的批次，绝对不要顺手解析，多解析会重复且挤占输出额度导致截断。',
 '',
 '【第二步：切分 passages】',
 '按「题型 + 独立篇目」切分，同一个 passages 项里的文章必须属于同一种题型：',
@@ -1143,7 +1144,7 @@ const PARSE_PROMPT = [
 '   · appwrite / continuation（写作类）：**questions 必须是空数组 []**，写作题没有小题，全部内容放 task / points / outline / sample / expressions 五个字段里；paragraphs 放卷面给的英文材料 —— 读后续写放「原文」（逐段，配中文翻译），应用文若卷面全是中文要求、没有英文材料，paragraphs 就给空数组 []。',
 '5. answer 字段：若转录文本中已包含答案或答案解析就用它；若没有，请你作为资深教师判断最可能的答案。语法填空的答案必须是完整的单词或词形，不要只写首字母。',
 '6. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致；实在找不到就填空串，不要编造。',
-'7. explain 用中文，点明解题依据。阅读题要说明如何排除干扰项；完形和语法填空要说清语法、搭配或上下文逻辑依据。',
+'7. explain 用中文，点明解题依据，**每题严格控制在 60 字以内**——直接给「句意/依据 + 结论」，绝不要逐项复述四个选项的含义（输出超长会被截断，整题作废）。阅读题要说明如何排除干扰项；完形和语法填空要说清语法、搭配或上下文逻辑依据。',
 '8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
 '9. 若某篇没有配题，questions 给空数组。',
 '10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
@@ -1767,6 +1768,32 @@ function repairJsonQuotes(s) {
   try { return JSON.parse(fixed); } catch (e) { return null; }
 }
 
+/* 选项键值粘连修复（2026-09-26 深夜实测发现）：
+   glm 免费模型写 options 数组（{key,text} 对象 × 4）时偶发三种损坏 ——
+   ① {"key": "D": "struggle"}（丢键名）② {"key": "text": "parent"}（键值整个串行）
+   ③ options 数组写完 D 选项忘了闭合 ]，直接写 "answer" 等 question 级键。
+   都不是引号问题，repairJsonQuotes 救不了。①② 按选项序列 A/B/C/D 推断重建，
+   ③ 在 question 级键前补闭合。 */
+function repairOptionGlitch(s) {
+  /* 形态 ①：{"key": "D": "struggle"} → {"key": "D", "text": "struggle"} */
+  s = String(s || '').replace(/\{\s*"key"\s*:\s*"([A-DＡ-Ｄ])"\s*:\s*"([^"]*)"\s*\}/g, '{"key":"$1","text":"$2"}');
+  /* 形态 ②：{"key": "text": "parent"} —— key 的值丢成键名，按前一个选项的字母顺推 */
+  return s.replace(/\{\s*"key"\s*:\s*"text"\s*:\s*"([^"]*)"\s*\}/g, function (m, txt, offset) {
+    const before = s.slice(0, offset);
+    const kms = before.match(/"key"\s*:\s*"([A-D])"/g) || [];
+    const prev = kms.length ? kms[kms.length - 1].match(/"([A-D])"/)[1] : '@';
+    const k = 'ABCD'['ABCD'.indexOf(prev) + 1] || 'D';
+    return '{"key":"' + k + '","text":"' + txt + '"}';
+  });
+}
+/* 形态 ③：{"key":"D","text":"…"} 后没闭合 options 数组就写 "answer"/"hint"/… —— 补 ] */
+function repairUnclosedOptions(s) {
+  return String(s || '').replace(
+    /(\{\s*"key"\s*:\s*"[A-DＡ-Ｄ]"\s*,\s*"text"\s*:\s*"(?:[^"\\]|\\.)*"\s*\})\s*,\s*"(answer|hint|evidence|explain|type)"/g,
+    '$1],"$2"'
+  );
+}
+
 function jsonFromText(raw) {
   let t = String(raw || '').trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -1779,6 +1806,18 @@ function jsonFromText(raw) {
     /* 括号配平但引号没转义 → 修一遍再试 */
     const fixed = repairJsonQuotes(slice);
     if (fixed && fixed.passages && fixed.passages.length) return fixed;
+    /* 2026-09-26 加：glm 写 options 数组偶发三种结构损坏（键值粘连 / key 值串行 /
+       数组没闭合就写 question 级键），组合拳全排列修一遍 ——
+       基底（原样 / 粘连修复）× 变换（结构补闭合 / 引号转义）逐个试，谁先 parse 成功用谁 */
+    const bases = [slice, repairOptionGlitch(slice)];
+    for (let bi = 0; bi < bases.length; bi++) {
+      const variants = [bases[bi], repairUnclosedOptions(bases[bi])];
+      for (let vi = 0; vi < variants.length; vi++) {
+        let cand = null;
+        try { cand = JSON.parse(variants[vi]); } catch (e) { cand = repairJsonQuotes(variants[vi]); }
+        if (cand && cand.passages && cand.passages.length) return cand;
+      }
+    }
   }
   if (a >= 0) {
     const saved = salvageJson(t.slice(a));
@@ -2533,7 +2572,12 @@ function splitTranscript(text) {
    所以这里按 6 题一份切：单份输出约 9 千字符，能稳定写完。
    每份都带上完整短文（合并时 uniqParas 自动去掉重复的短文，题号也不会重复）。
    这是「完形块反复解析不出来」的根治办法。 */
-const EXERCISE_PER_CHUNK = 6;
+/* 完形/语法大题按几题一份拆开解析。
+   2026-09-26 深夜用真实卷子端到端复现：6 题一份在「选项竖排转写」（每题 4 行）时
+   输出冲到 1.1～1.3 万字符，顶到免费模型 8192 token 硬上限被拦腰截断（finish=length），
+   JSON 断尾四级解析链也救不回 —— 表现就是「文字认出来了但整理不成题目」。
+   改成 4 题一份：输出量降 1/3，稳落上限内；多花一次调用但成功率大增。 */
+const EXERCISE_PER_CHUNK = 4;
 /* ---------- 题行识别宽松化（2026-09-26）----------
    旧正则只认理想形态「41. A.」，而 OCR 转写的题行五花八门：
    ① 全角数字「４１. Ａ.」② 题号后没点「41 A.」③ 行首带 markdown 星号「**41. A.」
