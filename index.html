@@ -1120,6 +1120,7 @@ const PARSE_PROMPT = [
 '      "task": "【写作题专用】卷面上的写作要求/情境，中文原样转录；读后续写则把「原文之后的两段续写开头句」也原样写进来，用换行分隔",',
 '      "points": ["【写作题专用】审题要点，每条一句，如「人称：第一人称 I；时态：一般现在时 + 一般将来时」"],',
 '      "outline": ["【写作题专用】段落框架，每段一条，如「第一段：开门见山说明写信目的，一句话点到活动时间地点」"],',
+'      "analysis": {"content": ["【应用文专用】内容维度：题面要求写哪些要点、哪条最容易漏、哪些是多余信息不能写"], "structure": ["【应用文专用】结构维度：三段式各段功能与衔接手段"], "language": ["【应用文专用】语言维度：人称时态、能提分的高级句式"]},',
 '      "plotLine": {"summary": ["【读后续写专用】原文第 1 段大意（中文一句）", "第 2 段大意"], "conflict": "矛盾点在第几段、是什么", "arc": "用一句话把开端→发展→高潮→结局串起来", "openers": ["卷面给的第一段开头句", "卷面给的第二段开头句"]},',
 '      "tenSents": [{"no": 1, "fixed": true, "role": "醒悟", "content": "这一句写什么（中文）", "pattern": "句式公式", "tip": "给学生的一句提示"}],',
 '      "sample": [',
@@ -1147,14 +1148,28 @@ const PARSE_PROMPT = [
 '9. 若某篇没有配题，questions 给空数组。',
 '10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
 '11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇 —— 应用文约 80 词、读后续写约 150 词，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
-'12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等），outline 写 2～4 条段落框架（每段写什么、怎么衔接）。',
+'12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等）。',
+'12a. **应用文的 outline 固定三段式，只写 3 条**（平时训练的讲评标准，不许两段也不许四段）：',
+'    第一段 问候/自我介绍 + 开门见山说明写信目的；第二段 主体，分 2～3 点把题面要求的要点全部覆盖；',
+'    第三段 结尾，期待回复 / 表达感谢或祝福 / 发出呼吁。**sample 范文也必须按这三段写**，一段一层，段段有衔接词。',
 '13. **读后续写必须额外填 plotLine 和 tenSents**（这是讲续写的主线，不能省）：',
 '   · plotLine：summary 按原文自然段逐段写中文大意（每段一句）；conflict 点明矛盾点在第几段；',
-'     arc 用一句话串起「开端 → 发展 → 高潮 → 结局」；openers 照抄卷面给的两段开头句。',
-'   · tenSents：固定 10 句。句 1 / 5 / 6 / 9 / 10 是**定句**（fixed = true），功能依次为',
-'     「醒悟（惭愧）」「行动（放下骄傲）」「紧张」「和好」「升华」；句 2 / 3 / 4 / 7 / 8 是**不定句**',
-'     （fixed = false），功能依次为「修复动机」「障碍1（忐忑）」「行动1」「障碍2（冷淡）」「行动2（道歉）」。',
-'     每句都要给 pattern（该句配的句式公式，如「无灵主语：A wave of + 情绪名词 + swept over sb」）。'
+'     arc 用一句话串起「开端 → 发展 → 高潮 → 结局」；openers 照抄卷面给的两段开头句；',
+'     plan 写 3 条「30 秒动笔前规划」：①先定结果 —— 结尾一定要落在和好 / 解决 / 成长上；',
+'     ②再排节奏 —— 两段各安排一次「卡住」和一次「行动」；③不加新人物、不加原文没提过的情节。',
+'   · tenSents：固定 10 句（十句五定法），**每句的功能由位置写死，不许随故事改**：',
+'     句 1（定句）衔接提示句 · 写角色情感；句 2（不定）说清「要做啥 + 遇啥坎」；',
+'     句 3（不定）障碍 1 · 心理/动作描写；句 4（不定）行动 1 · 初步行动；句 5（定句）过渡到第二段；',
+'     句 6（定句）衔接提示句 · 写角色心理；句 7（不定）障碍 2 · 小波折 + 他人反应；',
+'     句 8（不定）行动 2 · 方法展开；句 9（定句）紧贴原文交代结局；句 10（定句）点睛升华主题。',
+'     **句式也按位置分配、不重复不堆砌**：句 1 / 9 / 10 用固定衔接句式（如 To his delight, … / From then on, … / It was then that I realized…），',
+'     句 2 非谓语动词（Having done…, sb did…）、句 3 with 复合结构、句 4 倒装句、句 5 从句、',
+'     句 6 无灵主语（A wave of + 情绪名词 + swept over sb）、句 7 倒装句、句 8 强调句（It was … that …）。',
+'     每句都要给 content（这句在这个故事里具体写什么，中文）和 pattern（句式公式），tip 给学生一句可操作的提醒。',
+'14. **应用文必须给 analysis（内容 / 结构 / 语言三维度试题分析）**，每个维度 2～4 条：',
+'   · content（内容）：题面要求覆盖哪些要点、哪条最容易漏、哪些信息是多余的不能写；',
+'   · structure（结构）：三段式各段的功能与衔接手段（如第二段用 First / Besides / Finally 分点）；',
+'   · language（语言）：该用什么人称和时态、点出 2～3 个本文能用上的提分句式或加分表达。'
 ].join('\n');
 
 /* =========================================================
@@ -1941,14 +1956,18 @@ function rescuePrompt(kind, seg) {
         : (kind === 'appwrite'
           ? '这段内容**只有应用文写作**（给一个情境，要求写一封信 / 通知 / 演讲稿 / 建议信等）。'
             + '**kind 必须是 "appwrite"，label 用「应用文写作」，questions 必须是空数组 []** —— 写作题没有小题、没有选项。'
-            + '内容按上面「写作类」的字段要求填：task（写作要求原样）/ points（要点）/ outline（段落框架）/ '
-            + 'sample（参考范文，英文配中文翻译）/ expressions（高分句式与短语）；'
+            + '内容按上面「写作类」的字段要求填：task（写作要求原样）/ points（要点）/ '
+            + '**outline（固定三段式：①问候+写信目的 ②主体分点覆盖要点 ③期待回复/祝福）**/ '
+            + '**analysis（内容 / 结构 / 语言 三维度分析）**/ '
+            + 'sample（参考范文，**同样按三段式写**，英文配中文翻译）/ expressions（高分句式与短语）；'
             + 'paragraphs 放卷面给的英文材料，若卷面全是中文要求就给空数组 []。'
           : (kind === 'continuation'
             ? '这段内容**只有读后续写**（一段没写完的故事原文 + 两段续写开头句）。'
               + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []** —— 续写没有小题、没有选项。'
-              + '内容按上面「写作类」的字段要求填：task（写作要求）/ plotLine（情节脉络：summary / conflict / arc / openers）/ '
-              + 'outline / sample（续写范例两段，英文配中文翻译）/ expressions；'
+              + '内容按上面「写作类」的字段要求填：task（写作要求）/ plotLine（情节脉络：summary / conflict / arc / openers / plan 三条规划）/ '
+              + '**tenSents（十句五定：句 1/5/6/9/10 定句 —— 衔接写情感 / 过渡 / 衔接写心理 / 紧贴原文交代结局 / 点睛升华；'
+              + '句 2/3/4/7/8 不定句 —— 做啥遇坎 / 障碍1 / 行动1 / 障碍2 / 行动2；句式按位置分配）** / '
+              + 'outline / sample（续写范例两段共约 10 句，英文配中文翻译）/ expressions；'
               + 'paragraphs 放故事原文（逐段，配中文翻译）。'
             : '这段内容**只有「' + name + '」这一种题型**，kind 必须是 "' + kind + '"。'))));
   return PARSE_PROMPT.replace('{{TEXT}}', seg) + '\n\n【本次特别要求】' + force
@@ -1971,14 +1990,19 @@ async function rescueOne(kind, seg, extraNote) {
    代码里再把两次的结果合并成一个 passage。
    ========================================================= */
 const WRITE_STEP_A = '\n\n【本次特别要求 · 只做第一步】这一段是写作题。这一次**只输出骨架字段**：'
-  + 'task（写作要求，卷面原样照抄）、points（审题要点）、outline（段落框架）；'
-  + '读后续写再给 plotLine（情节脉络：summary / conflict / arc / openers）和 paragraphs（故事原文逐段 + 中文翻译）。'
+  + 'task（写作要求，卷面原样照抄）、points（审题要点）、'
+  + '**应用文 outline（固定三段式：①问候+写信目的 ②主体分点覆盖要点 ③期待回复/祝福）'
+  + '和 analysis（内容 / 结构 / 语言 三维度分析，每维 2～4 条）**；'
+  + '读后续写再给 plotLine（含 plan 三条 30 秒规划：先定结果 / 再排节奏 / 不加新人物）、'
+  + '**tenSents（十句五定：句 1/5/6/9/10 定句，功能由位置写死；句式按位置分配）**'
+  + '和 paragraphs（故事原文逐段 + 中文翻译）。'
   + '**这一次不要写范文 —— sample 必须是空数组 []，expressions 也给空数组 []。**'
   + 'kind / label / questions 照常（写作题 questions 必须是空数组 []）。';
 const WRITE_STEP_B = '\n\n【本次特别要求 · 只做第二步】这一段是写作题。这一次**只写范文和好词好句**：'
-  + 'sample（参考范文，按题目要求写足词数，英文正文 + 逐段中文翻译）、'
+  + 'sample（参考范文，**应用文必须三段式**——问候+目的 / 主体分点 / 期待回复，'
+  + '读后续写按十句骨架写足两段共约 10 句，英文正文 + 逐段中文翻译）、'
   + 'expressions（高分句式与短语，3～6 条）。'
-  + '**task / points / outline 这一次不用重复，留空或给空数组即可。**'
+  + '**task / points / outline / analysis / tenSents 这一次不用重复，留空或给空数组即可。**'
   + 'kind / label / questions 照常（写作题 questions 必须是空数组 []）。';
 
 async function rescueWriteTwoStep(kind, seg) {
@@ -1995,6 +2019,16 @@ async function rescueWriteTwoStep(kind, seg) {
   out.questions = [];
   if ((!a.sample || !a.sample.length) && b.sample && b.sample.length) out.sample = b.sample;
   if ((!a.expressions || !a.expressions.length) && b.expressions && b.expressions.length) out.expressions = b.expressions;
+  /* 2026-09-26：两步各自也可能漏字段，谁有内容用谁的，别浪费 */
+  if (!a.task && b.task) out.task = b.task;
+  if ((!a.points || !a.points.length) && b.points && b.points.length) out.points = b.points;
+  if ((!a.outline || !a.outline.length) && b.outline && b.outline.length) out.outline = b.outline;
+  const aAn = a.analysis, bAn = b.analysis;
+  const aAnHas = aAn && (aAn.content || []).length + (aAn.structure || []).length + (aAn.language || []).length > 0;
+  if (!aAnHas && bAn) out.analysis = bAn;
+  if (!a.plotLine && b.plotLine) out.plotLine = b.plotLine;
+  if ((!a.tenSents || !a.tenSents.length) && b.tenSents && b.tenSents.length) out.tenSents = b.tenSents;
+  if ((!a.paragraphs || !a.paragraphs.length) && b.paragraphs && b.paragraphs.length) out.paragraphs = b.paragraphs;
   console.log('[写作两步] 骨架字段：' + Object.keys(a).join('/') + ' ｜ 范文块：' + Object.keys(b).join('/'));
   return [out];
 }
@@ -2312,14 +2346,18 @@ const CHUNK_KIND_HINT = {
     + '要求写一封信 / 通知 / 演讲稿 / 建议信等，通常注明「80 词左右」。'
     + '**kind 必须是 "appwrite"，label 用「应用文写作」，questions 必须是空数组 []** —— 写作题没有小题、没有选项。'
     + '内容必须填满这几个字段：task（写作要求，卷面原样照抄）、points（审题要点，逐条）、'
-    + 'outline（段落框架：分几段、每段写什么）、sample（参考范文，英文正文逐段 + 中文翻译）、'
-    + 'expressions（高分句式与短语，3～6 条）。**task 和 sample 一个都不能少。**',
+    + '**outline（段落框架，固定三段式：①问候+写信目的 ②主体分点覆盖全部要点 ③期待回复/祝福）**、'
+    + 'analysis（**内容 / 结构 / 语言 三维度试题分析，每维 2～4 条**）、'
+    + 'sample（参考范文，**也按三段式写**，英文正文逐段 + 中文翻译）、'
+    + 'expressions（高分句式与短语，3～6 条）。**task、sample、analysis 一个都不能少。**',
   continuation: '本段是**读后续写**：一段没写完的英文故事 + 两段续写开头句，要求续写 150 词左右。'
     + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []**。'
     + '内容必须填满这几个字段：paragraphs（故事原文，逐段，配中文翻译）、task（写作要求，卷面原样）、'
-    + 'plotLine（情节脉络：summary 原文脉络逐条 / conflict 矛盾点 / arc 情节线 / openers 两段段首句）、'
-    + 'outline（两段各写什么）、sample（续写范例，两段，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
-    + '**task 和 sample 一个都不能少。**'
+    + 'plotLine（情节脉络：summary 原文脉络逐条 / conflict 矛盾点 / arc 情节线 / openers 两段段首句 / plan 30 秒规划 3 条）、'
+    + '**tenSents（十句五定：句 1/5/6/9/10 是定句，功能由位置写死 —— 句 1 衔接写情感、句 5 过渡、句 6 衔接写心理、'
+    + '句 9 紧贴原文交代结局、句 10 点睛升华；句 2/3/4/7/8 不定句负责做啥遇坎 / 障碍 / 行动；句式按位置分配）**、'
+    + 'outline（两段各写什么）、sample（续写范例，两段共约 10 句，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
+    + '**task、sample、tenSents 一个都不能少。**'
 };
 /* 写作两类的排版判据（分块解析 / 完整性校验都用它） */
 function looksLikeAppwriteText(t) {
@@ -2657,6 +2695,10 @@ function writeScore(p) {
   if (np.points.length) s += 1;
   if (np.expressions.length) s += 1;
   if ((np.paragraphs || []).length) s += 1;
+  /* 2026-09-26：三维度分析 / 十句骨架也算完整度的一部分 */
+  const an = np.analysis;
+  if (an && ((an.content || []).length + (an.structure || []).length + (an.language || []).length) > 0) s += 1;
+  if (kindOf(p) === 'continuation' && (np.tenSents || []).length >= 8) s += 1;
   return s;
 }
 function betterWrite(a, b) {
@@ -2672,9 +2714,11 @@ function pickWrite(list) {
 const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上面这一段**整段都是写作题**。'
   + '上一遍你只给了好词好句，**没有给写作要求和参考范文，这是不合格的**，请重做。'
   + '必须包含：task（写作要求，逐字照抄卷面，不许空着、不许只写一句概括）、'
-  + 'sample（参考范文，按题目要求写足词数，英文正文 + 逐段中文翻译）、'
-  + 'outline（段落框架：分几段、每段写什么）。'
-  + '读后续写还必须给 plotLine（情节脉络）和 paragraphs（故事原文逐段 + 中文翻译）。'
+  + 'sample（参考范文，**应用文按三段式写足**，英文正文 + 逐段中文翻译）、'
+  + 'outline（应用文固定三段式：①问候+目的 ②主体分点 ③期待回复）、'
+  + 'analysis（应用文：内容 / 结构 / 语言 三维度分析）。'
+  + '读后续写还必须给 plotLine（含 plan 三条规划）和 tenSents（十句五定，句 1/5/6/9/10 是定句）'
+  + '和 paragraphs（故事原文逐段 + 中文翻译）。'
   + 'expressions（好词好句）只是附加项，**不能拿它顶替 task 和 sample**。'
   + '\nkind / label / questions 仍按上面的要求：写作题 questions 必须是空数组 []。';
 
@@ -3234,7 +3278,20 @@ function normalizePassage(p) {
     task: String(p.task || '').trim(),                              /* 写作要求/情境（中文原样，续写则含两段开头句） */
     points: (p.points || []).map((x) => String(x || '').trim()).filter(Boolean),      /* 审题要点 */
     outline: (p.outline || []).map((x) => String(x || '').trim()).filter(Boolean),    /* 段落框架 */
-    plotLine: p.plotLine && typeof p.plotLine === 'object' ? p.plotLine : null,   /* 情节脉络（续写） */
+    /* 情节脉络（续写）：2026-09-26 加 plan（30 秒动笔前规划），其余照常 */
+    plotLine: (p.plotLine && typeof p.plotLine === 'object') ? {
+      summary: (p.plotLine.summary || []).map((x) => String(x || '').trim()).filter(Boolean),
+      conflict: String(p.plotLine.conflict || '').trim(),
+      arc: String(p.plotLine.arc || '').trim(),
+      openers: (p.plotLine.openers || []).map((x) => String(x || '').trim()).filter(Boolean),
+      plan: (p.plotLine.plan || []).map((x) => String(x || '').trim()).filter(Boolean)
+    } : null,
+    /* 2026-09-26 新增：应用文「内容 / 结构 / 语言」三维度试题分析（续写留空即可） */
+    analysis: (p.analysis && typeof p.analysis === 'object') ? {
+      content: (p.analysis.content || []).map((x) => String(x || '').trim()).filter(Boolean),
+      structure: (p.analysis.structure || []).map((x) => String(x || '').trim()).filter(Boolean),
+      language: (p.analysis.language || []).map((x) => String(x || '').trim()).filter(Boolean)
+    } : null,
     tenSents: (Array.isArray(p.tenSents) ? p.tenSents : []).map((s) => ({        /* 十句骨架（续写） */
       no: s && s.no, fixed: !!(s && s.fixed),
       role: String((s && s.role) || '').trim(), content: String((s && s.content) || '').trim(),
@@ -3697,6 +3754,11 @@ function writeRightHtml(p) {
       ph += '<div class="wsub">两段段首句</div><ul class="wlist">'
         + pl.openers.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
     }
+    /* 2026-09-26：30 秒规划（先定结果 → 再排节奏 → 不加新人物），动笔前的三步 */
+    if (pl.plan && pl.plan.length) {
+      ph += '<div class="wsub">30 秒规划 · 动笔前定三件事</div><ul class="wlist">'
+        + pl.plan.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+    }
     if (ph) html += '<div class="wbox"><h4>情节脉络<span class="k">先捋顺故事</span></h4>' + ph + '</div>';
   }
 
@@ -3715,7 +3777,25 @@ function writeRightHtml(p) {
         + '</div></div>';
     });
     th += '</div>';
-    html += '<div class="wbox"><h4>十句骨架<span class="k">5 定 + 5 不定 · 每句挂一个句式</span></h4>' + th + '</div>';
+    html += '<div class="wbox"><h4>十句骨架 · 十句五定<span class="k">句 1/5/6/9/10 是定句 · 每句挂一个句式</span></h4>' + th + '</div>';
+  }
+
+  /* 2026-09-26：应用文按「内容 / 结构 / 语言」三维度分析 —— 平时训练讲评的标准动作 */
+  if (!isCont && p.analysis) {
+    const a = p.analysis;
+    const dims = [
+      ['content', '内容 · 要点覆盖与取舍'],
+      ['structure', '结构 · 三段式与衔接'],
+      ['language', '语言 · 人称时态与提分句式']
+    ];
+    let ah = '';
+    dims.forEach(function (d) {
+      const arr = a[d[0]] || [];
+      if (!arr.length) return;
+      ah += '<div class="wsub">' + d[1] + '</div><ul class="wlist">'
+        + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+    });
+    if (ah) html += '<div class="wbox"><h4>试题分析<span class="k">内容 · 结构 · 语言</span></h4>' + ah + '</div>';
   }
 
   if (p.points.length) {
@@ -3723,7 +3803,7 @@ function writeRightHtml(p) {
           + p.points.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
   }
   if (p.outline.length) {
-    html += '<div class="wbox"><h4>' + (isCont ? '两段怎么续' : '段落框架') + '<span class="k">每段写什么</span></h4><ul class="wlist">'
+    html += '<div class="wbox"><h4>' + (isCont ? '两段怎么续' : '段落框架 · 三段式') + '<span class="k">每段写什么</span></h4><ul class="wlist">'
           + p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
   }
   if (p.expressions && p.expressions.length) {
