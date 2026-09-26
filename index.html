@@ -2114,7 +2114,7 @@ async function autoRescueMissing(transcript, data) {
         if (parts) {
           setRunLabel('' + kindName(k) + '内容较长，改成拆开分段补解析…');
           for (let j = 0; j < parts.length; j++) {
-            const sub = await rescueOne(k, parts[j]);
+            const sub = pruneOffListQuestions(await rescueOne(k, parts[j]), exerciseNosOf(parts[j]));
             if (sub.length) got = got.concat(sub);
             if (j < parts.length - 1) await sleep(200);
           }
@@ -2481,8 +2481,18 @@ function chunkPromptOf(text) {
   const base = PARSE_PROMPT.replace('{{TEXT}}', text);
   const k = guessKindOfChunk(text);
   if (!k || !CHUNK_KIND_HINT[k]) return base;
-  return base + '\n\n【本次特别要求】上面这段转录文本经程序按排版预判属于「' + kindName(k) + '」。'
-    + CHUNK_KIND_HINT[k] + '（若你通读后证据确实相反，以正文为准。）';
+  let extra = '\n\n【本次特别要求】上面这段转录文本经程序按排版预判属于「' + kindName(k) + '」。'
+    + CHUNK_KIND_HINT[k];
+  /* 2026-09-27 加：把本份题号列表直接点名。实测 glm-4.7-flash 无视泛泛的
+     「只解析列表题号」，拿着短文里的挖空编号把整卷题都解析了、选项全靠编 ——
+     明确到具体题号 + 讲清短文挖空的性质来压制；后置过滤（pruneOffListQuestions）仍兜底。 */
+  const nos = exerciseNosOf(text);
+  if ((k === 'cloze' || k === 'grammar') && nos.length >= 3) {
+    extra += '\n【本次题目列表】只有这几题：' + nos.join('、') + '。'
+      + '短文里嵌着的其他编号（如 ___49___）是别的批次的挖空，不是本份的题目——'
+      + '绝对不要给它们编造选项，questions 里绝不要出现列表以外的题号。';
+  }
+  return base + extra + '（若你通读后证据确实相反，以正文为准。）';
 }
 
 /* 有限并发跑一批任务：整条流水线里「逐张识图」和「逐块解析」是最慢的两段，
@@ -2628,13 +2638,20 @@ function splitBigExercise(text) {
 function exerciseNosOf(seg) {
   const t = normalizeQText(seg);
   const set = {};
-  let m;
+  let m, re1hits = 0;
   /* ① 独立成行的题行：「41. A. xxx」（宽松版，OCR 变体见 QMARK_RE_SRC 注释） */
   const re1 = new RegExp(QMARK_RE_SRC, 'g');
-  while ((m = re1.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
-  /* ② 行内挖空带号：______ (41) / ___41___（语法填空和部分完形这么排） */
-  const re2 = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?/g;
-  while ((m = re2.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
+  while ((m = re1.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) { set[n] = 1; re1hits++; } }
+  /* ② 行内挖空带号：______ (41) / ___41___（语法填空和部分完形这么排）。
+     2026-09-27 加守门：只在**没有题行**（语法填空式排版）时才算 ——
+     完形的短文里也有 ___49___ 这种挖空，而完形另有独立题行（41. A. …）。
+     以前两条路径混着数，短文挖空号（49～55）混进题号列表写进解析提示词，
+     模型照着列表把不在本份的题也解析了、选项全靠编，输出爆量还会截断
+     （端到端实测：一份只带 3 题选项却输出 7 题 14k 字 → finish=length）。 */
+  if (re1hits < 3) {
+    const re2 = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?/g;
+    while ((m = re2.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
+  }
   return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
 }
 /* 卷面上有、解析结果里却没有的题号 */
@@ -2724,13 +2741,33 @@ function expandBigChunks(list) {
     if (k === 'cloze' || k === 'grammar') {
       const parts = splitBigExercise(b.text);
       if (parts) {
-        parts.forEach(function (x) { out.push({ text: x, sec: b.sec }); });
+        parts.forEach(function (x) { out.push({ text: x, sec: b.sec, nos: exerciseNosOf(x) }); });
         return;
       }
     }
     out.push(b);
   });
   return out;
+}
+
+/* 模型不听「只解析列表题号」的劝（2026-09-27 端到端实测：glm-4.7-flash 三份全部
+   越权把整卷 15 题都解析了，选项全靠编，输出爆到 13k 字还可能截断）——
+   解析结果回来按本份题号列表硬过滤，列表外的题直接扔。
+   只对「被 splitBigExercise 切分的块」启用：切分前提是题行 ≥5 个命中，
+   nos 与题行同源，绝不漏杀真题；未切分的普通块不过滤。 */
+function pruneOffListQuestions(got, nos) {
+  if (!nos || !nos.length) return got;
+  const want = {}; nos.forEach(function (n) { want[n] = 1; });
+  let pruned = 0;
+  (got || []).forEach(function (p) {
+    if (!p || !p.questions || !p.questions.length) return;
+    const keep = p.questions.filter(function (q) { return want[Number(q.no)]; });
+    pruned += p.questions.length - keep.length;
+    p.questions = keep;
+  });
+  if (pruned) console.warn('[题号过滤] 模型越权解析了 ' + pruned + ' 道列表外的题，已丢弃');
+  /* 题目被扔光的篇目（整篇都是编的）也一并丢掉，别让空壳上页面 */
+  return (got || []).filter(function (p) { return !p || !p.questions || p.questions.length > 0; });
 }
 
 /* 按字数硬切（优先在换行处断），用于「没认出任何大题标记」的卷子兜底 */
@@ -2884,7 +2921,7 @@ async function parseInChunks(transcript) {
           console.warn('[分块解析] 写作题重做失败：' + e2.message);
         }
       }
-      return { i: i, d: r.d, got: r.got };
+      return { i: i, d: r.d, got: pruneOffListQuestions(r.got, chunk.nos) };
     } catch (e) {
       return { i: i, err: e, got: [] };
     } finally {
@@ -2900,14 +2937,14 @@ async function parseInChunks(transcript) {
     if (!r || r.err) {
       const why = (r && r.err && r.err.message) || '未知错误';
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + why);
-      fails.push({ i: i + 1, why: why, text: chunk.text });
+      fails.push({ i: i + 1, why: why, text: chunk.text, nos: chunk.nos });
       return;
     }
     if (r.d && r.d.title && !merged.title) merged.title = r.d.title;
     /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空/完形会静默消失 */
     if (!r.got.length) {
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunk.text.slice(0, 80));
-      fails.push({ i: i + 1, why: '没解析出内容', text: chunk.text });
+      fails.push({ i: i + 1, why: '没解析出内容', text: chunk.text, nos: chunk.nos });
       return;
     }
     r.got.forEach(function (p) { merged.passages.push(p); });
@@ -2919,7 +2956,7 @@ async function parseInChunks(transcript) {
     const again = await mapLimited(fails, 2, async function (f) {
       try {
         const r = await parseOneChunk(f.text);
-        return { ok: r.got, d: r.d };
+        return { ok: pruneOffListQuestions(r.got, f.nos), d: r.d };
       } catch (e) { return { ok: [], err: e }; }
     });
     const still = [];
