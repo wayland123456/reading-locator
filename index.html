@@ -2534,20 +2534,40 @@ function splitTranscript(text) {
    每份都带上完整短文（合并时 uniqParas 自动去掉重复的短文，题号也不会重复）。
    这是「完形块反复解析不出来」的根治办法。 */
 const EXERCISE_PER_CHUNK = 6;
-function splitBigExercise(text) {
-  const t = String(text || '');
-  /* 题目行的起点：独立成行的「41. A.」 */
-  const re = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
+/* ---------- 题行识别宽松化（2026-09-26）----------
+   旧正则只认理想形态「41. A.」，而 OCR 转写的题行五花八门：
+   ① 全角数字「４１. Ａ.」② 题号后没点「41 A.」③ 行首带 markdown 星号「**41. A.」
+   ④ 选项字母后没点「41. A decision」⑤ 全角点混排「41．Ａ．」。
+   一种对不上就 marks 数不够 7 → splitBigExercise 返回 null → 完形块不拆 →
+   15 空一次解析必超免费模型输出上限被截断；更致命的是**补解析的「拆开分段重试」
+   走的也是同一个函数** —— 拆不开就永远整段重试，次次截断，
+   表现正是弹框说的「文字已经认出来了，但没能整理成题目，拆开分段重试仍没成功」。 */
+function normalizeQText(t) {
+  /* 全角数字 → 半角（等长替换，不影响切片下标） */
+  return String(t || '').replace(/[０-９]/g, function (c) {
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  });
+}
+/* 题行起点（宽松版）：行首可带 markdown 记号，题号后的点、选项字母后的点都可选 */
+const QMARK_RE_SRC = '(?:^|\\n)[^\\S\\n]*[#*>]*\\s*(\\d{1,2})\\s*[.、．]?\\s*(?:A|Ａ)\\s*[.、．、:]?';
+function questionMarksOf(t0) {
+  const t = normalizeQText(t0);
+  const re = new RegExp(QMARK_RE_SRC, 'g');
   const marks = []; let m;
-  while ((m = re.exec(t))) marks.push(m.index);
+  while ((m = re.exec(t))) marks.push({ at: m.index, no: Number(m[1]) });
+  return marks;
+}
+function splitBigExercise(text) {
+  const t = normalizeQText(text);
+  const marks = questionMarksOf(t);
   if (marks.length < EXERCISE_PER_CHUNK + 1) return null;
-  const body = t.slice(0, marks[0]).trim();
+  const body = t.slice(0, marks[0].at).trim();
   /* 题干太短说明切出来的不是题目列表，别乱动 */
   if (body.length < 120) return null;
   const out = [];
   for (let i = 0; i < marks.length; i += EXERCISE_PER_CHUNK) {
-    const to = i + EXERCISE_PER_CHUNK < marks.length ? marks[i + EXERCISE_PER_CHUNK] : t.length;
-    const seg = t.slice(marks[i], to).trim();
+    const to = i + EXERCISE_PER_CHUNK < marks.length ? marks[i + EXERCISE_PER_CHUNK].at : t.length;
+    const seg = t.slice(marks[i].at, to).trim();
     if (seg) out.push(body + '\n\n' + seg);
   }
   return out.length > 1 ? out : null;
@@ -2562,11 +2582,11 @@ function splitBigExercise(text) {
    ========================================================= */
 /* 从某大题原文里数出卷面上一共有哪几个题号 */
 function exerciseNosOf(seg) {
-  const t = String(seg || '');
+  const t = normalizeQText(seg);
   const set = {};
   let m;
-  /* ① 独立成行的题行：「41. A. xxx」 */
-  const re1 = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
+  /* ① 独立成行的题行：「41. A. xxx」（宽松版，OCR 变体见 QMARK_RE_SRC 注释） */
+  const re1 = new RegExp(QMARK_RE_SRC, 'g');
   while ((m = re1.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
   /* ② 行内挖空带号：______ (41) / ___41___（语法填空和部分完形这么排） */
   const re2 = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?/g;
@@ -2592,10 +2612,8 @@ function missingNosOf(seg, kind, passages) {
 }
 /* 从大题原文里只抠出指定题号的那几题 —— 短文带上，模型要有上下文才选得对答案 */
 function sliceExerciseByNos(seg, nos) {
-  const t = String(seg || '');
-  const re = /(?:^|\n)\s*(\d{1,2})\s*[.、．]\s*(?:A|Ａ)\s*[.、．]/g;
-  const marks = []; let m;
-  while ((m = re.exec(t))) marks.push({ at: m.index, no: Number(m[1]) });
+  const t = normalizeQText(seg);
+  const marks = questionMarksOf(t);
   if (!marks.length) return '';
   const want = {}; nos.forEach(function (n) { want[n] = 1; });
   const body = t.slice(0, marks[0].at).trim();
