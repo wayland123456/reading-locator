@@ -3160,7 +3160,7 @@ async function runPipeline() {
 /* 统一的「纯文本 → 解析」管线：
    「粘贴试卷文本」和「上传文档」都走这里，跳过识图，不受识图模型限流影响。
    srcName 有值时用它当课件标题（文件名比 AI 猜的准）。 */
-async function runFromTextCore(text, srcName) {
+async function runFromTextCore(text, srcName, mergeMode) {
   text = String(text || '').trim();
   if (text.length < 30) { toast('文字太少，请把阅读文章和题目一起放进来', 'err'); return; }
   progressState = { show: true, done: [0], active: 1 };
@@ -3179,8 +3179,17 @@ async function runFromTextCore(text, srcName) {
       const nm = String(srcName).replace(/\.[^.]+$/, '').trim();
       if (nm) data.title = nm;
     }
-    commitResult(data);
-    toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
+    /* 2026-09-26 新增两种落地方式：
+       替换（原行为）：整份结果落地，覆盖当前讲解 —— 粘整卷时用；
+       并入（新）：只把解析出的题型并进当前结果，已识别的其他题型原样保留 ——
+       整卷就差一种题型没识别出来时（最典型：完形跨页），把那一块粘进来勾「并入」，
+       其他题型不用重跑。 */
+    if (mergeMode) {
+      mergeIntoCurrent(data);
+    } else {
+      commitResult(data);
+      toast('解析完成，共 ' + S.passages.length + ' 篇', 'ok');
+    }
     if (data.__missing && data.__missing.length) {
       await sleep(700);
       showMissingKindsModal(data.__missing);
@@ -3197,18 +3206,35 @@ async function runFromTextCore(text, srcName) {
 }
 
 async function runFromText() {
+  /* 已有讲解结果时给「并入」选项：整卷就差一块（最典型是完形跨页没识别出来），
+     把那一块的文字粘进来勾上它，只补这一块，其他题型不用重跑。 */
+  const hasResult = (S.passages || []).length > 0;
   openModal('粘贴试卷文本', '', [
     { label: '取消', fn: () => $('#modal').classList.remove('on') },
     {
       label: '开始解析', solid: true, fn: async () => {
         const text = $('#modalText').value.trim();
         if (text.length < 30) { toast('文本太短了，请把阅读文章和题目一起粘进来', 'err'); return; }
+        const _chk = document.getElementById('mergeChk');
+        const mergeMode = !!(_chk && _chk.checked);
         $('#modal').classList.remove('on');
-        await runFromTextCore(text, '');
+        await runFromTextCore(text, '', mergeMode);
       }
     }
   ]);
-  $('#modalText').placeholder = '把整张卷子的文字直接粘进来（图片、文字都行）：\n\nMany people believe that...\n\n21. What does the author suggest?\nA. ...\nB. ...\nC. ...\nD. ...\n\n完形、七选五、语法填空也能一起粘，程序会自动分题型。';
+  const _mc = $('#modalCustom');
+  if (_mc) {
+    _mc.innerHTML = hasResult
+      ? '<label style="display:flex;align-items:flex-start;gap:8px;margin:10px 2px 2px;font-size:13px;line-height:1.5;color:#4a5568;cursor:pointer;user-select:none;">'
+        + '<input type="checkbox" id="mergeChk" checked style="margin-top:2px;accent-color:#3b82f6;width:15px;height:15px;flex:none;">'
+        + '<span><b>➕ 并入当前讲解</b>（推荐：只补缺的题型，已识别的其他题型原样保留）<br>'
+        + '<span style="color:#94a3b8;font-size:12px;">不勾 = 替换当前讲解（粘整卷重新解析时用）</span></span></label>'
+      : '';
+    _mc.style.display = hasResult ? '' : 'none';
+  }
+  $('#modalText').placeholder = hasResult
+    ? '把缺的那一块文字粘进来（如完形的指令语＋短文＋全部题目），勾选「并入当前讲解」后点开始：\n\n阅读下面短文，从每题所给的A、B、C、D四个选项中选出可以填入空白处的最佳选项。\n\n（短文……）\n\n41. A. ...  B. ...  C. ...  D. ...\n42. ...'
+    : '把整张卷子的文字直接粘进来（图片、文字都行）：\n\nMany people believe that...\n\n21. What does the author suggest?\nA. ...\nB. ...\nC. ...\nD. ...\n\n完形、七选五、语法填空也能一起粘，程序会自动分题型。';
   $('#modalText').focus();
 }
 
@@ -3244,6 +3270,49 @@ function commitResult(data) {
   progressState.show = false;
   renderProgress();
   $('#docTitle').value = S.title;
+  render();
+  save();
+}
+
+/* ---------- 「并入当前讲解」（2026-09-26 新增） ----------
+   场景：整卷解析完了，就差一种题型（最典型：完形跨两页没识别出来，补解析也救不回）。
+   这时把那块题目文字用「粘贴试卷文本」粘进来、勾选「并入当前讲解」——
+   只把解析出的这一块并进来，已识别的其他题型原样保留，不用整卷重跑。
+   合并规则：题型 + label 都相同的篇目 = 替换（重新粘了更全的同一篇）；否则追加。
+   并入后按卷面顺序（阅读→七选五→完形→语法→写作）重新排好，落在题型速览页。 */
+function mergeIntoCurrent(data) {
+  const usable = (data.passages || []).filter(function (p) { return !isNonLessonKind(p); });
+  let fresh = usable.map(normalizePassage);
+  fresh = mergeSameKind(fresh);
+  if (!fresh.length) throw new Error('粘贴的内容里没有可讲解的题型');
+  const added = [], replaced = [];
+  let firstIdx = -1;
+  fresh.forEach(function (np) {
+    const k = kindOf(np);
+    const lbl = String(np.label || '').trim();
+    const named = kindName(k) + (lbl && !/^(完形|七选五|语法填空|应用文写作|读后续写)$/.test(lbl) ? ' ' + lbl : '');
+    let idx = -1;
+    S.passages.forEach(function (p, i) {
+      if (idx < 0 && kindOf(p) === k && String(p.label || '').trim() === lbl) idx = i;
+    });
+    if (idx >= 0) { S.passages[idx] = np; replaced.push(named); if (firstIdx < 0) firstIdx = idx; }
+    else { S.passages.push(np); added.push(named); if (firstIdx < 0) firstIdx = S.passages.length - 1; }
+  });
+  /* 按卷面题型顺序排，顶部标签 / 速览卡片 / 翻页都跟卷面一致 */
+  S.passages.sort(function (a, b) {
+    return KIND_ORDER.indexOf(kindOf(a)) - KIND_ORDER.indexOf(kindOf(b));
+  });
+  S.cur = Math.max(0, firstIdx);
+  S.activeQ = null;
+  S.picking = null;
+  S.view = 'overview';   /* 多题型一律落速览页，老师自己点进并入的那篇 */
+  $('#emptyState').classList.add('hidden');
+  $('#subbar').style.display = '';
+  const _rb = $('#reupBar');
+  if (_rb) _rb.style.display = 'none';
+  const msg = (added.length ? '新并入 ' + added.join('、') : '')
+    + (replaced.length ? (added.length ? '；' : '') + '更新了 ' + replaced.join('、') : '');
+  toast('并入完成：' + msg + '（其他题型未动）', 'ok', 4200);
   render();
   save();
 }
