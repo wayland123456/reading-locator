@@ -130,7 +130,7 @@ input,select,textarea{font-family:inherit;color:inherit}
 .pane::-webkit-scrollbar-thumb{background:#c9d5e3;border-radius:5px;border:2px solid transparent;background-clip:content-box}
 .pane::-webkit-scrollbar-thumb:hover{background:#a9bacd;background-clip:content-box}
 
-.divider{width:5px;cursor:col-resize;background:transparent;flex:0 0 5px;position:relative}
+.divider{width:5px;cursor:col-resize;background:transparent;flex:0 0 5px;position:relative;touch-action:none}
 .divider::after{content:"";position:absolute;inset:0 2px;background:var(--border);border-radius:2px}
 .divider:hover::after{background:var(--primary)}
 
@@ -245,6 +245,9 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .opt.correct .k{background:var(--ok);border-color:var(--ok);color:#fff}
 .opt.correct .v{font-weight:700;color:#0f7a3d}
 .opt.wrong .k{border-color:#e6b3b3;color:#b56767}
+/* 完形填空选项短，两列一排四选两行，省屏幕空间 */
+.opts.two{display:grid;grid-template-columns:1fr 1fr;column-gap:10px;padding-right:20px}
+.opts.two .opt{padding:4px 8px}
 
 .qbtns{display:flex;gap:7px;padding:6px 15px 13px 55px;flex-wrap:wrap}
 .qb{
@@ -655,8 +658,8 @@ body.focus #emptyState{height:100vh}
 
 /* ---------- 记号笔：整页画布 + 右下角浮动工具条 ---------- */
 #inkCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:60;pointer-events:none}
-body.pen-mode #inkCanvas{pointer-events:auto;cursor:crosshair}
-body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell}
+body.pen-mode #inkCanvas{pointer-events:auto;cursor:crosshair;touch-action:none}
+body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 .pen-bar{
   position:fixed;right:16px;bottom:78px;z-index:70;display:flex;align-items:center;gap:5px;  /* 抬到题目导航上面，别打架 */
   background:#fff;border:1px solid var(--border);border-radius:14px;padding:6px 8px;
@@ -4181,7 +4184,7 @@ function qHtml(q, kind) {
     +   '<span class="qstem">' + esc(q.stem) + '</span>'
     +   (q.type ? '<span class="qtype">' + esc(q.type) + '</span>' : '')
     + '</div>'
-    + (kind === 'grammar' ? grammarBody(q) : '<div class="opts">' + optsHtml(q) + '</div>')
+    + (kind === 'grammar' ? grammarBody(q) : '<div class="opts' + (kind === 'cloze' ? ' two' : '') + '">' + optsHtml(q) + '</div>')
     + '<div class="qbtns">'
     +   '<button class="qb' + shown + '" data-ev="' + esc(q.no) + '">📄 显示原文</button>'
     +   '<button class="qb' + ansShown + '" data-ans="' + esc(q.no) + '">✔ 显示答案</button>'
@@ -4605,8 +4608,8 @@ $('#content').addEventListener('dblclick', (e) => {
   el.onkeydown = (ev) => { if (ev.key === 'Escape') { el.onblur = null; renderView(); } };
 });
 
-/* 分隔条拖拽 */
-document.addEventListener('mousedown', (e) => {
+/* 分隔条拖拽（pointer 事件统一处理鼠标和触摸，希沃电子屏上也能拖） */
+document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest('#divider')) return;
   const left = $('.pane-left');
   if (!left) return;
@@ -4617,12 +4620,14 @@ document.addEventListener('mousedown', (e) => {
     left.style.flex = '0 0 ' + (ratio * 100) + '%';
   };
   const up = () => {
-    document.removeEventListener('mousemove', move);
-    document.removeEventListener('mouseup', up);
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
     document.body.style.cursor = '';
   };
-  document.addEventListener('mousemove', move);
-  document.addEventListener('mouseup', up);
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
 });
 
 /* =========================================================
