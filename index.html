@@ -1172,7 +1172,13 @@ const PARSE_PROMPT = [
 '8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
 '9. 若某篇没有配题，questions 给空数组。',
 '10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
-'11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇 —— 应用文约 80 词、读后续写约 150 词，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
+'11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
+'11a. **范文词数必须「宁多不少」——绝不能写刚好等于题目最低要求，那是要被扣分的**（这是高考阅卷的铁律，也是本页范文的硬指标）：',
+'   ① 应用文：题面写「80 词左右」时，**范文正文必须写到 95～110 词**（低于 90 词直接算不合格，必须重写加长）。理由：高考应用文写 80 词只能拿基础分，写 95～110 词、要点铺开、句式有层次，才够到高分档；只写 76 词这种，阅卷老师第一眼就判「篇幅不足」。',
+'   ② 读后续写：题面写「150 词左右」时，**范文两段合计必须写到 165～185 词**（低于 160 词算不合格，必须重写加长）。',
+'   ③ 加长的正确做法：给要点补细节（时间地点、具体动作、感受描写）、加衔接与过渡句、补一句深化主题的收尾；**不许灌水凑数**（不许重复同义句、不许堆无意义形容词、不许把一句话拆成三句）。',
+'   ④ **输出前必须自己数一遍词数**：应用文 <90 词、续写 <160 词，立刻改写加长再输出 —— 不要输出不达标的范文指望程序替你兜。',
+'   ⑤ 反例警示：写完「Dear Alex, It is my great honor to welcome you…We wish you a pleasant stay. Yours, Li Hua」这类只有 70～80 词的三段式，**是不合格的**——要点没铺开、细节太少。合格版必须把每个要点都写成一到两句、并补足细节与衔接。',
 '12. 写作题的 task 必须逐字来自转录文本，不要自己编造题目要求；points 写 3～5 条审题要点（体裁格式、人称、时态、要点覆盖等）。',
 '12a. **应用文的 outline 固定三段式，只写 3 条**（平时训练的讲评标准，不许两段也不许四段）：',
 '    第一段 问候/自我介绍 + 开门见山说明写信目的；第二段 主体，分 2～3 点把题面要求的要点全部覆盖；',
@@ -2035,7 +2041,7 @@ function rescuePrompt(kind, seg) {
             + '内容按上面「写作类」的字段要求填：task（写作要求原样）/ points（要点）/ '
             + '**outline（固定三段式：①问候+写信目的 ②主体分点覆盖要点 ③期待回复/祝福）**/ '
             + '**analysis（内容 / 结构 / 语言 三维度分析）**/ '
-            + 'sample（参考范文，**同样按三段式写**，英文配中文翻译）/ expressions（高分句式与短语）；'
+            + 'sample（参考范文，**同样按三段式写**，英文配中文翻译，**正文 95～110 词，写不足 90 词会被扣分**）/ expressions（高分句式与短语）；'
             + 'paragraphs 放卷面给的英文材料，若卷面全是中文要求就给空数组 []。'
           : (kind === 'continuation'
             ? '这段内容**只有读后续写**（一段没写完的故事原文 + 两段续写开头句）。'
@@ -2043,7 +2049,7 @@ function rescuePrompt(kind, seg) {
               + '内容按上面「写作类」的字段要求填：task（写作要求）/ plotLine（情节脉络：summary / conflict / arc / openers / plan 三条规划）/ '
               + '**tenSents（十句五定：句 1/5/6/9/10 定句 —— 衔接写情感 / 过渡 / 衔接写心理 / 紧贴原文交代结局 / 点睛升华；'
               + '句 2/3/4/7/8 不定句 —— 做啥遇坎 / 障碍1 / 行动1 / 障碍2 / 行动2；句式按位置分配）** / '
-              + 'outline / sample（续写范例两段共约 10 句，英文配中文翻译）/ expressions；'
+              + 'outline / sample（续写范例**两段合计 165～185 词，写不足 160 词会被扣分**，英文配中文翻译）/ expressions；'
               + 'paragraphs 放故事原文（逐段，配中文翻译）。'
             : '这段内容**只有「' + name + '」这一种题型**，kind 必须是 "' + kind + '"。'))));
   return PARSE_PROMPT.replace('{{TEXT}}', seg) + '\n\n【本次特别要求】' + force
@@ -2078,6 +2084,9 @@ const WRITE_STEP_B = '\n\n【本次特别要求 · 只做第二步】这一段�
   + 'sample（参考范文，**应用文必须三段式**——问候+目的 / 主体分点 / 期待回复，'
   + '读后续写按十句骨架写足两段共约 10 句，英文正文 + 逐段中文翻译）、'
   + 'expressions（高分句式与短语，3～6 条）。'
+  + '**字数硬指标（宁多不少，写少了要扣分）**：应用文范文正文 **95～110 词**（<90 词不合格）；'
+  + '读后续写范文两段合计 **165～185 词**（<160 词不合格）。'
+  + '加长靠补细节、加衔接、加主题收尾，不许灌水凑数。写完自查词数，不够就加长再输出。'
   + '**task / points / outline / analysis / tenSents 这一次不用重复，留空或给空数组即可。**'
   + 'kind / label / questions 照常（写作题 questions 必须是空数组 []）。';
 
@@ -2474,7 +2483,7 @@ const CHUNK_KIND_HINT = {
     + '内容必须填满这几个字段：task（写作要求，卷面原样照抄）、points（审题要点，逐条）、'
     + '**outline（段落框架，固定三段式：①问候+写信目的 ②主体分点覆盖全部要点 ③期待回复/祝福）**、'
     + 'analysis（**内容 / 结构 / 语言 三维度试题分析，每维 2～4 条**）、'
-    + 'sample（参考范文，**也按三段式写**，英文正文逐段 + 中文翻译）、'
+    + 'sample（参考范文，**也按三段式写**，英文正文逐段 + 中文翻译，**正文必须 95～110 词 —— 写 80 词左右或更少算不合格，会被扣分，必须写足**）、'
     + 'expressions（高分句式与短语，3～6 条）。**task、sample、analysis 一个都不能少。**',
   continuation: '本段是**读后续写**：一段没写完的英文故事 + 两段续写开头句，要求续写 150 词左右。'
     + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []**。'
@@ -2482,7 +2491,7 @@ const CHUNK_KIND_HINT = {
     + 'plotLine（情节脉络：summary 原文脉络逐条 / conflict 矛盾点 / arc 情节线 / openers 两段段首句 / plan 30 秒规划 3 条）、'
     + '**tenSents（十句五定：句 1/5/6/9/10 是定句，功能由位置写死 —— 句 1 衔接写情感、句 5 过渡、句 6 衔接写心理、'
     + '句 9 紧贴原文交代结局、句 10 点睛升华；句 2/3/4/7/8 不定句负责做啥遇坎 / 障碍 / 行动；句式按位置分配）**、'
-    + 'outline（两段各写什么）、sample（续写范例，两段共约 10 句，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
+    + 'outline（两段各写什么）、sample（续写范例，两段共约 10 句，**两段合计必须 165～185 词 —— 写 150 词左右或更少算不合格，会被扣分，必须写足**，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
     + '**task、sample、tenSents 一个都不能少。**'
 };
 /* 写作两类的排版判据（分块解析 / 完整性校验都用它） */
@@ -2866,6 +2875,45 @@ function isThinWrite(p) {
 function hasThinWrite(list) {
   return (list || []).some(isThinWrite);
 }
+/* ---------- 范文词数自查（2026-09-28）----------
+   浪浪指出：范文写「刚好等于题目最低要求」在高考里要吃暗亏 ——
+   应用文要求 80 词却只写 76 词、续写要求 150 词却只写 150 出头，阅卷第一眼就判「篇幅不足」。
+   硬指标：应用文正文 ≥90 词（目标 95～110）；续写两段合计 ≥160 词（目标 165～185）。
+   注意只数「英文正文」：中文翻译、标点符号不计入。 */
+function sampleWordCount(p) {
+  const np = normalizePassage(p || {});
+  const en = (np.sample || []).map(function (s) { return String((s && s.en) || ''); }).join(' ');
+  /* 只留英文字母/撇号/连字符构成的词，中文与纯符号不计 */
+  const words = en.match(/[A-Za-z][A-Za-z'\-]*/g) || [];
+  return words.length;
+}
+function sampleTooShort(p) {
+  if (!isWriteKind(kindOf(p))) return false;
+  const n = sampleWordCount(p);
+  if (!n) return false;                    /* 没范文另行处理（空壳判定管），这里只管「有但太短」 */
+  const k = kindOf(p);
+  if (k === 'appwrite') return n < 90;
+  if (k === 'continuation') return n < 160;
+  return false;
+}
+/* 范文续写不足时的强提示：只重写范文，别动已经填好的其他字段 */
+function sampleLengthNote(p) {
+  const kind = kindOf(p);
+  const n = sampleWordCount(p);
+  const isApp = kind === 'appwrite';
+  const target = isApp ? '95～110' : '165～185';
+  const floor = isApp ? 90 : 160;
+  return '\n\n【本次特别要求 · 范文词数不足，只重写范文】'
+    + '你上一遍给的范文只有 **' + n + ' 个英文单词**，不达标（高考会吃亏：写太少第一眼就判篇幅不足）。'
+    + '这次只重写 sample，' + (isApp ? '应用文' : '读后续写') + '必须写到 **' + target + ' 个英文单词**，'
+    + '**低于 ' + floor + ' 词就是不合格**。\n'
+    + (isApp
+      ? '三段式：①问候+自我介绍+说明目的 ②主体——把题面要点逐条展开，每条写 1～2 句（可补时间、地点、活动形式、学生期待等细节）③结尾祝福+期待。\n'
+      : '两段，按十句骨架写足：每段都要有情节推进与心理/动作描写，不要一句带过。\n')
+    + '加长办法：补细节、加衔接过渡句、补一句深化主题的收尾；**不许灌水**（不重复同义句、不堆无意义形容词、不把一句话拆成三句）。\n'
+    + '每段仍要给中文翻译；kind / label / questions 照常（questions 为空数组 []）。'
+    + 'task / points / outline / analysis / tenSents 这次不用重复。';
+}
 /* 写作题「完整度打分」（2026-09-25）：
    两步法 / 重做的结果未必十全十美，可能只是「比上一遍多给了范文」。
    以前非黑即白（不是空壳才要），结果两边都半残时反而把更好的那一版丢了 ——
@@ -2900,8 +2948,7 @@ function pickWrite(list) {
 const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上面这一段**整段都是写作题**。'
   + '上一遍你只给了好词好句，**没有给写作要求和参考范文，这是不合格的**，请重做。'
   + '必须包含：task（写作要求，逐字照抄卷面，不许空着、不许只写一句概括）、'
-  + 'sample（参考范文，**应用文按三段式写足**，英文正文 + 逐段中文翻译）、'
-  + 'outline（应用文固定三段式：①问候+目的 ②主体分点 ③期待回复）、'
+  + 'sample（参考范文，**应用文按三段式写足**，英文正文 + 逐段中文翻译，**正文 95～110 词，写不足 90 词会被扣分**）、'  + 'outline（应用文固定三段式：①问候+目的 ②主体分点 ③期待回复）、'
   + 'analysis（应用文：内容 / 结构 / 语言 三维度分析）。'
   + '读后续写还必须给 plotLine（含 plan 三条规划）和 tenSents（十句五定，句 1/5/6/9/10 是定句）'
   + '和 paragraphs（故事原文逐段 + 中文翻译）。'
@@ -2936,7 +2983,10 @@ async function parseInChunks(transcript) {
     const one = d || { passages: [] };
     fixKindsByLayout(one.passages);
     /* 单块也要盘点：一次请求塞整卷时，末尾题型最容易被吃掉 */
-    return await autoRescueMissing(chunks[0].text, one);
+    const one2 = await autoRescueMissing(chunks[0].text, one);
+    /* 范文词数不达标的重写一遍 */
+    await rescueShortSamples(one2, chunks[0].text);
+    return one2;
   }
   console.log('[分批解析] 共 ' + chunks.length + ' 块（并发 ' + PARSE_CONC + '）：'
     + chunks.map(function (c) { return c.text.length + '字' + (c.sec ? '（' + c.sec.slice(0, 8) + '）' : ''); }).join(' / '));
@@ -3020,10 +3070,67 @@ async function parseInChunks(transcript) {
   }
   /* 再做一轮题型盘点：卷面上有、结果里没有的，单独补解析 */
   const data2 = await autoRescueMissing(transcript, merged);
+  /* 最后一道：范文词数不达标的重写一遍（应用文<90 / 续写<160） */
+  await rescueShortSamples(data2, transcript);
   if (!data2.__missing || !data2.__missing.length) {
     if (!fails.length) showLostBtn(false);
   }
   return data2;
+}
+
+/* =========================================================
+   范文词数补救（2026-09-28）
+   浪浪反馈的硬要求：应用文范文 ≥90 词（目标 95～110）、续写 ≥160 词（目标 165～185）。
+   提示词已经写死了，但模型仍会写少（尤其 glm-flash 倾向「刚好达标」）。
+   这里在全部解析完成后复查一遍：达标不动；不达标就带着 SAMPLE_LENGTH_NOTE
+   重写一次范文，谁词数更够用谁。只重写 sample，不影响其他字段。
+   ========================================================= */
+async function rescueShortSamples(data, transcript) {
+  const writes = (data.passages || []).filter(function (p) { return isWriteKind(kindOf(p)); });
+  for (let i = 0; i < writes.length; i++) {
+    const p = writes[i];
+    if (!sampleTooShort(p)) continue;
+    /* 卷面本来就印了范文（sampleSource=paper）→ 那是原卷内容，词数由卷面决定，
+       不是 AI 写的，绝不能替它「补足字数」。只对 AI 自写的范文（ai）做补救。 */
+    if (String(p.sampleSource || '').toLowerCase() === 'paper') {
+      console.log('[范文词数] ' + kindName(kindOf(p)) + ' 范文来自卷面印刷（' + sampleWordCount(p) + ' 词），不改动');
+      continue;
+    }
+    const kind = kindOf(p);
+    const before = sampleWordCount(p);
+    const need = (kind === 'appwrite') ? '95～110' : '165～185';
+    console.warn('[范文词数] ' + kindName(kind) + ' 范文仅 ' + before + ' 词，低于硬指标，正在重写（目标 ' + need + ' 词）');
+    setRunLabel('' + kindName(kind) + '范文只有 ' + before + ' 词，正在补足字数…');
+    /* 从整卷转录里抠出这一段写作题的原文，作为重写的输入 */
+    const seg = extractKindSegment(transcript, kind);
+    if (!seg) continue;
+    /* 最多重写两轮：第一轮常已够长；glm 系偶尔顽固，第二轮带上「精确差多少词」再压一次 */
+    for (let round = 1; round <= 2; round++) {
+      const cur = sampleWordCount(p);
+      if (!sampleTooShort(p)) break;
+      try {
+        const got = await rescueOne(kind, seg, sampleLengthNote(p));
+        const fresh = pickWrite(got);
+        if (!fresh) break;
+        const after = sampleWordCount(fresh);
+        if (after > cur && fresh.sample && fresh.sample.length) {
+          p.sample = fresh.sample;
+          p.sampleSource = fresh.sampleSource || p.sampleSource || 'ai';
+          console.log('[范文词数] 第 ' + round + ' 轮：' + kindName(kind) + ' 范文 ' + cur + ' → ' + after + ' 词'
+            + (sampleTooShort(p) ? '' : '（达标 ✓）'));
+        } else {
+          console.warn('[范文词数] 第 ' + round + ' 轮没变长（' + cur + ' → ' + after + '），保留原有');
+          break;
+        }
+      } catch (e) {
+        console.warn('[范文词数] 第 ' + round + ' 轮重写失败：' + e.message);
+        break;
+      }
+    }
+    const fin = sampleWordCount(p);
+    console.log('[范文词数] ' + kindName(kind) + ' 最终 ' + fin + ' 词'
+      + (sampleTooShort(p) ? '（仍未达标）' : '（达标 ✓）'));
+  }
 }
 
 /* 「⚠ 补解析」按钮：只在前一次上传确实丢了内容时出现 */
