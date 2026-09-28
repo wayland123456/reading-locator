@@ -879,6 +879,7 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="sep"></span>
   <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏（进去后右下角可以整页放大）">⛶<span class="lbl">全屏</span></button>
   <button class="pb" id="btnExitFs" title="退出全屏（ESC 也行）">✕<span class="lbl">退出全屏</span></button>
+  <button class="pb" id="btnHome" title="回到首页：重新传卷 / 开课件库。当前讲解不会丢，首页顶上点「返回当前讲解」就回来">🏠<span class="lbl">首页</span></button>
   <span class="sep"></span>
   <!-- 整页缩放：后排看不清时把内容整体放大（文字 + 排版一起大）。
        全屏下顶栏是收起的，所以这一组必须留在悬浮条上，鼠标/触摸/键盘都能调。 -->
@@ -1043,7 +1044,9 @@ const TRANSCRIBE_PROMPT = [
 '',
 '要求：',
 '1) 保留文章自然段落，每个段落单独成段（段与段之间空一行）；',
-'2) 题目保留题号（如 21.）和选项（A. B. C. D.），每项单独一行；',
+'   · 试卷常是双栏排版：先把左栏从上到下逐段读完，再接着读右栏，逐段照抄，任何一段都不能跳过或省略；',
+'   · 段落前的印刷/手写序号（1、2、3…）按原样保留在段首（它们标着段落顺序，缺号就说明漏抄了）；',
+'2) 题目保留题号和选项（A. B. C. D.），每项单独一行；题号数字必须照抄卷面原样（卷面是 1. 就写 1.，是 21. 就写 21.，绝不要改号、补号或顺延）；',
 '   —— 七选五的 A～G 七个选项也要逐条列出，并保留题号区间（如 36～40 题）；',
 '3) 语法填空、完形填空的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
 '   ① 无提示词的空写成连续的六个下划线：______',
@@ -1056,6 +1059,24 @@ const TRANSCRIBE_PROMPT = [
 '',
 '直接开始输出转写结果。'
 ].join('\n');
+
+/* ---------- 双栏跳读检测（2026-09-28）----------
+   案例：小练（五）阅读篇，glm-4.6v-flash 两次都把双栏左栏中段整段跳读
+   （8 段文章只转出 4~5 段），finish=stop、文本非空 —— 程序完全无感知，
+   后续解析要么坏 JSON 要么让模型编文章，最终阅读整块消失。
+   特征：段首的段落序号（「1 What once seemed…」）出现 ≥2 的跳变
+   （1 后面直接 6）= 中间有段被跳过。误报代价小（最多多一次重转、择优采用）。 */
+function looksLikeSkippedParas(t) {
+  const nos = [];
+  String(t || '').split(/\n/).forEach(function (ln) {
+    const m = String(ln).trim().match(/^(\d{1,2})\s+[A-Za-z]/);   /* 段号行：数字+空格+字母；题行是「1.」带点，不匹配 */
+    if (m) nos.push(Number(m[1]));
+  });
+  for (let i = 1; i < nos.length; i++) {
+    if (Math.abs(nos[i] - nos[i - 1]) >= 2) return true;
+  }
+  return false;
+}
 
 const PARSE_PROMPT = [
 '你是一位资深高中英语教师，长期研究高考英语命题。下面是一份英语试卷的转录文本，请先判断每一部分属于哪种题型，再整理成结构化的讲解数据。',
@@ -3185,7 +3206,21 @@ async function runPipeline() {
               { type: 'text', text: TRANSCRIBE_PROMPT }
             ];
             const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
-            if (t && t.trim()) got = t.trim();
+            if (t && t.trim()) {
+              got = t.trim();
+              /* 2026-09-28 双栏跳读兜底：识图模型对双栏试卷偶尔整段跳读左栏中段，
+                 且 finish=stop、程序无从察觉。段落序号断档（如 1→6）= 跳读铁证，
+                 换备用识图模型重转一次，谁更完整用谁（有断档的输给无断档的）。 */
+              if (looksLikeSkippedParas(got)) {
+                const fbVl = ENGINES[S.engine].fbTranscribe || 'qwen3-vl-flash';
+                console.warn('[转写] 疑似双栏跳读（段落序号断档），换 ' + fbVl + ' 重转');
+                try {
+                  const r2 = await proxyCallRetry(fbVl, [{ role: 'user', content: content }], 4000);
+                  const t2 = String((r2 && r2.text) || '').trim();
+                  if (t2 && (!looksLikeSkippedParas(t2) || t2.length > got.length)) got = t2;
+                } catch (e2) { console.warn('[转写] 备用重转失败，沿用原结果：' + e2.message); }
+              }
+            }
           } catch (err) {
             const em = String(err.message || '');
             console.warn('[转写] 第 ' + (i + 1) + ' 张第 ' + (attempt + 1) + ' 次失败：' + em);
@@ -6117,6 +6152,7 @@ if (penBarEl) {
     }
     if (e.target.closest('#btnFull'))    { toggleFullscreen(); return; }
     if (e.target.closest('#btnExitFs'))  { exitFullscreen();  return; }
+    if (e.target.closest('#btnHome'))    { goHomeFromBar();   return; }
   });
 }
 const btnFullTopEl = document.getElementById('btnFullTop');
@@ -6140,6 +6176,21 @@ function exitFullscreen() {
   if (fn && isFullscreen()) { try { fn.call(document); } catch (err) {} }
 }
 function toggleFullscreen() { isFullscreen() ? exitFullscreen() : enterFullscreen(); }
+
+/* 悬浮条「🏠 首页」：全屏讲解时唯一的回首页入口。
+   只是把首页覆盖层亮出来、盖在当前讲解上面，讲解数据一点不动 ——
+   首页顶部的「返回当前讲解 ✕」随时切回来。若在全屏，顺手退出全屏。 */
+function goHomeFromBar() {
+  exitFullscreen();
+  const es = document.getElementById('emptyState');
+  const wasHidden = !!(es && es.classList.contains('hidden'));
+  if (es) es.classList.remove('hidden');
+  /* 只有真有讲解被盖住时才亮「返回当前讲解」横幅；本来就在首页就不显示，防止文案突兀 */
+  const bar = document.getElementById('reupBar');
+  if (bar) bar.style.display = wasHidden ? '' : 'none';
+  const rt = document.getElementById('reupText');
+  if (rt) rt.textContent = '当前显示的是上次的讲解，上传新图后点「开始解析」将替换它';
+}
 function syncFullscreenClass() {
   document.body.classList.toggle('focus', isFullscreen());
   /* 进/出全屏后，顶上留白变了，旧标注的位置就对不上了，直接清掉（老师进全屏后再画） */
