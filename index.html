@@ -460,7 +460,17 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 .lstitle{font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lsdate{font-size:.7rem;color:var(--text-3);margin-top:2px}
 .lsacts{display:flex;gap:6px;flex:0 0 auto}
-.lsacts .tb-btn{padding:5px 10px;font-size:.75rem}
+/* 2026-09-28 修：.tb-btn 是给顶栏深色背景设计的（白字+半透明白底），
+   直接放进浅色课件列表卡片里 = 白字白底，完全看不见。
+   这里覆盖成本场景配色：浅底 + 深字 + 实边框。 */
+.lsacts .tb-btn{
+  padding:5px 10px;font-size:.75rem;
+  background:var(--panel-2);color:var(--text);border:1px solid var(--border-2);
+}
+.lsacts .tb-btn:hover{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
+/* 「删除」单独用警示色，避免误点 */
+.lsacts .tb-btn.lsdel{color:#b23b3b;border-color:#e8c4c4;background:#fdf3f3}
+.lsacts .tb-btn.lsdel:hover{background:#f9e3e3;color:#922b2b;border-color:#dcaeae}
 .lsempty{padding:20px;text-align:center;color:var(--text-3);font-size:.78rem}
 .lsmsg{margin-top:10px;font-size:.78rem;line-height:1.8}
 /* 继续讲解：速览页的「上次讲到」横幅 */
@@ -1046,13 +1056,22 @@ const TRANSCRIBE_PROMPT = [
 '1) 保留文章自然段落，每个段落单独成段（段与段之间空一行）；',
 '   · 试卷常是双栏排版：先把左栏从上到下逐段读完，再接着读右栏，逐段照抄，任何一段都不能跳过或省略；',
 '   · 段落前的印刷/手写序号（1、2、3…）按原样保留在段首（它们标着段落顺序，缺号就说明漏抄了）；',
+'     · 判断一个数字是「段落序号」还是「题号」：**后面紧跟英文单词、没有「.」也没有选项字母的，是段落序号**（如「3 The next morning…」），照抄成普通行；**后面带「.」且同行有 A. B. C. D. 选项的，才是题号**。段落序号绝不是题目，不要把它单独拎出来当题干，也不要给它加下划线。',
 '2) 题目保留题号和选项（A. B. C. D.），每项单独一行；题号数字必须照抄卷面原样（卷面是 1. 就写 1.，是 21. 就写 21.，绝不要改号、补号或顺延）；',
+'   · 绝不臆造题目：只有卷面上真正印着「题号 + 选项」的才算一道题。如果某个数字只是段首缩进的编号、后面根本没有配套的 A/B/C/D 选项，那它就不是题，不要输出成题目、也不要给它补选项。',
 '   —— 七选五的 A～G 七个选项也要逐条列出，并保留题号区间（如 36～40 题）；',
 '3) 语法填空、完形填空的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
 '   ① 无提示词的空写成连续的六个下划线：______',
 '   ② 有提示词的空写成：______ (提示词)，括号里的原形词必须一字不改地保留，如 ______ (finish)；',
 '   ③ 空号（如 56、57、58）写在紧跟空格的括号里，如 ______ (56) 或 ______ (56) (finish)；',
 '   ④ 卷面上常有学生用另一种笔迹手写的答案：这些手写字【不是】印刷正文，绝不能直接嵌进句子里。空格仍按上面写成 ______ (题号) (提示词原形)；手写答案看得清就附在该空后面（如 ______ (3) (start) [手写: started]），看不清就只留空格。',
+'   ★ 最重要的一条（凭空多出下划线算严重错误）：**只有卷面上确实印着一条横线／下划线的地方，你才写 ______。卷面上没有横线的地方，一律不许加下划线。** 下面几种情况特别容易错觉成"空"，但它们都不是空，原样照抄、不要加 ______：',
+'     · 一段话开头的缩进空格、或一整行前面空出的格子 —— 这只是排版缩进，不是挖空；',
+'     · 行首的段落编号数字（1、2、3…）或题号，它后面跟着正常单词，那不是空；',
+'     · 换行、段落之间的空白行；',
+'     · 句子中间一个普通空格。',
+'     · 自检：你写出的每一个 ______，都必须能指着图上某条真实的横线说"这里印着线"。指不出来就删掉它。',
+'   ★ 行首数字的正确判断：数字后面直接跟句子的英文单词（如「2 Having learned…」），那是**段落／句子序号**，原样保留成一行普通文字，既不是题号也不是空；只有当数字后面跟着「.」并且同行后面出现选项字母 A. B. C. D. 时才按题号处理（第 2 条）。',
 '4) 如果卷面上印了答案或答案解析，一并转写出来，放在该题后面；',
 '5) 页眉页脚、页码、Logo、听力部分等与本页题目无关的内容不要输出；',
 '6) 只输出纯文本，不要输出任何坐标、JSON、表格或额外说明。',
@@ -1076,6 +1095,44 @@ function looksLikeSkippedParas(t) {
     if (Math.abs(nos[i] - nos[i - 1]) >= 2) return true;
   }
   return false;
+}
+
+/* ---------- 幻觉下划线清理（2026-09-28）----------
+   案例：语法填空短文，行首的段落序号被识图模型当成了「挖空」，
+   于是模型在句首凭空写出 ______ (2) Having learned… —— 卷面上那里
+   根本没有横线，只是缩进 + 段落编号。用户反馈：「第二题句首空了两格
+   但识别时认为这里是题目」「有的句首空格没有横线你自己加了」。
+   这条是程序侧的最后一道闸：模型漏改了提示词约束时，把这种行首幻觉下划线剥掉。
+
+   判定条件（三个同时成立才动手，宁可不改也不错删）：
+     ① 该行以 ______ 开头（行首下划线）；
+     ② ______ 后面紧跟的是「(数字)」或「数字」，即所谓空号；
+     ③ 该「空号」数字后面【没有】提示词括号（(单词)）—— 有提示词才像真空；
+     ④ 该行上一行的末尾不是句末标点（说明这是同一段的续行，行首不该起一个空）。
+   满足就删除行首的 ______，保留数字（当段落序号用）。
+   注意：只处理 ______ 在【行首】的情况；句中的空格（Zhao ______ (start)）一律不动。 */
+function stripLineStartPhantomBlanks(t) {
+  const lines = String(t || '').split(/\n/);
+  let hit = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const cur = lines[i];
+    /* 行首：______ 后面可跟「(2)」「2」这两种空号写法，再往后可跟提示词括号 */
+    const m = cur.match(/^(\s*)_{2,}\s*[(（]?\s*(\d{1,2})\s*[)）]?\s*(\(\s*[A-Za-z][A-Za-z\-]{1,20}\s*\))?\s*/);
+    if (!m) continue;
+    /* ③ 后面带了提示词括号 → 像真空，不动 */
+    if (m[3]) continue;
+    /* ③b 数字落在挖空号段（完形 41~55 / 语法 56~65）→ 这是真空号，不是段落序号，不动 */
+    const num = Number(m[2]);
+    if (num >= 41 && num <= 70) continue;
+    /* ④ 上一行末尾必须是「未结束的句子」（没有 . ? ! : ; 结尾），才判为续行 */
+    const prev = i > 0 ? lines[i - 1].trim() : '';
+    if (!prev || /[.?!:;)\]}]["'”’)]*$/.test(prev)) continue;
+    /* 剥掉行首的 ______（把数字当段落序号保留，不加下划线） */
+    lines[i] = m[1] + m[2] + ' ' + cur.slice(m[0].length);
+    hit++;
+  }
+  if (hit) console.warn('[转写清理] 剥掉 ' + hit + ' 处行首幻觉下划线（卷面此处无横线）');
+  return lines.join('\n');
 }
 
 const PARSE_PROMPT = [
@@ -1165,6 +1222,8 @@ const PARSE_PROMPT = [
 '   · cloze：options 是四个词或短语（A/B/C/D）；type 写该空考什么，如「动词辨析 / 名词辨析 / 形容词辨析 / 副词辨析 / 介词短语 / 上下文逻辑」；hint 填空串。',
 '   · seven：options 从 A 到 G 七个选项全部列出；answer 是选中的那一个字母；evidence 填原文中该空的**前一句 + 后一句**（逐字摘自 en）；type 写「段落主题句 / 逻辑衔接 / 代词指代 / 词汇复现 / 过渡句」。',
 '   · grammar：**options 必须是空数组 []**；hint 填括号里的提示词原形（没有就填空串）；answer 填正确的词形（有提示词的写变形结果，如 finished / to finish / increasingly；没提示词的写该填的虚词，如 whose / a / which）；type 从「谓语动词·时态 / 谓语动词·语态 / 主谓一致 / 非谓语动词 / 词性转换 / 名词单复数 / 形容词副词比较级 / 介词 / 冠词 / 连词 / 代词 / 从句引导词 / 虚拟语气 / 倒装」里选；explain 中文，先说考点再说判断依据。',
+'     · grammar 的 stem 要写含空的那一整句完整英文（从上一处句号/段首到下一处句号），**段落开头的缩进空格、行首的段落序号数字（1、2、3…）都不是空**，它们只是排版，不许据此把句子拆成两半、也不许在 stem 里凭空加下划线；',
+'     · grammar 的题号以卷面上真实印刷的题号（56～65）为准；若转录文本里某个数字只是段首编号（后面没有 A/B/C/D 选项、也不是连续题号段），**它不是题号，不要为它生成一条 question**；',
 '   · appwrite / continuation（写作类）：**questions 必须是空数组 []**，写作题没有小题，全部内容放 task / points / outline / sample / expressions 五个字段里；paragraphs 放卷面给的英文材料 —— 读后续写放「原文」（逐段，配中文翻译），应用文若卷面全是中文要求、没有英文材料，paragraphs 就给空数组 []。',
 '5. answer 字段：若转录文本中已包含答案或答案解析就用它；若没有，请你作为资深教师判断最可能的答案。语法填空的答案必须是完整的单词或词形，不要只写首字母。',
 '6. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致；实在找不到就填空串，不要编造。',
@@ -3327,6 +3386,9 @@ async function runPipeline() {
                   if (t2 && (!looksLikeSkippedParas(t2) || t2.length > got.length)) got = t2;
                 } catch (e2) { console.warn('[转写] 备用重转失败，沿用原结果：' + e2.message); }
               }
+              /* 2026-09-28 幻觉下划线清理：卷面没有横线的地方被凭空加了 ______
+                 （典型是语法填空行首的段落序号），这里剥掉。 */
+              got = stripLineStartPhantomBlanks(got);
             }
           } catch (err) {
             const em = String(err.message || '');
@@ -5901,7 +5963,7 @@ async function refreshLessons() {
       bo.className = 'tb-btn'; bo.textContent = '打开';
       bo.onclick = () => openLesson(it.id);
       const bd = document.createElement('button');
-      bd.className = 'tb-btn'; bd.textContent = '删除';
+      bd.className = 'tb-btn lsdel'; bd.textContent = '删除';
       bd.onclick = () => delLesson(it.id, it.title);
       acts.appendChild(bo); acts.appendChild(bd);
       row.appendChild(info); row.appendChild(acts);
