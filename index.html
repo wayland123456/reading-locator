@@ -430,9 +430,6 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 /* ---- 免费 Key 配置 ---- */
 .linkbtn2{border:none;background:none;color:var(--primary);font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;padding:0 2px;text-decoration:underline}
 .linkbtn2:hover{color:var(--primary-2)}
-.keyhint{font-size:.75rem;color:var(--text-3);margin-top:9px;text-align:center;line-height:1.85}
-.keyhint b{color:var(--text-2)}
-.keyhint.on,.keyhint.on b{color:var(--ok)}
 .tb-btn.on{background:var(--ok-soft);color:var(--ok);border-color:#b7e3ca}
 .tb-btn.on:hover{background:#dcf3e7;color:var(--ok)}
 .modal-body textarea.keybox{height:62px;font-size:.78rem;line-height:1.6}
@@ -778,11 +775,8 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
   <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
   <select class="tb-sel" id="modelSelTop" title="解析引擎" data-page-node-id="Relsu60R5Ns09B4jBrkqkB">
-    <option value="free" data-page-node-id="OdCSo3lIx4AdMl4aXqFUxb">免费</option>
-    <option value="eco" data-page-node-id="FMeCTInKaJgMj5XIKkwRHE">经济</option>
-    <option value="pro" data-page-node-id="G9d2dkbYfcApgw80P4swnA">标准</option>
+    <option value="pro" data-page-node-id="G9d2dkbYfcApgw80P4swnA">标准 · 通义 VL-Max + Plus（最准）</option>
   </select>
-  <button class="tb-btn" id="btnKeySet" title="配置智谱免费 Key（官方永久免费）" data-page-node-id="TYYqE2fZ5ROvanLDdeKKH6">🔑 免费Key</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
   <button class="tb-btn" id="btnFullTop" title="全屏讲解：地址栏消失，原文和题目占满整屏（ESC 或右下角按钮退出）">⛶ 全屏</button>
   <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇" data-page-node-id="7hgePhBzubQRcstGgDOGeC">⇄ 合并同题型</button>
@@ -847,14 +841,8 @@ body.focus #btnExitFs{display:inline-flex}
     <div class="model-row" data-page-node-id="q3ax8VeFEzQspxYlLgSx4F">
       <span data-page-node-id="WAxXHam12OombJhAHDmKqT">解析引擎：</span>
       <select id="modelSel" data-page-node-id="HiF9gGsRloEF5g28KtDN4u">
-        <option value="free" data-page-node-id="BMTT89uIY5qEL8YKcDXxZI">免费 · 智谱 GLM-Flash（0 成本）</option>
-        <option value="eco" data-page-node-id="NVNJpLsy86n1W3ypeCGJsf">经济 · 通义 Flash 系列（很省）</option>
         <option value="pro" data-page-node-id="tuE7Td2YBLeOfHo44T6cqu">标准 · 通义 VL-Max + Plus（最准）</option>
       </select>
-    </div>
-    <div class="keyhint" id="keyHint" data-page-node-id="fZEd2fBqPGPIeoEUaa7VA7">
-      免费档：优先粘贴你自己的<b data-page-node-id="ItcLnK2STyeM8bPtPblEBh">智谱 Key</b>直连（官方永久免费，Key 只存本机浏览器）。
-      <button class="linkbtn2" id="btnKeyInline" data-page-node-id="L0tcaPHNa0ejmpDfgSE6VX">立即配置 →</button>
     </div>
 
     <div class="progress" id="progress" data-page-node-id="RawuDVlecsINtpV5uENCY1">
@@ -1021,26 +1009,12 @@ document.addEventListener('DOMContentLoaded', function () {
 const AI_PROXY = 'https://gqlwspxcyhjtzhikcexj.supabase.co/functions/v1/ai-proxy';
 const PUB_KEY  = 'sb_publishable_PqN5m9yOrWZzBazFjO7Y_w_pfIMO1PI';
 
-/* ---------- 解析引擎档位 ----------
-   free：智谱 GLM-4.6V-Flash（识图）+ GLM-4.7-Flash（解析），完全免费
-         —— 需要在 Supabase 的 ai-proxy Secrets 里配置 ZHIPU_API_KEY
-   eco ：通义 qwen3-vl-flash + qwen-flash，成本很低
-   pro ：通义 qwen-vl-max + qwen-plus，识别最准
-   free 档带自动降级：服务端没配智谱 Key 时自动切到 eco，不会卡住。
+/* ---------- 解析引擎（仅保留标准档） ----------
+   pro ：通义 qwen-vl-max + qwen-plus，实测识别最准，为唯一可用档位。
+   2026-09-29 移除 free（智谱 GLM-Flash）与 eco（通义 Flash）两档：
+   实测另两档识别质量不稳定，已下线。
 ----------------------------------- */
 const ENGINES = {
-  free: {
-    transcribe: 'glm-4.6v-flash',
-    parse: 'glm-4.7-flash',
-    fbTranscribe: 'qwen3-vl-flash',
-    fbParse: 'qwen-flash',
-    label: '免费 · 智谱 GLM-Flash'
-  },
-  eco: {
-    transcribe: 'qwen3-vl-flash',
-    parse: 'qwen-flash',
-    label: '经济 · 通义 Flash 系列'
-  },
   pro: {
     transcribe: 'qwen-vl-max',
     parse: 'qwen-plus',
@@ -1458,7 +1432,7 @@ function mergeSameKind(passages) {
 /* ---------- 状态 ---------- */
 const S = {
   title: '',
-  engine: 'free',
+  engine: 'pro',
   passages: [],
   cur: 0,
   view: 'split',      // split / original / single / background / expressions / overview
@@ -1493,141 +1467,7 @@ const esc = (t) => String(t == null ? '' : t)
 /* =========================================================
    AI 调用
    ========================================================= */
-/* ---------- 通路①：免费直连智谱开放平台 ----------
-   为什么不让 ai-proxy 转发？
-   实测代理会把未知字段丢掉，而 GLM-4.7-Flash 默认开「思考」，
-   思考 token 会把 max_tokens 吃光（4096 里吃掉 3966，正文只剩 305 字 → JSON 被截断）。
-   直连可显式传 thinking:{type:'disabled'}，免费模型才能稳定出结果。
---------------------------------------------------- */
-const ZHIPU_URL      = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const ZHIPU_KEY_LS   = 'reading_locator_zhipu_key';
-const FREE_MODELS_LS = 'reading_locator_zhipu_models';
-
-function zhipuKey() {
-  try { return localStorage.getItem(ZHIPU_KEY_LS) || ''; } catch (e) { return ''; }
-}
-
-/* 免费档实际使用的模型名（自检后写入缓存，官方改模型名也能自动适配） */
-function freeModels() {
-  let d = null;
-  try { d = JSON.parse(localStorage.getItem(FREE_MODELS_LS) || 'null'); } catch (e) {}
-  return {
-    transcribe: (d && d.transcribe) || 'glm-4.6v-flash',
-    parse:      (d && d.parse)      || 'glm-4.7-flash'
-  };
-}
-function saveFreeModels(m) {
-  try { localStorage.setItem(FREE_MODELS_LS, JSON.stringify(m)); } catch (e) {}
-}
-
-/* 官方标注「永久免费」的模型候选表，按优先级排列（某个拥挤就轮换到下一个）。
-   注意：走云端代理时这些名字必须与服务端 ai-proxy 的 ALLOWED_MODELS 白名单一致，
-   否则会 403「不在白名单内」（下面几个已同步加进白名单）。 */
-const FREE_CANDIDATES = {
-  parse:      ['glm-4.7-flash', 'glm-4-flash'],
-  transcribe: ['glm-4.6v-flash', 'glm-4v-flash']
-};
-
-/* 瞬时类错误（限流 / 网关抖动）：这些都该退避重试，而不是当场判死。
-   504/546 是网关超时（Cloudflare Worker 超限），529 是服务过载 —— 实测高频出现，
-   以前没列进来，一遇到就直接终止解析，表现就是「点了开始解析然后什么都没有」。 */
-const BUSY_RE = /1305|访问量过大|稍后再试|请稍后|429|too many|rate.?limit|overload|繁忙|50[234]|52[24]|546|529|gateway|timed?\s*out|timeout|超时|无响应|网络|负载/i;
-
-/* 直连超时 ≠ 网关抖动：超时说明「这个模型现在就是慢」—— 实测 glm-4.7-flash 偶尔要 114 秒，
-   紧贴 120 秒上限，而兄弟模型 glm-4-flash 只要 3.3 秒。重试同一个模型多半还是慢，
-   所以这里不重试，直接抛出去让 zhipuCallRole 轮换到更快的免费模型。 */
-const DIRECT_TIMEOUT_RE = /请求超时|无响应/;
-
-/* 智谱报错归类：busy 退避重试 / nomodel 换下一个 / param 降级参数 / auth 要用户换 Key */
-function zhipuErrKind(msg) {
-  const s = String(msg || '');
-  if (BUSY_RE.test(s)) return 'busy';
-  if (/1211|模型不存在|不存在|not\s*exist|no\s*such|not\s*found|unsupported\s*model/i.test(s)) return 'nomodel';
-  if (/1210|1213|1214|参数|thinking|非法|invalid|不支持/i.test(s)) return 'param';
-  if (/1000|1001|1002|1003|1004|1113|令牌|认证|身份验证|api[\s_-]?key|unauthorized|401/i.test(s)) return 'auth';
-  return 'other';
-}
-
-/* 单次请求智谱 */
-async function zhipuOnce(model, messages, maxTokens, disableThink) {
-  const body = {
-    model: model,
-    messages: messages,
-    max_tokens: maxTokens || 4096,
-    temperature: 0.2
-  };
-  if (disableThink) body.thinking = { type: 'disabled' };
-  let resp;
-  try {
-    /* 直连同样要设超时，否则同样会永久挂住页面 */
-    resp = await fetchWithTimeout(ZHIPU_URL, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + zhipuKey(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }, 120000);
-  } catch (e) {
-    /* fetch 抛异常 = 没收到可读响应：跨域被拦 / 断网 / 被代理劫持 / 超时 */
-    const m = String((e && e.message) || e);
-    if (/超时/.test(m)) throw new Error(m);
-    throw new Error('无法连接智谱（跨域或网络问题：' + m + '）');
-  }
-  let j = null;
-  try { j = await resp.json(); }
-  catch (e) { throw new Error('智谱接口返回异常（HTTP ' + resp.status + '）'); }
-  if (j && j.error) throw new Error(String(j.error.code || '') + ' ' + String(j.error.message || ''));
-  if (!resp.ok) throw new Error('智谱接口 HTTP ' + resp.status);
-  if (!j.choices || !j.choices[0]) throw new Error('智谱接口未返回内容');
-  const m = j.choices[0].message || {};
-  return {
-    text: m.content || '',
-    finish: j.choices[0].finish_reason,
-    think: String(m.reasoning_content || '').length
-  };
-}
-
-/* 同一个模型内退避重试；模型不认 thinking 参数时自动去掉再试 */
-async function zhipuAttempt(model, messages, maxTokens, tries) {
-  let disableThink = true;
-  let lastErr = null;
-  for (let i = 0; i < (tries || 2); i++) {
-    try {
-      return await zhipuOnce(model, messages, maxTokens, disableThink);
-    } catch (err) {
-      lastErr = err;
-      const kind = zhipuErrKind(err.message);
-      if (kind === 'param' && disableThink) { disableThink = false; continue; }
-      /* 超时 = 模型本身慢，别在这里死磕 2×120 秒；抛给上层立刻换下一个模型 */
-      if (DIRECT_TIMEOUT_RE.test(String(err.message))) throw err;
-      if (kind !== 'busy') throw err;
-      await sleep(700 + 900 * i);
-    }
-  }
-  throw lastErr;
-}
-
-/* 免费直连：优先用已记录的模型；某个免费模型拥挤就自动轮换到下一个免费模型 */
-async function zhipuCallRole(role, messages, maxTokens) {
-  if (!zhipuKey()) throw new Error('NO_ZHIPU_KEY');
-  const cur = freeModels()[role];
-  const list = [cur].concat(FREE_CANDIDATES[role].filter((m) => m !== cur));
-  let lastErr = null;
-  for (let i = 0; i < list.length; i++) {
-    const model = list[i];
-    try {
-      const r = await zhipuAttempt(model, messages, maxTokens, 2);
-      if (model !== cur) {
-        const m2 = freeModels(); m2[role] = model; saveFreeModels(m2);
-        console.log('[免费直连] 自动切换到 ' + model);
-      }
-      return r;
-    } catch (err) {
-      lastErr = err;
-      if (zhipuErrKind(err.message) === 'auth') throw err;   // Key 的问题，换模型也没用
-      if (i < list.length - 1) console.warn('[免费直连] ' + model + ' 不可用：' + err.message + ' → 试下一个');
-    }
-  }
-  throw new Error(String((lastErr && lastErr.message) || '免费模型暂不可用').slice(0, 80));
-}
+/* ---------- 2026-09-29：已移除免费直连档（智谱 GLM），仅保留标准档 pro ---------- */
 
 /* ---------- 通路②：Supabase 代理（经济 / 标准档 + 免费直连失败时兜底） ---------- */
 /* 代理可能返回 {"error":{"code":"1305","message":"…"}}，必须把 message 取出来，
@@ -1639,9 +1479,9 @@ function errText(j, status) {
   return String(e.message || e.code || JSON.stringify(e));
 }
 
-/* 部分模型的 max_tokens 上限很低（glm-4v-flash 只允许 1～1024），
-   不夹住就直接 400 报错，导致轮换到它等于白轮换 */
-const MODEL_MAXTOK = { 'glm-4v-flash': 1024 };
+/* 部分模型的 max_tokens 上限较低，此表用于额度下限保护。
+   当前标准档（通义 VL-Max + Plus）无需特殊限制，保留此机制备用。 */
+const MODEL_MAXTOK = {};
 
 /* 带超时的 fetch。
    以前裸 fetch 没有超时 —— 服务端不响应时请求会永久挂着，
@@ -1694,13 +1534,12 @@ async function proxyCall(model, messages, maxTokens, extra) {
   };
 }
 
-/* 免费档经代理必须关掉「思考」，否则思考 token 吃光 max_tokens、正文变空串。
-   服务端 ai-proxy 已支持透传 thinking；旧版函数会忽略它 → 正文为空 → 上层走降级分支。 */
+/* 标准档无需额外参数 */
 function proxyExtra(model) {
-  return (S.engine === 'free' && /^glm-/.test(model)) ? { thinking: { type: 'disabled' } } : null;
+  return null;
 }
 
-/* 代理通路同样要退避（免费档 glm 走代理时也会 1305） */
+/* 代理通路同样要退避重试 */
 /* 纯限流（模型被挤爆）—— 跟网关抖动分开处理 */
 const RATE_RE = /429|1305|访问量过大|rate.?limit|too many/i;
 
@@ -1728,77 +1567,11 @@ async function proxyCallRetry(model, messages, maxTokens, extra) {
   throw new Error('云端模型繁忙（' + String(last.message).slice(0, 40) + '）');
 }
 
-/* ---------- 统一入口 ---------- */
-let _fallbackNoted = false;
-let _directOk = false;
-
+/* ---------- 统一入口（仅标准档 pro，经 Supabase 代理） ---------- */
 async function aiCallRaw(kind, messages, maxTokens) {
-  const eng = ENGINES[S.engine] || ENGINES.free;
-  const fm = freeModels();
+  const eng = ENGINES[S.engine] || ENGINES.pro;
   const primary = kind === 'transcribe' ? eng.transcribe : eng.parse;
-  const fb = kind === 'transcribe' ? eng.fbTranscribe : eng.fbParse;
-
-  /* 免费档 + 本机已存 Key → 直连智谱（首选） */
-  if (S.engine === 'free' && zhipuKey()) {
-    const zm = kind === 'transcribe' ? fm.transcribe : fm.parse;
-    try {
-      const r = await zhipuCallRole(kind, messages, maxTokens);
-      if (!_directOk) { _directOk = true; console.log('[引擎] 免费直连 ' + zm); }
-      return r;
-    } catch (err) {
-      if (zhipuErrKind(err.message) === 'auth') {
-        toast('智谱 Key 无效或已过期，请重新配置', 'err');
-      } else {
-        toast('免费直连失败（' + String(err.message).slice(0, 30) + '），改走云端代理', 'err');
-      }
-      console.warn('[免费直连失败] ' + zm + ' : ' + err.message);
-    }
-  }
-
-  /* 代理通路：免费档自动带 thinking 关掉思考；主模型限流就轮换白名单内其他免费模型 */
-  const chain = (S.engine === 'free')
-    ? [primary].concat((FREE_CANDIDATES[kind] || []).filter((m) => m !== primary))
-    : [primary];
-  let lastErr = null;
-  for (let i = 0; i < chain.length; i++) {
-    try {
-      const r = await proxyCallRetry(chain[i], messages, maxTokens);
-      /* 正文为空（且是免费档 glm）= 服务端没关掉思考：换模型也一样，别白试 */
-      if (S.engine === 'free' && /^glm-/.test(chain[i]) && !String(r.text || '').trim()) {
-        throw new Error('EMPTY_THINK');
-      }
-      if (chain[i] !== primary) {
-        const m2 = freeModels(); m2[kind] = chain[i]; saveFreeModels(m2);
-        console.log('[代理] 已轮换到 ' + chain[i]);
-      }
-      return r;
-    } catch (err) {
-      lastErr = err;
-      const m = String(err.message || '');
-      if (m === 'EMPTY_THINK') break;
-      if (!BUSY_RE.test(m) && !/不在白名单|未配置/.test(m)) throw err;
-    }
-  }
-
-  /* 代理关不掉思考：本机有 Key 就走直连，没有就给一句能照做的提示（不偷偷切到要花钱的档） */
-  if (String((lastErr && lastErr.message) || '') === 'EMPTY_THINK') {
-    if (zhipuKey()) {
-      toast('云端未关闭思考，改用本机 Key 直连', 'err');
-      return await zhipuCallRole(kind, messages, maxTokens);
-    }
-    throw new Error('免费模型输出被思考过程吃空：请稍后重试，或点右上角「🔑 免费Key」贴一次智谱 Key 走直连');
-  }
-
-  const msg = String((lastErr && lastErr.message) || '');
-  if (fb && /ZHIPU_API_KEY|未配置|不在白名单/.test(msg)) {
-    if (!_fallbackNoted) {
-      _fallbackNoted = true;
-      toast('免费档云端不可用，已自动切到通义 Flash', 'err');
-    }
-    console.warn('[引擎降级] ' + primary + ' -> ' + fb + ' : ' + msg);
-    return await proxyCallRetry(fb, messages, maxTokens);
-  }
-  throw lastErr;
+  return await proxyCallRetry(primary, messages, maxTokens);
 }
 
 /* 对外：拿纯文本。被 max_tokens 截断时自动放大额度再试一次 */
@@ -1833,7 +1606,7 @@ function salvageJson(s) {
   try { return JSON.parse(out); } catch (e) { return null; }
 }
 
-/* 修复「字符串里出现未转义的双引号」——免费档 GLM 生成 JSON 时最常见的坏毛病。
+/* 修复「字符串里出现未转义的双引号」——模型生成 JSON 时常见的坏毛病。
    实测：正文里写 "...said, "Let's fix it together."" 引号没转义 → JSON.parse 整体失败，
    但括号是配平的。做法：逐字符扫，遇到「看起来是收尾」的引号先试补转义，
    再整体 parse，成功就返回。比正则可靠，也不会破坏正常 JSON。 */
@@ -2681,7 +2454,7 @@ function splitTranscript(text) {
    大题再细分
    ========================================================= */
 /* 实测（2026-09-24 真实接口跑武汉九调）：
-   完形 15 空一次写完需要 2 万字符以上的输出，而免费档 glm 的输出上限约 13000 字符
+   完形 15 空一次写完需要 2 万字符以上的输出，而部分模型输出上限约 13000 字符
    （≈8192 token）—— 必然被截断，JSON 尾巴断掉 → 整块解析成 0 篇 → 完形永远出不来。
    折半成 8 题实测也要 13083 字符，**刚好卡在截断线上**（耗时 82 秒，finish=length），同样失败。
    所以这里按 6 题一份切：单份输出约 9 千字符，能稳定写完。
@@ -2897,7 +2670,7 @@ function hardPack(t, sec) {
    分块解析的并发度与输出额度
    ========================================================= */
 /* 解析是整条流水线最慢的一段（9 块串行 = 三四分钟）。并发 3 把总时长压到 1/3 左右。
-   免费档偶发限流由 aiCallRaw 的模型轮换 + 有界重试兜底；若某天高峰频繁「模型繁忙」，
+   偶发限流由 proxyCallRetry 的有界重试兜底；若某天高峰频繁「模型繁忙」，
    把这个数改回 1 就退化成原来的串行行为。 */
 const PARSE_CONC = 3;
 /* 单块给多少输出额度，由块的大小决定 —— 完形块（15 空 × 4 选项 + 每空解析）
@@ -3378,7 +3151,7 @@ async function runPipeline() {
                  且 finish=stop、程序无从察觉。段落序号断档（如 1→6）= 跳读铁证，
                  换备用识图模型重转一次，谁更完整用谁（有断档的输给无断档的）。 */
               if (looksLikeSkippedParas(got)) {
-                const fbVl = ENGINES[S.engine].fbTranscribe || 'qwen3-vl-flash';
+                const fbVl = ENGINES[S.engine].fbTranscribe || 'qwen-vl-max';
                 console.warn('[转写] 疑似双栏跳读（段落序号断档），换 ' + fbVl + ' 重转');
                 try {
                   const r2 = await proxyCallRetry(fbVl, [{ role: 'user', content: content }], 4000);
@@ -3513,8 +3286,8 @@ async function runPipeline() {
       const msg = String(err.message || '');
       const busy = /繁忙|429|访问量|rate/i.test(msg);
       showNotice(busy
-        ? '解析失败：<b>免费模型这会儿用的人太多，被限流了</b>。'
-          + '<div class="sub">等 1～2 分钟再点重试就行；也可以点右上角「🔑 免费Key」贴一个自己的智谱 Key 走直连，不受这个限制。</div>'
+        ? '解析失败：<b>云端模型这会儿用的人太多，被限流了</b>。'
+          + '<div class="sub">等 1～2 分钟再点重试就行；高峰时段太挤的话稍后再试。</div>'
         : '解析失败：<b>' + esc(msg) + '</b>'
           + '<div class="sub">可以点重试再试一次；如果反复失败，试试「📋 粘贴试卷文本」直接把文字粘进去解析。</div>',
         'err', '重试一次', () => { hideNotice(); runPipeline(); });
@@ -5309,15 +5082,11 @@ $('#btnPasteText').addEventListener('click', runFromText);
 
 /* 引擎档位（两处下拉同步） */
 function setEngine(v, silent) {
-  S.engine = ENGINES[v] ? v : 'free';
-  _fallbackNoted = false;
-  _directOk = false;
+  S.engine = ENGINES[v] ? v : 'pro';
   $('#modelSel').value = S.engine;
   $('#modelSelTop').value = S.engine;
-  renderKeyHint();
   if (!silent) {
-    if (S.engine === 'free' && !zhipuKey()) toast('免费档需先配置智谱 Key（右上角 🔑）');
-    else toast('解析引擎：' + ENGINES[S.engine].label);
+    toast('解析引擎：' + (ENGINES[S.engine] || ENGINES.pro).label);
   }
   save();
 }
@@ -5516,7 +5285,7 @@ function restore() {
     S.zoom = (typeof d.zoom === 'number' && d.zoom >= PAGE_ZOOM.min && d.zoom <= PAGE_ZOOM.max)
       ? zoomRound(d.zoom) : 1;
     S.showZh = !!d.showZh;
-    S.engine = ENGINES[d.engine] ? d.engine : 'free';
+    S.engine = ENGINES[d.engine] ? d.engine : 'pro';
     $('#modelSel').value = S.engine;
     $('#modelSelTop').value = S.engine;
     S.view = d.view || 'split';
@@ -5573,137 +5342,8 @@ function openModal(title, text, actions) {
 $('#modalX').addEventListener('click', () => $('#modal').classList.remove('on'));
 $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') $('#modal').classList.remove('on'); });
 
-/* =========================================================
-   免费 Key 配置面板
-   ========================================================= */
-/* 官方「永久免费」模型候选表 FREE_CANDIDATES 定义在上方 AI 调用区 */
+/* 2026-09-29：免费 Key 面板已随免费档一并移除 */
 
-function setKey(k) {
-  try { k ? localStorage.setItem(ZHIPU_KEY_LS, k) : localStorage.removeItem(ZHIPU_KEY_LS); } catch (e) { /* 隐私模式忽略 */ }
-  _directOk = false;
-  renderKeyHint();
-}
-
-function renderKeyHint() {
-  const on = !!zhipuKey();
-  const btn = $('#btnKeySet');
-  if (btn) {
-    btn.textContent = on ? '🔑 已启用' : '🔑 免费Key';
-    if (on) btn.classList.add('on'); else btn.classList.remove('on');
-  }
-  const h = $('#keyHint');
-  if (!h) return;
-  const fm = freeModels();
-  if (on) {
-    h.className = 'keyhint on';
-    h.innerHTML = '免费档已启用：<b>' + esc(fm.parse) + '</b> 解析 + <b>' + esc(fm.transcribe) +
-      '</b> 识图（官方永久免费，Key 只存本机）　<button class="linkbtn2" id="btnKeyInline">重新配置</button>';
-  } else {
-    h.className = 'keyhint';
-    h.innerHTML = '免费档开箱即用（走云端，无需配置）；贴一次自己的<b>智谱 Key</b>可直连、更快（Key 只存本机浏览器）　' +
-      '<button class="linkbtn2" id="btnKeyInline">可选配置 →</button>';
-  }
-  const b = $('#btnKeyInline');
-  if (b) b.addEventListener('click', openKeyPanel);
-}
-
-/* 自检用的小图：画几个英文单词，验证视觉模型真的能读字 */
-function tinyTestImage() {
-  const c = document.createElement('canvas');
-  c.width = 260; c.height = 64;
-  const g = c.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, 260, 64);
-  g.fillStyle = '#000'; g.font = '30px sans-serif';
-  g.fillText('Reading 2026', 10, 44);
-  return c.toDataURL('image/jpeg', 0.85);
-}
-
-function openKeyPanel() {
-  openModal('配置智谱免费 Key', zhipuKey(), [
-    { label: '清除', fn: () => { setKey(''); $('#modal').classList.remove('on'); toast('已清除 Key'); } },
-    { label: '一键自检', fn: runKeySelfCheck },
-    { label: '取消', fn: () => $('#modal').classList.remove('on') },
-    { label: '保存', solid: true, fn: () => {
-        const k = $('#modalText').value.trim().replace(/\s+/g, '');
-        setKey(k);
-        $('#modal').classList.remove('on');
-        toast(k ? '已保存，免费档已启用' : '已清除 Key', 'ok');
-      } }
-  ]);
-  const ta = $('#modalText');
-  ta.className = 'keybox';
-  ta.placeholder = '粘贴形如 abcd1234.efgh5678 的智谱 API Key';
-  ta.setAttribute('spellcheck', 'false');
-
-  const body = $('.modal-body');
-  let note = $('#keyNote');
-  if (!note) { note = document.createElement('div'); note.id = 'keyNote'; note.className = 'keynote'; body.appendChild(note); }
-  note.style.display = '';
-  note.innerHTML = '<b>不配置也能用</b>：免费档默认走云端代理，开箱即用；配上自己的 Key 则直连，速度更快、也不受云端白名单限制。<br>' +
-    '获取地址：<a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" rel="noopener">open.bigmodel.cn → 用户中心 → API Keys</a><br>' +
-    '免费档用 <code>GLM-4.7-Flash</code>（解析）+ <code>GLM-4.6V-Flash</code>（识图），官方定价 <b>永久免费</b>，不消耗你的通义余额。<br>' +
-    'Key 只保存在这台电脑的浏览器本地，不会上传到任何服务器；换电脑或换浏览器重新粘贴一次即可。<br>' +
-    '粘贴后建议点一次「一键自检」，会实测两个模型是否可用并自动记录。';
-  let res = $('#keyRes');
-  if (!res) { res = document.createElement('div'); res.id = 'keyRes'; res.className = 'kres'; body.appendChild(res); }
-  res.style.display = 'none';
-  ta.focus();
-}
-
-async function runKeySelfCheck() {
-  const k = $('#modalText').value.trim().replace(/\s+/g, '');
-  if (!k) { toast('请先粘贴智谱 Key', 'err'); return; }
-  setKey(k);
-
-  const res = $('#keyRes') || (function () { const d = document.createElement('div'); d.id = 'keyRes'; d.className = 'kres'; $('.modal-body').appendChild(d); return d; })();
-  res.style.display = 'block';
-  const btns = $('#modalFoot').querySelectorAll('button');
-  for (let i = 0; i < btns.length; i++) btns[i].disabled = true;
-
-  const log = [];
-  const put = (s) => { log.push(s); res.textContent = log.join('\n'); };
-  put('开始自检（每个模型各发一个小请求）…');
-
-  const img = tinyTestImage();
-  const best = {};
-  for (const role of ['parse', 'transcribe']) {
-    put('\n【' + (role === 'parse' ? '解析模型' : '识图模型') + '】');
-    for (const cand of FREE_CANDIDATES[role]) {
-      const msg = role === 'parse'
-        ? [{ role: 'user', content: '只输出两个字：ok' }]
-        : [{ role: 'user', content: [
-              { type: 'image_url', image_url: { url: img } },
-              { type: 'text', text: '这张图里的英文单词是什么？只输出那几个单词。' }
-            ] }];
-      const t0 = Date.now();
-      try {
-        const r = await zhipuOnce(cand, msg, 96, true);
-        const ms = Date.now() - t0;
-        put('  ✓ ' + cand + '  ' + ms + 'ms  思考字符 ' + r.think +
-            (r.think === 0 ? '（已关闭思考）' : '（仍在思考，长文有截断风险）'));
-        put('     返回：' + String(r.text).replace(/\s+/g, ' ').slice(0, 40));
-        best[role] = cand;
-        break;
-      } catch (e) {
-        const kind = zhipuErrKind(e.message);
-        put('  ✗ ' + cand + '  ' + String(e.message).slice(0, 64) + (kind === 'busy' ? '  ← 限流，稍后可重试' : ''));
-      }
-    }
-    if (!best[role]) put('  → 该角色暂未探测到可用模型');
-  }
-
-  if (best.parse || best.transcribe) {
-    const cur = freeModels();
-    saveFreeModels({ parse: best.parse || cur.parse, transcribe: best.transcribe || cur.transcribe });
-    const now = freeModels();
-    put('\n已记录：解析 ' + now.parse + ' / 识图 ' + now.transcribe);
-  }
-  put('\n自检结束。若显示「限流」，说明模型暂时拥挤，稍后再点一次即可。');
-  renderKeyHint();
-  for (let i = 0; i < btns.length; i++) btns[i].disabled = false;
-}
-
-$('#btnKeySet').addEventListener('click', openKeyPanel);
 
 /* =========================================================
    云端课件库（Supabase reading_lessons 表）
@@ -6515,7 +6155,6 @@ restore();
 /* 整页缩放：把恢复出来的比例真正应用到页面上（restore 里只恢复数值） */
 applyPageZoom();
 syncZoomUI();
-renderKeyHint();
 paintUser();
 window.addEventListener('beforeunload', save);
 
