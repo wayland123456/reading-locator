@@ -801,6 +801,7 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-t:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .ls-t.play{min-width:52px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:17px}
 .ls-t.play:hover{background:var(--primary-2);color:#fff}
+.ls-t.play.on{box-shadow:inset 0 0 0 2px rgba(255,255,255,.6)}
 .ls-clock{font-variant-numeric:tabular-nums;color:var(--text-2);font-size:14.5px;margin-left:2px}
 .ls-clock b{color:var(--accent);font-weight:700}
 .ls-chk{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text-2);cursor:pointer;user-select:none}
@@ -1026,6 +1027,17 @@ body.focus #btnExitFs{display:inline-flex}
       <button class="ls-b sm" id="lsMergeS" disabled title="把 15 秒以内的小段并到后一段：音频里的中文引导语常被切成这种小段">合并短段</button>
       <span id="lsSegN" style="color:var(--text-3)"></span>
       <div class="ls-advtip">点上面的 TEXT 标签切换段落，标签上<b>右键</b>＝把这一段并进上一段。段数默认按高考的 10 段切，要多要少改上面的「段数」。</div>
+      <div class="ls-advtip"><b>手动精修当前段</b>（切得差一点点时用）：起点 / 终点各挪 2 秒；也可以先播到要的位置，再把它<b>设为起点 / 终点</b>。改完一起「☁ 存课件」，到教室直接就是修好的样子。</div>
+      <div class="ls-advtip" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <button class="ls-b sm" id="lsNudS1" title="把当前段的起点往后挪 2 秒（掐掉开头的提示音）">起点 +2s</button>
+        <button class="ls-b sm" id="lsNudS0" title="起点往前挪 2 秒">起点 −2s</button>
+        <button class="ls-b sm" id="lsNudE0" title="终点往前挪 2 秒（掐掉结尾多余的）">终点 −2s</button>
+        <button class="ls-b sm" id="lsNudE1" title="终点往后挪 2 秒">终点 +2s</button>
+        <button class="ls-b sm" id="lsSetS" title="把当前播放位置设为这段的起点">⇤ 播到这儿设为起点</button>
+        <button class="ls-b sm" id="lsSetE" title="把当前播放位置设为这段的终点">⇥ 设为终点</button>
+        <button class="ls-b sm" id="lsDelS" title="把这一段整段删掉（后面每一段自动往前顶）">🗑 删掉本段</button>
+        <button class="ls-b sm" id="lsSplitS" title="在当前播放位置把这一段切成两段">✂ 在此处切开</button>
+      </div>
     </div>
 
     <div class="ls-tabs" id="lsTabs">
@@ -6889,8 +6901,110 @@ function lsDetect() {
   AUD.sil = out;
 }
 
+/* 把静音段之间的语音并成「语音岛」：只有 ≥mg 秒的静音才算分界，
+   比它短的碎停顿（播音员换气、词间小空）都并掉，
+   免得一句「Text 1」被切成三块。 */
+function lsSpeechIslands(sil, T, mg) {
+  const g = mg || 0.45;
+  const sep = sil.filter(function (x) { return x.d >= g; });
+  const out = [];
+  let prev = 0;
+  sep.forEach(function (x) {
+    if (x.s - prev > 0.02) out.push({ s: prev, e: x.s, d: x.s - prev });
+    prev = x.e;
+  });
+  if (T - prev > 0.02) out.push({ s: prev, e: T, d: T - prev });
+  return out;
+}
+
+/* 播音员提示音「锚点」。
+   高考录音的形态：长答题停顿 → 播音员读「Text N / 听第 N 段材料，回答第 N 题」→ 停顿 → 材料。
+   提示音是一段孤立的短语音（1.5–13 秒）。判据：
+     ① 前面那段停顿要够长（≥4 秒，是答题停顿级别）；
+     ② 后面紧跟的语音块要明显比提示音长（那就是材料，不是又一句提示）；
+     ③ 提示音后面不能是超长静音（那是片尾语）。
+   用锚点当段起点，每段就正好从「Text N」开始，不会把中文提示音留在段首。 */
+function lsFindAnchors(sil, T) {
+  const sep = sil.filter(function (x) { return x.d >= 1.8; });
+  const isl = lsSpeechIslands(sil, T, 1.8);
+  const preOf = function (t) {
+    for (let i = sep.length - 1; i >= 0; i--) if (Math.abs(sep[i].e - t) < 0.06) return sep[i];
+    return null;
+  };
+  const postOf = function (t) {
+    for (let i = 0; i < sep.length; i++) if (Math.abs(sep[i].s - t) < 0.06) return sep[i];
+    return null;
+  };
+  const nextIsl = function (t0) {          /* 提示音后面 20 秒内最长的那块语音（＝材料） */
+    let m = 0;
+    for (let i = 0; i < isl.length; i++) {
+      if (isl[i].s < t0 - 0.1) continue;
+      if (isl[i].s > t0 + 20) break;
+      if (isl[i].d > m) m = isl[i].d;
+    }
+    return m;
+  };
+  const out = [];
+  isl.forEach(function (o) {
+    if (o.d < 1.5 || o.d > 13) return;
+    if (o.s < 2 || o.e > T - 3) return;
+    const pre = preOf(o.s), post = postOf(o.e);
+    if (!pre || !post) return;
+    if (pre.d < 4.0) return;
+    if (post.d > 30) return;
+    if (nextIsl(post.e) < o.d * 2.5) return;
+    out.push({ s: o.s, e: o.e, d: o.d, pre: pre, post: post });
+  });
+  return out;
+}
+
+/* 锚点 → 段。段尾切在「下一次答题停顿的起点」（不含答题时间），
+   段首＝提示音起点；第一个锚点之前的内容是中文开场白／说明，整段丢掉。 */
+function lsSegsFromAnchors(anch, T) {
+  if (anch.length < 2) return [];
+  const segs = [];
+  const headEnd = anch[0].pre.s;
+  if (headEnd > 1 && headEnd < 150) {
+    /* 中文片头：整段不要（老师要的是「第一段从 Text 1 开始」） */
+  } else if (headEnd >= 150) {
+    segs.push({ start: 0, end: headEnd });      /* 片头太长，怕误删，还是留着 */
+  }
+  anch.forEach(function (a, i) {
+    const e = (i + 1 < anch.length) ? anch[i + 1].pre.s : T;
+    if (e - a.s < 1) return;
+    segs.push({ start: a.s, end: e });
+  });
+  /* 标准形态是一段 =「提示音 + 材料第一遍 + 材料第二遍」三块。
+     音频里偶尔会在两段材料中间再夹一段中文（比如第二节的「听下面 5 段对话或独白…」说明），
+     或片尾语，会留在某一段的尾巴上 —— 这里把第 4 块起的内容切掉。 */
+  const isl = lsSpeechIslands(AUD.sil, T, 3.0);
+  segs.forEach(function (sg) {
+    const inS = isl.filter(function (o) { return o.s >= sg.start - 0.5 && o.e <= sg.end + 0.5; });
+    if (inS.length < 4) return;
+    const tail = inS[inS.length - 1];
+    if (tail.d < 1) return;
+    let cut = 0;
+    AUD.sil.forEach(function (x) {
+      if (Math.abs(x.e - tail.s) < 0.1 && x.s > cut) cut = x.s;
+    });
+    if (cut > sg.start + 5) sg.end = Math.min(sg.end, cut);
+  });
+
+  /* 最后一段常常拖着几十秒的纯静音（卷子放完了），收在最后一处长停顿前 */
+  if (segs.length) {
+    const last = segs[segs.length - 1];
+    let cut = 0;
+    AUD.sil.forEach(function (x) {
+      if (x.d < 8 || x.s <= last.start + 5 || x.s >= last.end - 0.5) return;
+      if (x.s > cut) cut = x.s;
+    });
+    if (cut > last.start + 5) last.end = Math.min(last.end, cut);
+  }
+  return segs;
+}
+
 /* =========================================================
-   二、切分：试卷时间戳优先，否则静音检测 + 段数约束
+   二、切分：试卷时间戳优先，否则提示音锚点，再退回静音检测
    ========================================================= */
 function lsAutoSplit(verbose) {
   const T = AUD.dur;
@@ -6914,16 +7028,28 @@ function lsAutoSplit(verbose) {
     return;
   }
 
-  /* —— 通道②：声学静音检测 —— */
+  /* 段数：手填的 > 听力稿里的 Text 数 > 高考默认 10 段（前面 5 段短对话 + 后面 5 段长对话）。
+     听力稿只有 1 个单元（没有 Text 标记）时按 10 段算，不能按 1 段。 */
+  const N = AUD.wantN || (AUD.units.length > 1 ? AUD.units.length : 10);
+
+  /* —— 通道②：播音员提示音定位（每段起点＝「Text N」那一句） —— */
   AUD.mode = 'silence';
+  const anch = lsFindAnchors(AUD.sil, T);
+  const asg = lsSegsFromAnchors(anch, T);
+  if (asg.length >= Math.max(2, N - 1)) {
+    AUD.mode = 'anchor';
+    AUD.segs = asg;
+    if (N > 1) lsTrimTo(N);
+    lsPair();
+    lsRenderList(); lsDrawBase();
+    return;
+  }
+
+  /* —— 通道③：退回到声学静音检测 —— */
   const cands = AUD.sil.filter(function (x) {
     return x.d >= AUD.gapMin && x.s > 0.25 && x.e < T - 0.25;
   });
   AUD.cands = cands;
-
-  /* 段数：手填的 > 听力稿里的 Text 数 > 高考默认 10 段（前面 5 段短对话 + 后面 5 段长对话）。
-     听力稿只有 1 个单元（没有 Text 标记）时按 10 段算，不能按 1 段。 */
-  const N = AUD.wantN || (AUD.units.length > 1 ? AUD.units.length : 10);
   let cuts;
   if (N > 1 && cands.length >= N - 1) {
     cuts = lsPickCuts(cands, N, T);
@@ -7009,6 +7135,65 @@ function lsMergeShort() {
   AUD.cur = -1; AUD.sel = -1;
   lsPair(); lsRenderList(); lsDrawBase(); lsPaintPaper();
   lsMsg('已合并 ' + n + ' 个小段，现在共 ' + keep.length + ' 段');
+}
+
+/* =========================================================
+   手动精修：自动切分总有切不准的时候（中文提示音、卷面说明音、
+   片尾语……），给老师一个能立刻改对、而且能存课件带到教室的工具。
+   ========================================================= */
+function lsFixSeg() {
+  const s = AUD.segs[AUD.sel];
+  if (!s) { lsMsg('先点上面一个 TEXT 标签，选中要修的那一段'); return null; }
+  return s;
+}
+function lsSegClamp(s) {
+  const pre = AUD.segs[AUD.sel - 1], nxt = AUD.segs[AUD.sel + 1];
+  if (pre && s.start < pre.end) s.start = pre.end;
+  if (nxt && s.end > nxt.start) s.end = nxt.start;
+  if (s.start < 0) s.start = 0;
+  if (AUD.dur && s.end > AUD.dur) s.end = AUD.dur;
+  if (s.end - s.start < 0.5) s.end = Math.min(AUD.dur || s.start + 0.5, s.start + 0.5);
+}
+function lsSegRefresh() {
+  lsPair(); lsRenderList(); lsDrawBase(); lsPaintPaper(); lsClock(); lsDrawTop();
+}
+function lsNudge(which, d) {
+  const s = lsFixSeg(); if (!s) return;
+  if (which === 's') s.start += d; else s.end += d;
+  lsSegClamp(s);
+  lsSegRefresh();
+  lsMsg('本段已改成 ' + lsFmt(s.start) + ' → ' + lsFmt(s.end) + '（' + (s.end - s.start).toFixed(1) + ' 秒）');
+}
+function lsSetEdge(which) {
+  const s = lsFixSeg(); if (!s) return;
+  if (which === 's') s.start = AUD.now; else s.end = AUD.now;
+  lsSegClamp(s);
+  lsSegRefresh();
+  lsMsg('已把播放位置 ' + lsFmt(AUD.now) + ' 设为本段' + (which === 's' ? '起点' : '终点'));
+}
+function lsDelSeg() {
+  const i = AUD.sel;
+  if (i < 0 || !AUD.segs[i]) { lsMsg('先点上面一个 TEXT 标签，选中要删的那一段'); return; }
+  if (AUD.segs.length <= 1) { lsMsg('只剩一段了，删不了'); return; }
+  if (AUD.cur === i && AUD.playing) lsPause();
+  AUD.segs.splice(i, 1);
+  AUD.cur = -1;
+  AUD.sel = Math.min(i, AUD.segs.length - 1);
+  lsSegRefresh();
+  lsMsg('删掉了一段，现在共 ' + AUD.segs.length + ' 段');
+}
+function lsSplitSeg() {
+  const i = AUD.sel, s = AUD.segs[i];
+  if (!s) { lsMsg('先点上面一个 TEXT 标签，选中要切的那一段'); return; }
+  const t = AUD.now;
+  if (t <= s.start + 1.5 || t >= s.end - 1.5) {
+    lsMsg('先把播放位置停在这一段中间，再点「切开」');
+    return;
+  }
+  AUD.segs.splice(i, 1, { start: s.start, end: t }, { start: t, end: s.end });
+  AUD.sel = i + 1;
+  lsSegRefresh();
+  lsMsg('切开了，现在共 ' + AUD.segs.length + ' 段');
 }
 
 /* 在候选停顿里挑 K 个当切点：段长越接近平均值越好，停顿越长越好（动态规划） */
@@ -7263,6 +7448,20 @@ function lsStep(d) {
 function lsClock() {
   const n = $('#lsNow');
   if (n) n.textContent = lsFmt(AUD.now);
+  lsIcon();
+}
+
+/* 播放/暂停图标：之前按钮一直停在 ▶，按了暂停也不变 —— 这里跟着状态走 */
+let lsIconOn = null;
+function lsIcon() {
+  const b = $('#lsPlay');
+  if (!b) return;
+  const on = !!AUD.playing;
+  if (on === lsIconOn) return;
+  lsIconOn = on;
+  b.textContent = on ? '⏸' : '▶';
+  b.title = on ? '暂停（空格）' : '播放 / 暂停（空格）';
+  b.classList.toggle('on', on);
 }
 
 /* =========================================================
@@ -7387,20 +7586,26 @@ function lsParseQuestions(lines) {
   const out = [];
   const reQ = /^\s*(\d{1,2})\s*[.、．)）]\s*(\S[\s\S]*)$/;
   const reOptOnly = /^\s*([A-D])\s*[.、．)）]\s*([\s\S]*)$/;
+  const reCJK = /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/;
   const seen = {};
   for (let li = 0; li < lines.length; li++) {
     const t = lines[li].trim();
     if (!t) continue;
-    /* 选项行 → 粘到上一题 */
+    /* 选项行 → 粘到上一题（一行里可能并排写着 A. B. C. 三个选项） */
     const mo = t.match(reOptOnly);
     if (mo && out.length && out[out.length - 1].opts.length < 4 && !/[?？]\s*$/.test(t)) {
-      out[out.length - 1].opts.push(mo[1] + '. ' + mo[2].trim());
+      const oo = lsSplitOpts(t);
+      const add = oo.opts.length ? oo.opts : [mo[1] + '. ' + mo[2].trim()];
+      out[out.length - 1].opts = out[out.length - 1].opts.concat(add);
       continue;
     }
     const mq = t.match(reQ);
     if (!mq) continue;
     const no = +mq[1];
     if (no < 1 || no > 20) continue;      /* 听力只有 1–20 题，21 往上是阅读 */
+    /* 英语听力题干一定是英文 —— 卷子开头的「注意事项：1．答题前…」这类中文编号项
+       会冒充第 1～4 题，把真正的题目顶掉，这里直接挡掉含中文的编号行 */
+    if (reCJK.test(mq[2])) continue;
     if (seen[no]) continue;               /* 同一题号出现两次（目录/答案）只取先出现的 */
     seen[no] = 1;
     const o = lsSplitOpts(mq[2]);
@@ -7433,6 +7638,8 @@ function lsParseScript(lines) {
   const reQ = /^\s*(\d{1,2})\s*[.、．)）]\s*(\S[\s\S]*)$/;
   /* 卷面说明行（「听力原文」「满分 30 分」这类）不算原文 */
   const reHead = /^(?:第[一二三四五六七八九十]+[部分节讲]|听力|注意事项|满分|本试卷|说明|录音|请听|听下面)/;
+  /* 原文区到此为止（后面是阅读 / 答案 / 写作，不是听力内容） */
+  const reStopSec = /^\s*(?:第[一二三四五六七八九十]+部分|参考答案|听力答案|参考范文|【答案】|试题解析|书面表达|读后续写|应用文写作|完形填空|语法填空|阅读理解)/;
 
   const mkUnit = function (no, label) {
     const u = { no: no, label: label, title: '', tStart: null, tEnd: null, qs: [], script: [] };
@@ -7443,6 +7650,7 @@ function lsParseScript(lines) {
   for (let li = 0; li < lines.length; li++) {
     const t = lines[li].trim();
     if (!t) continue;
+    if (cur && reStopSec.test(t)) break;   /* 原文区结束，别再往下吃阅读/答案 */
 
     const mt = t.match(reText);
     if (mt) {
@@ -7948,6 +8156,15 @@ function lsBind() {
   $('#lsSens').onchange = redo;
   $('#lsRedo').onclick = redo;
   $('#lsMergeS').onclick = lsMergeShort;
+  const bind2 = function (id, fn) { const e = $(id); if (e) e.onclick = fn; };
+  bind2('#lsNudS1', function () { lsNudge('s', 2); });
+  bind2('#lsNudS0', function () { lsNudge('s', -2); });
+  bind2('#lsNudE0', function () { lsNudge('e', -2); });
+  bind2('#lsNudE1', function () { lsNudge('e', 2); });
+  bind2('#lsSetS', function () { lsSetEdge('s'); });
+  bind2('#lsSetE', function () { lsSetEdge('e'); });
+  bind2('#lsDelS', lsDelSeg);
+  bind2('#lsSplitS', lsSplitSeg);
 
   /* 切分参数面板：默认收起，需要时再展开 */
   $('#lsAdvBtn').onclick = function () {
