@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '884c37a73d';
+  var APP_VER = 'a3b7638516';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -841,12 +841,15 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-tabs{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:1px 1px 5px;flex:none;scrollbar-width:thin}
 .ls-tabs::-webkit-scrollbar{height:6px}
 .ls-tabs::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
-.ls-tab{border:1px solid var(--border-2);background:var(--panel);color:var(--text-2);border-radius:9px;
-  padding:8px 18px;font-size:15px;font-family:inherit;font-weight:600;letter-spacing:.3px;
-  cursor:pointer;white-space:nowrap;flex:none;transition:.12s}
-.ls-tab:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
-.ls-tab.on{background:var(--primary);border-color:var(--primary);color:#fff}
-.ls-tab.on.play{background:var(--ok);border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.ls-tab{border:1px solid var(--border-2);background:var(--panel);color:var(--text-2);border-radius:11px;
+  padding:9px 20px;font-size:16px;font-family:inherit;font-weight:600;letter-spacing:.4px;
+  cursor:pointer;white-space:nowrap;flex:none;transition:.15s;position:relative;box-shadow:0 1px 2px rgba(15,35,60,.05)}
+.ls-tab:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft);transform:translateY(-1px);box-shadow:0 3px 8px rgba(15,35,60,.08)}
+.ls-tab.on{background:linear-gradient(135deg,var(--primary),var(--primary-2));border-color:transparent;color:#fff;
+  box-shadow:0 3px 10px rgba(30,86,160,.32)}
+.ls-tab.on:hover{color:#fff}
+.ls-tab.on.play{background:linear-gradient(135deg,var(--ok),#1c9e63);border-color:transparent;animation:lsPulse 1.6s ease-in-out infinite}
+@keyframes lsPulse{0%,100%{box-shadow:0 0 0 3px rgba(28,158,99,.18)}50%{box-shadow:0 0 0 7px rgba(28,158,99,.10)}}
 .ls-tip2{color:var(--text-3);font-size:15px;padding:8px 4px;line-height:1.8}
 
 /* 下方：试题 | 听力稿 */
@@ -883,15 +886,15 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-sel{border:1px solid var(--border-2);border-radius:7px;padding:5px 8px;font-size:14px;background:var(--panel);color:var(--text);font-family:inherit;cursor:pointer}
 
 /* 题目/原文面板 */
-.ls-ph{padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:15px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
-.ls-ph .tag{font-weight:600;color:var(--primary);font-size:13.5px}
-.ls-pb{flex:1;overflow:auto;padding:14px 18px 24px;font-size:16px;line-height:1.95}
-.ls-pb p{margin:7px 0;color:var(--text-2);font-size:16px;line-height:2}
+.ls-ph{padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:15.5px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
+.ls-ph .tag{font-weight:600;color:var(--primary);font-size:14px}
+.ls-pb{flex:1;overflow:auto;padding:16px 20px 26px;font-size:18px;line-height:2}
+.ls-pb p{margin:9px 0;color:var(--text-2);font-size:19px;line-height:2.15}
 .ls-pb p b{color:var(--primary);font-weight:600}
-.ls-none{color:var(--text-3);font-size:15px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
-.ls-q{margin-bottom:16px}
-.ls-q .stem{font-weight:600;color:var(--text);font-size:16px;line-height:1.7}
-.ls-q .opt{color:var(--text-2);margin-left:16px;display:block;font-size:15.5px;line-height:1.75;margin-top:3px}
+.ls-none{color:var(--text-3);font-size:16px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
+.ls-q{margin-bottom:20px}
+.ls-q .stem{font-weight:600;color:var(--text);font-size:19px;line-height:1.8}
+.ls-q .opt{color:var(--text-2);margin-left:18px;display:block;font-size:18px;line-height:1.85;margin-top:4px}
 
 /* 拖动切点时的提示气泡 */
 .ls-tip{position:fixed;z-index:99;background:rgba(28,39,51,.92);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;pointer-events:none;display:none;font-variant-numeric:tabular-nums}
@@ -1046,10 +1049,11 @@ body.focus #btnExitFs{display:inline-flex}
 <div class="ls-root" id="lsRoot">
   <header class="ls-top">
     <span class="ls-brand">🎧 听力训练</span>
-    <span class="ls-hint" id="lsHint">① 上传听力音频　② 上传试卷（卷子末尾带「听力原文」最好，原文里带 Text1… 标记更准）</span>
+    <span class="ls-hint" id="lsHint">① 上传听力音频　② 上传试卷（配题目）　③ 听力原文若是单独一个文件，点「📝 上传听力稿」</span>
     <span class="ls-sp" style="flex:1"></span>
     <button class="ls-b" id="lsBtnA">＋ 上传音频</button>
     <button class="ls-b" id="lsBtnP">📄 上传试卷</button>
+    <button class="ls-b" id="lsBtnScript" title="单独传一份「听力原文」（.docx / .txt / .pdf）：按里面的 Text1、Text2… 对号入座，配到每一段 TEXT 上。只补听力稿，不动题目、不重跑切分">📝 上传听力稿</button>
     <button class="ls-b" id="lsBtnE" title="把切好的每一段导出成独立音频文件（zip 打包）">⬇ 导出片段</button>
     <button class="ls-b solid" id="lsBtnSave" title="把听力切分、题目、听力稿一起存到云端课件库 —— 到教室登录后打开，选一次音频就能听">☁ 存课件</button>
     <button class="ls-b ghost" id="lsBtnX">✕ 返回讲解</button>
@@ -7117,6 +7121,7 @@ const AUD = {
   loop: true, rate: 1, repeat: 1, rep: 0,
   gapMin: 4, sens: 1,
   units: [], mode: '', wantN: 0,
+  scriptUnits: [], scriptName: '',
   name: '', paperName: '', cloud: null,
   drag: -1, tipT: 0, zoom: 1
 };
@@ -8525,8 +8530,11 @@ function lsPaintPaper() {
   if (st) st.textContent = ((u && u.title) ? u.title + ' · ' : '') + (sc.length ? sc.length + ' 行' : '');
   if (!sc.length) {
     sb.innerHTML = '<div class="ls-none">这一段没有听力稿。<br><br>'
-      + '试卷末尾若有「<b>听力原文</b>」那一段，会自动取过来；<br>'
-      + '没有的话，点下面的 <b>🪄 生成听力稿</b> 按题目写一份。</div>';
+      + '<b>三种来源，任选一种：</b><br>'
+      + '① 点顶栏的 <b>📝 上传听力稿</b>，传一份「听力原文」<br>'
+      + '　　（每篇以 <b>Text1</b>、<b>Text2</b>… 开头最好）；<br>'
+      + '② 上传的试卷末尾若带「<b>听力原文</b>」那一段，会自动取过来；<br>'
+      + '③ 点下面的 <b>🪄 生成听力稿</b> 按题目写一份。</div>';
   } else {
     sb.innerHTML = sc.map(function (p) {
       return '<p>' + (p.sp ? '<b>' + esc(p.sp) + ':</b> ' : '') + esc(p.tx) + '</p>';
@@ -8756,6 +8764,7 @@ async function lsLoadPaper(file) {
 
     const units = lsParsePaper(text);
     AUD.units = units;
+    lsApplyScript();          /* 之前单独传过听力稿的话，这里重新贴回对应各段 */
     const qn = units.reduce(function (a, u) { return a + u.qs.length; }, 0);
     const sn = units.reduce(function (a, u) { return a + u.script.length; }, 0);
     if (!qn && !sn) {
@@ -8780,6 +8789,117 @@ async function lsLoadPaper(file) {
   } catch (e) {
     lsMsg('试卷读取失败：' + ((e && e.message) || e) + '　（图片请先另存为 Word 或转成 txt）');
   }
+}
+
+/* =========================================================
+   七之一之二、单独上传「听力稿」并按 TEXT 编号匹配到各段
+   很多老师手里的「题目」和「听力原文」是两个文件：题目在试卷里、原文单独一份。
+   这里把稿子按 Text1 / Text2… 对上已经切好的每一段（TEXT N ↔ Text N）：
+     · 只补「听力稿」，不动试卷配好的题目；
+     · 不重跑自动切分（免得把手动调好的切分冲掉）；
+     · 先传稿子、后传试卷也行 —— 传试卷时会把稿子重新贴回去。
+   ========================================================= */
+function lsApplyScript() {
+  const su = AUD.scriptUnits || [];
+  if (!su.length) return 0;
+  /* 还没传试卷 → 先用听力稿把「段」建起来（题目留空，之后传试卷会自动配题） */
+  if (!AUD.units.length) {
+    AUD.units = su.map(function (sp) {
+      return { no: sp.no, label: 'Text ' + sp.no, title: sp.title || '',
+        tStart: sp.tStart, tEnd: sp.tEnd, qs: [], script: sp.script || [] };
+    });
+    return su.length;
+  }
+  /* 已传试卷 → 按 Text 编号对号入座 */
+  const used = [];
+  const toIdx = [];
+  let hitByNo = 0;
+  su.forEach(function (sp, k) {
+    let idx = -1;
+    for (let i = 0; i < AUD.units.length; i++) {
+      if (!used[i] && AUD.units[i].no === sp.no) { idx = i; used[i] = 1; hitByNo++; break; }
+    }
+    toIdx[k] = idx;
+  });
+  /* 只有当「编号一个都没命中」（稿子没有 Text 标记、或编号体系完全不同）
+     才退化成按先后顺序一一对位；部分命中时不越位补位，
+     免得「稿子只到 Text5」却把 TEXT6~10 也塞上。缺口留给 🪄 生成 */
+  if (!hitByNo) {
+    for (let k = 0; k < su.length; k++) {
+      if (toIdx[k] < 0 && AUD.units[k] && !used[k]) { toIdx[k] = k; used[k] = 1; }
+    }
+  }
+  let n = 0;
+  su.forEach(function (sp, k) {
+    const idx = toIdx[k];
+    if (idx == null || idx < 0) return;
+    const u = AUD.units[idx];
+    u.script = sp.script || [];
+    if (!u.title && sp.title) u.title = sp.title;
+    if (u.tStart == null && sp.tStart != null) { u.tStart = sp.tStart; u.tEnd = sp.tEnd; }
+    n++;
+  });
+  return n;
+}
+
+async function lsLoadScript(file) {
+  if (!file) return;
+  lsMsg('正在读取听力稿「' + file.name + '」…');
+  try {
+    const nm = (file.name || '').toLowerCase();
+    let text = '';
+    if (/\.(txt|md|csv)$/.test(nm)) text = await readTxtFile(file);
+    else if (/\.docx$/.test(nm)) text = await readDocxFile(file);
+    else if (/\.pdf$/.test(nm)) text = await readPdfFile(file);
+    else text = await readTxtFile(file);
+
+    const lines = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ').split('\n');
+    let units = lsParseScript(lines);
+    let how = '按 Text 标记';
+    if (units.length < 2) { units = lsParseScriptBlocks(lines); how = '按空行分段'; }
+    if (units.length < 2) {
+      lsMsg('这份文件里没找到 Text1、Text2… 这样的分段标记，也没有空行分段。'
+        + '请确认传的是「听力原文」那一部分（每篇以 Text1 / Text2 开头）。');
+      return;
+    }
+    AUD.scriptUnits = units;
+    AUD.scriptName = file.name || '';
+    const n = lsApplyScript();
+    lsPair();
+    lsRenderList();
+    if (AUD.segs.length && AUD.sel < 0) AUD.sel = 0;
+    lsPaintPaper();
+
+    const rows = units.reduce(function (a, u) { return a + ((u.script && u.script.length) || 0); }, 0);
+    const miss = AUD.segs.length ? Math.max(0, AUD.segs.length - n) : 0;
+    lsMsg('听力稿已匹配：' + how + '读出 ' + units.length + ' 篇 / ' + rows + ' 行'
+      + (AUD.segs.length ? '，配到 ' + n + ' 个 TEXT' : '（还没传音频，先存着；传上音频会自动对上）')
+      + (miss ? '　⚠ 还有 ' + miss + ' 段没配到 —— 稿子的 Text 编号和音频段数对不上' : ''));
+  } catch (e) {
+    lsMsg('听力稿读取失败：' + ((e && e.message) || e) + '　（.docx / .txt / .pdf 都行）');
+  }
+}
+
+/* 没写 Text 标记时的兜底：按「空行」把稿子分块，一块当一篇 */
+function lsParseScriptBlocks(lines) {
+  const reSpk = /^\s*(W|M|Man|Woman|Narrator|Speaker\s*[AB]?|女|男)\s*[:：]\s*([\s\S]*)$/i;
+  const reHead = /^(?:第[一二三四五六七八九十]+[部分节讲]|听力|注意事项|满分|本试卷|说明|录音|请听|听下面)/;
+  const reStopSec = /^\s*(?:第[一二三四五六七八九十]+部分|参考答案|听力答案|参考范文|【答案】|试题解析|书面表达|读后续写|应用文写作|完形填空|语法填空|阅读理解)/;
+  const blocks = [];
+  let cur = null;
+  for (let i = 0; i < lines.length; i++) {
+    const t = String(lines[i] || '').trim();
+    if (reStopSec.test(t)) break;
+    if (!t) { cur = null; continue; }
+    if (!cur && reHead.test(t)) continue;          /* 「听力原文」这类标题行不算正文 */
+    if (!cur) { cur = []; blocks.push(cur); }
+    const m = t.match(reSpk);
+    if (m) cur.push({ sp: m[1].toUpperCase(), tx: (m[2] || '').trim() || t });
+    else if (t.length >= 6 && /[a-zA-Z]{2}/.test(t)) cur.push({ sp: '', tx: t });
+  }
+  return blocks.filter(function (b) { return b.length; }).map(function (b, i) {
+    return { no: i + 1, label: 'Text ' + (i + 1), title: '', tStart: null, tEnd: null, qs: [], script: b };
+  });
 }
 
 /* =========================================================
@@ -9145,6 +9265,7 @@ function lsBind() {
 
   $('#lsBtnA').onclick = function () { lsPick('audio/*', lsLoadAudio); };
   $('#lsBtnP').onclick = function () { lsPick('.txt,.docx,.pdf,.md,.csv', lsLoadPaper); };
+  $('#lsBtnScript').onclick = function () { lsPick('.txt,.docx,.pdf,.md,.csv', lsLoadScript); };
   $('#lsBtnE').onclick = lsExportAll;
   $('#lsBtnSave').onclick = lsSaveLesson;
   $('#lsBtnX').onclick = lsClose;
