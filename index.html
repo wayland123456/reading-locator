@@ -743,6 +743,85 @@ body.focus #btnExitFs{display:inline-flex}
 .wten-c{font-size:.87rem;line-height:1.65}
 .wten-pat{margin-top:3px;font-size:.78rem;color:var(--brand-d,#4f46e5)}
 .wten-tip{margin-top:2px;font-size:.76rem;color:var(--text-3,#8a94a6)}
+/* =========================================================
+   听力模块 🎧（2026-09-30 新增）
+   思路：音频解码 → 声学包络 → 找答题停顿 → 按试卷题数约束切分
+        试卷里若带 (Q1 01:05 ~ 01:20) 这类时间戳，直接按时间戳切，最准
+   ========================================================= */
+.ls-root{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;background:var(--bg)}
+.ls-root.on{display:flex}
+.ls-top{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow);flex:none;flex-wrap:wrap;z-index:3}
+.ls-brand{font-weight:700;color:var(--primary);font-size:15px;white-space:nowrap}
+.ls-hint{color:var(--text-3);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw}
+.ls-b{border:1px solid var(--border-2);background:var(--panel);color:var(--text);border-radius:8px;padding:6px 11px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.12s}
+.ls-b:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.ls-b.solid{background:var(--primary);color:#fff;border-color:var(--primary)}
+.ls-b.solid:hover{background:var(--primary-2);color:#fff}
+.ls-b.ghost{color:var(--text-2)}
+.ls-b.sm{padding:3px 9px;font-size:12px}
+.ls-b:disabled{opacity:.45;cursor:default;background:var(--panel);color:var(--text-3);border-color:var(--border)}
+.ls-body{flex:1;display:flex;min-height:0}
+.ls-col-l{flex:1;display:flex;flex-direction:column;min-width:0;padding:10px 10px 0}
+.ls-col-r{width:370px;flex:none;border-left:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+
+/* 波形 */
+.ls-wave{position:relative;height:152px;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex:none;box-shadow:var(--shadow)}
+.ls-wave canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+#lsCv2{pointer-events:none}
+#lsCv1{cursor:crosshair}
+.ls-drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:13px;background:var(--panel-2);text-align:center;padding:0 20px;line-height:1.9}
+.ls-drop b{color:var(--primary);font-size:15px}
+.ls-drop.off{display:none}
+.ls-drop.hot{border:2px dashed var(--primary);color:var(--primary);background:var(--primary-soft)}
+.ls-drop .sm2{font-size:12px;color:var(--text-3)}
+
+/* 播放控制条 */
+.ls-trans{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;flex:none}
+.ls-t{border:1px solid var(--border-2);background:var(--panel);border-radius:8px;min-width:34px;height:30px;cursor:pointer;font-size:13px;color:var(--text);padding:0 6px}
+.ls-t:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.ls-t.play{min-width:46px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:15px}
+.ls-t.play:hover{background:var(--primary-2);color:#fff}
+.ls-clock{font-variant-numeric:tabular-nums;color:var(--text-2);font-size:13px;margin-left:2px}
+.ls-clock b{color:var(--accent);font-weight:700}
+.ls-chk{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none}
+.ls-sel{border:1px solid var(--border-2);border-radius:7px;padding:4px 6px;font-size:12.5px;background:var(--panel);color:var(--text);font-family:inherit;cursor:pointer}
+
+/* 参数条 */
+.ls-tools{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap;font-size:12.5px;color:var(--text-2);flex:none}
+.ls-tools input[type=range]{width:92px;accent-color:var(--primary);vertical-align:middle}
+.ls-tools .v{font-variant-numeric:tabular-nums;color:var(--primary);font-weight:600;min-width:38px;display:inline-block}
+
+/* 分段列表 */
+.ls-list{flex:1;overflow:auto;margin:10px 0;display:flex;flex-direction:column;gap:6px;padding-right:3px;min-height:60px}
+.ls-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--border-2);border-radius:9px;font-size:13px;cursor:pointer;transition:.1s}
+.ls-item:hover{background:var(--panel-2)}
+.ls-item.on{border-left-color:var(--accent);background:var(--accent-soft);border-color:#f2d3a5}
+.ls-item.playing{border-left-color:var(--ok);background:var(--ok-soft);border-color:#bfe7d0}
+.ls-no{width:24px;text-align:center;font-weight:700;color:var(--text-3);font-size:12px;flex:none}
+.ls-tag{font-weight:600;color:var(--primary);flex:none}
+.ls-tt{font-variant-numeric:tabular-nums;color:var(--text-3);font-size:12px;flex:none}
+.ls-dd{color:var(--text-2);font-size:12px;flex:none;font-variant-numeric:tabular-nums}
+.ls-grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-3);font-size:12px}
+.ls-mini{border:1px solid var(--border-2);background:var(--panel);border-radius:6px;padding:2px 7px;font-size:12px;cursor:pointer;color:var(--text-2);flex:none;white-space:nowrap}
+.ls-mini:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.ls-mini.warn:hover{border-color:var(--err);color:var(--err);background:#fdeaea}
+.ls-emptylist{color:var(--text-3);font-size:13px;text-align:center;padding:24px 10px;line-height:2}
+
+/* 右侧题目/原文 */
+.ls-ph{padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:13px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
+.ls-ph .tag{font-weight:600;color:var(--primary);font-size:12.5px}
+.ls-pb{flex:1;overflow:auto;padding:12px 15px 20px;font-size:13.5px;line-height:1.8}
+.ls-none{color:var(--text-3);font-size:13px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
+.ls-q{margin-bottom:12px}
+.ls-q .stem{font-weight:600;color:var(--text)}
+.ls-q .opt{color:var(--text-2);margin-left:16px;display:block}
+.ls-sc{margin-top:16px;padding-top:11px;border-top:1px dashed var(--border-2)}
+.ls-sc .lb{color:var(--accent);font-weight:700;font-size:12.5px;margin-bottom:5px}
+.ls-sc p{margin:4px 0;color:var(--text-2);font-size:13px;line-height:1.75}
+.ls-sc p b{color:var(--primary);font-weight:600}
+
+/* 拖动切点时的提示气泡 */
+.ls-tip{position:fixed;z-index:99;background:rgba(28,39,51,.92);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;pointer-events:none;display:none;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
@@ -786,6 +865,7 @@ body.focus #btnExitFs{display:inline-flex}
   <button class="tb-btn icon" id="btnFsPlus" title="放大字号" data-page-node-id="qYRgxONqhh9gP3CpQfHD77">A＋</button>
   <button class="tb-btn" id="btnAddImg" data-page-node-id="zirITAiNm68Ao61jpIsCr6">＋ 上传图片</button>
   <button class="tb-btn" id="btnAddDoc" title="上传 docx / txt / PDF 试卷：直接从文件里取文字解析，不走识图，几秒就好、也不受限流影响" data-page-node-id="docBtn2026">📄 上传文档</button>
+  <button class="tb-btn" id="btnListen" title="听力训练：上传听力音频 + 试卷，自动按题裁开，每一段可以单独播放、循环、变速">🎧 听力</button>
   <button class="tb-btn" id="btnImport" data-page-node-id="WMc9UgxbpqbYQncXrbNVYu">导入 JSON</button>
   <button class="tb-btn solid" id="btnExport" data-page-node-id="QWNA9SHhcQjeMPqNnVKPyG">导出 JSON</button>
 </header>
@@ -893,6 +973,80 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="cnt" id="qnavCnt" data-page-node-id="EAtVE1X7Ml50HPwTIOVe5Z">—<small data-page-node-id="Fa2IensFIsXgx31NecRR0r">共 0 题</small></span>
   <button data-nav="1" title="下一题（→ 键）" data-page-node-id="ln9ibKcZkNJkOtfvDtgwrK">›</button>
 </div>
+
+<!-- ==================== 听力工作台 🎧 ==================== -->
+<div class="ls-root" id="lsRoot">
+  <header class="ls-top">
+    <span class="ls-brand">🎧 听力训练</span>
+    <span class="ls-hint" id="lsHint">① 上传听力音频　② 上传试卷或听力稿（稿里带 Text 1 最好，带时间戳更准）</span>
+    <span class="ls-sp" style="flex:1"></span>
+    <button class="ls-b" id="lsBtnA">＋ 上传音频</button>
+    <button class="ls-b" id="lsBtnP">📄 上传试卷</button>
+    <button class="ls-b" id="lsBtnE" title="把切好的每一段导出成独立音频文件（zip 打包）">⬇ 导出片段</button>
+    <button class="ls-b ghost" id="lsBtnX">✕ 返回讲解</button>
+  </header>
+
+  <div class="ls-body">
+    <div class="ls-col-l">
+      <div class="ls-wave" id="lsWave">
+        <canvas id="lsCv1"></canvas>
+        <canvas id="lsCv2"></canvas>
+        <div class="ls-drop" id="lsDrop">
+          <b>把听力音频拖到这里</b>
+          <span>支持 mp3 / wav / m4a / ogg，直接点「＋ 上传音频」也行</span>
+          <span class="sm2">音频不上传服务器，全程在你本机浏览器里处理</span>
+        </div>
+      </div>
+
+      <div class="ls-trans">
+        <button class="ls-t" id="lsPrev" title="上一段">⏮</button>
+        <button class="ls-t play" id="lsPlay" title="播放 / 暂停（空格）">▶</button>
+        <button class="ls-t" id="lsNext" title="下一段">⏭</button>
+        <button class="ls-t" id="lsStop" title="停止（回到段首）">⏹</button>
+        <span class="ls-clock"><b id="lsNow">00:00</b> / <span id="lsTot">00:00</span></span>
+        <span style="flex:1"></span>
+        <label class="ls-chk"><input type="checkbox" id="lsLoop" checked>单段循环</label>
+        <select class="ls-sel" id="lsRate" title="播放速度">
+          <option value="0.7">0.7×</option>
+          <option value="0.85">0.85×</option>
+          <option value="1" selected>1.0×</option>
+          <option value="1.15">1.15×</option>
+        </select>
+        <select class="ls-sel" id="lsRepeat" title="每段连播几遍">
+          <option value="1">连播 1 遍</option>
+          <option value="2">连播 2 遍</option>
+          <option value="3">连播 3 遍</option>
+        </select>
+      </div>
+
+      <div class="ls-tools">
+        <span>切分停顿 ≥</span>
+        <input type="range" id="lsGap" min="1.5" max="15" step="0.5" value="4">
+        <span class="v" id="lsGapV">4.0s</span>
+        <span style="margin-left:8px">静音灵敏度</span>
+        <input type="range" id="lsSens" min="0.4" max="3" step="0.1" value="1">
+        <span class="v" id="lsSensV">1.0</span>
+        <button class="ls-b sm" id="lsRedo" disabled>重新自动切分</button>
+        <button class="ls-b sm" id="lsMergeS" disabled title="把 15 秒以内的小段并到后一段：音频里的中文引导语常被切成这种小段">合并短段</button>
+        <span style="margin-left:8px">段数</span>
+        <input type="number" id="lsWantN" min="0" max="40" step="1" placeholder="自动" title="试卷里没有 Text 1 这种标记时，直接告诉程序音频该切几段（高考一般 10 段）" style="width:60px;border:1px solid var(--border-2);border-radius:7px;padding:3px 6px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--panel)">
+        <span id="lsSegN" style="color:var(--text-3)"></span>
+      </div>
+
+      <div class="ls-list" id="lsList">
+        <div class="ls-emptylist">还没有音频。<br>上传后这里会列出切好的每一段，点一下就能单独播放。</div>
+      </div>
+    </div>
+
+    <aside class="ls-col-r">
+      <div class="ls-ph">题目 · 听力原文 <span class="tag" id="lsPaperTag"></span></div>
+      <div class="ls-pb" id="lsPaperBody">
+        <div class="ls-none">上传试卷或听力稿后，<br>这里会显示每段对应的题目和听力原文。</div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="ls-tip" id="lsTip"></div>
 
 <div class="modal" id="modal" data-page-node-id="DBPL25QJjTJnU8RkRrq9uG">
   <div class="modal-box" data-page-node-id="yjruoy58KAFw8IxhDqT9yE">
@@ -6482,6 +6636,1073 @@ if (document.readyState === 'loading') {
 } else {
   initPenBarDrag();
 }
+
+/* =========================================================
+   听力模块 🎧   （2026-09-30）
+
+   要解决的问题：上传一份听力音频 + 一份试卷，自动把音频按题裁开，逐段精听。
+
+   切分依据两条（谁的准用谁）：
+     ① 试卷/听力稿里带时间戳 (Q1 01:05 ~ 01:20) → 直接按时间戳切，零误差
+     ② 没有时间戳 → 声学静音检测。高考听力的结构决定了这件事可做：
+        段内换气停顿通常 1~3 秒，而「听完一段的答题时间」有 10~20 秒，
+        两者差一个数量级，所以找「明显长的停顿」就能找到段落边界。
+        再用试卷上的段落数做约束（有多少个 Text 就切多少段），准确率进一步抬高。
+
+   浏览器不给精确切分兜底的部分，用波形图人工微调补上：
+        拖切点 / 双击插入 / 右键删除 / 点波形跳段试听
+   ========================================================= */
+const AUD = {
+  ctx: null, buf: null, mono: null, sr: 0, dur: 0,
+  env: null, hop: 0, sil: [], cands: [],
+  peaks: null, pw: 0, W: 0, H: 0,
+  segs: [], sel: -1, cur: -1,
+  node: null, gain: null, playing: false,
+  t0: 0, off: 0, now: 0, raf: 0,
+  playFrom: 0, playTo: 0,
+  loop: true, rate: 1, repeat: 1, rep: 0,
+  gapMin: 4, sens: 1,
+  units: [], mode: '', wantN: 0,
+  drag: -1, tipT: 0, zoom: 1
+};
+
+/* ---------- 小工具 ---------- */
+function lsFmt(t) {
+  t = Math.max(0, t || 0);
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+}
+function lsSec(s) {
+  const p = String(s).split(':').map(Number);
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+}
+function lsMsg(s) { const e = $('#lsHint'); if (e) e.textContent = s; }
+
+/* ---------- 打开 / 关闭 ---------- */
+function lsOpen() {
+  $('#lsRoot').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  setTimeout(lsDrawBase, 30);
+}
+function lsClose() {
+  lsStopAll();
+  $('#lsRoot').classList.remove('on');
+  lsHideTip();
+  document.body.style.overflow = '';
+}
+function lsStopAll() {
+  AUD.playing = false;
+  lsKill();
+  AUD.now = 0;
+  lsClock(); lsDrawTop();
+}
+
+/* ---------- 选文件 ---------- */
+function lsPick(accept, cb) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = accept;
+  inp.onchange = function () { const f = inp.files && inp.files[0]; if (f) cb(f); };
+  inp.click();
+}
+
+/* =========================================================
+   一、加载音频 → 解码 → 包络 → 静音检测
+   ========================================================= */
+async function lsLoadAudio(file) {
+  if (!file) return;
+  lsMsg('正在解码音频「' + file.name + '」…大文件要约几秒，请稍候');
+  lsStopAll();
+  try {
+    const ab = await file.arrayBuffer();
+    if (!AUD.ctx) AUD.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await new Promise(function (res, rej) {
+      const p = AUD.ctx.decodeAudioData(ab, res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+    AUD.buf = buf;
+    AUD.sr = buf.sampleRate;
+    AUD.dur = buf.duration;
+    AUD.peaks = null; AUD.pw = 0;
+
+    /* 混单声道，只用于分析（播放仍走原始 stereo buffer） */
+    const ch = buf.numberOfChannels, n = buf.length;
+    const mono = new Float32Array(n);
+    if (ch === 1) { mono.set(buf.getChannelData(0)); }
+    else {
+      const a = buf.getChannelData(0), b = buf.getChannelData(1);
+      for (let i = 0; i < n; i++) mono[i] = (a[i] + b[i]) * 0.5;
+    }
+    AUD.mono = mono;
+
+    lsMsg('正在分析音频波形…');
+    await new Promise(function (r) { setTimeout(r, 16); });
+    lsEnvelope();
+    lsDetect();
+
+    $('#lsDrop').classList.add('off');
+    $('#lsRedo').disabled = false;
+    $('#lsMergeS').disabled = false;
+    $('#lsTot').textContent = lsFmt(AUD.dur);
+    lsAutoSplit(true);
+    lsDrawBase();
+
+    const note = AUD.mode === 'stamp'
+      ? '已按试卷里的时间戳切分（最准）'
+      : '已按停顿自动切分，可用波形图微调';
+    lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　共 ' + AUD.segs.length + ' 段');
+  } catch (e) {
+    lsMsg('音频解码失败：' + ((e && e.message) || e) + '　（试试 mp3 / wav / m4a）');
+  }
+}
+
+/* 20ms 一帧的能量包络（RMS） */
+function lsEnvelope() {
+  const sr = AUD.sr, m = AUD.mono;
+  const hop = Math.round(sr * 0.02);
+  const n = Math.floor(m.length / hop);
+  const env = new Float32Array(n);
+  const half = hop >> 1;
+  for (let i = 0; i < n; i++) {
+    const st = i * hop;
+    let s = 0;
+    for (let j = 0; j < hop; j += 2) { const v = m[st + j]; s += v * v; }
+    env[i] = Math.sqrt(s / half);
+  }
+  AUD.env = env; AUD.hop = hop;
+}
+
+/* 自适应阈值：取包络的 p95 当作「有语音时的电平」，取其一个很小的比例当静音门限 */
+function lsThreshold() {
+  const env = AUD.env;
+  const sd = Float32Array.from(env).sort();
+  const q = function (f) { return sd[Math.min(sd.length - 1, Math.max(0, Math.floor(sd.length * f)))]; };
+  const p92 = q(0.92), p15 = q(0.15);
+  let t = p92 * 0.055;                 // ≈ 相对语音电平 -25dB
+  t = Math.max(t, p15 * 1.5);          // 至少略高于本底噪声
+  t = Math.max(t, 0.0012);             // 绝对下限，防全静音文件
+  return t * AUD.sens;
+}
+
+function lsDetect() {
+  const env = AUD.env, hop = AUD.hop, sr = AUD.sr;
+  const thr = lsThreshold();
+  const out = [];
+  let st = -1;
+  for (let i = 0; i < env.length; i++) {
+    if (env[i] < thr) { if (st < 0) st = i; }
+    else if (st >= 0) { out.push({ s: st * hop / sr, e: i * hop / sr }); st = -1; }
+  }
+  if (st >= 0) out.push({ s: st * hop / sr, e: env.length * hop / sr });
+  out.forEach(function (o) { o.d = o.e - o.s; });
+  AUD.sil = out;
+}
+
+/* =========================================================
+   二、切分：试卷时间戳优先，否则静音检测 + 段数约束
+   ========================================================= */
+function lsAutoSplit(verbose) {
+  const T = AUD.dur;
+  if (!T) return;
+  /* —— 通道①：试卷里带时间戳 —— */
+  const stamped = AUD.units.filter(function (u) { return u.tStart != null; });
+  if (stamped.length >= 2) {
+    AUD.mode = 'stamp';
+    const segs = [];
+    for (let i = 0; i < stamped.length; i++) {
+      const u = stamped[i];
+      const s = Math.max(0, u.tStart);
+      let e;
+      if (u.tEnd != null && u.tEnd > s && (i + 1 >= stamped.length || u.tEnd < stamped[i + 1].tStart - 0.5)) e = u.tEnd;
+      else e = (i + 1 < stamped.length) ? stamped[i + 1].tStart : T;
+      e = Math.min(T, Math.max(s + 1, e));
+      segs.push({ start: s, end: e, unit: u });
+    }
+    AUD.segs = segs;
+    lsRenderList(); lsDrawBase();
+    return;
+  }
+
+  /* —— 通道②：声学静音检测 —— */
+  AUD.mode = 'silence';
+  const cands = AUD.sil.filter(function (x) {
+    return x.d >= AUD.gapMin && x.s > 0.25 && x.e < T - 0.25;
+  });
+  AUD.cands = cands;
+
+  const N = AUD.wantN || AUD.units.length;   // 段数：优先用手填的，其次用试卷上的 Text 数
+  let cuts;
+  if (N > 1 && cands.length >= N - 1) {
+    cuts = lsPickCuts(cands, N, T);
+  } else {
+    /* 没有试卷约束：所有够长的停顿都用上，但丢掉切出来太碎的段 */
+    cuts = [];
+    let prev = 0;
+    cands.forEach(function (c) {
+      if (c.e - prev >= 8) { cuts.push(c); prev = c.e; }
+    });
+  }
+  AUD.segs = lsBuildSegs(lsGroup(cuts), T);
+  lsPair();
+  lsRenderList(); lsDrawBase();
+}
+
+/* 把挨得很近的几个停顿并成同一处「段落分界」。
+   高考音频的典型形态：长答题停顿 → 播音员读「Text N」→ 短停顿 → 下一段材料。
+   这三截其实是同一个分界，不并起来就会切出 1 秒多的碎片段。 */
+function lsGroup(list) {
+  const a = list.slice().sort(function (x, y) { return x.e - y.e; });
+  const out = [];
+  a.forEach(function (c) {
+    const last = out[out.length - 1];
+    if (last && (c.s - last.e) < 4) { last.e = c.e; last.d += c.d; }
+    else out.push({ s: c.s, e: c.e, firstE: c.e, d: c.d });
+  });
+  return out;
+}
+
+/* 段落边界：上一段止于停顿开始处（不含答题时间），
+   下一段起于同一次停顿的 firstE（把「Text N」这句提示音留在新一段的开头，
+   学生一听就知道现在放的是第几段）。 */
+function lsBuildSegs(cuts, T) {
+  const segs = [];
+  let prev = 0;
+  cuts.forEach(function (c) {
+    if (c.s - prev > 1.0) segs.push({ start: prev, end: c.s });
+    prev = c.firstE;
+  });
+  if (T - prev > 1.0) segs.push({ start: prev, end: T });
+  return segs;
+}
+
+/* 一键把 15 秒以内的小段并到后一段（音频里的中文引导语常被切成这种小段） */
+function lsMergeShort() {
+  const keep = [];
+  let pend = null;
+  AUD.segs.forEach(function (s) {
+    if (pend) { pend.end = s.end; }
+    else pend = { start: s.start, end: s.end };
+    if (pend.end - pend.start >= 15) { keep.push(pend); pend = null; }
+  });
+  if (pend) {
+    if (keep.length) keep[keep.length - 1].end = pend.end;
+    else keep.push(pend);
+  }
+  const n = AUD.segs.length - keep.length;
+  if (!n) { lsMsg('没有需要合并的小段'); return; }
+  AUD.segs = keep;
+  AUD.cur = -1; AUD.sel = -1;
+  lsPair(); lsRenderList(); lsDrawBase(); lsPaintPaper();
+  lsMsg('已合并 ' + n + ' 个小段，现在共 ' + keep.length + ' 段');
+}
+
+/* 在候选停顿里挑 K 个当切点：段长越接近平均值越好，停顿越长越好（动态规划） */
+function lsPickCuts(cands, N, T) {
+  const K = N - 1;
+  if (K < 1) return [];
+  let list = cands;
+  if (list.length > 200) {
+    list = cands.slice().sort(function (a, b) { return b.d - a.d; }).slice(0, 200)
+      .sort(function (a, b) { return a.e - b.e; });
+  }
+  if (list.length <= K) return list.slice();
+
+  const ideal = T / N;
+  const cost = function (len) {              // 段长打分
+    if (len < 8) return -90;
+    const r = len / ideal;
+    if (r < 0.25 || r > 3.5) return -90;
+    return -Math.abs(Math.log(r)) * 26;
+  };
+  const gain = function (d) { return Math.min(d, 24) * 1.1; };   // 停顿时长打分
+
+  const n = list.length, BAD = -1e9;
+  const dp = [], pre = [];
+  for (let i = 0; i < n; i++) {
+    dp.push(new Float64Array(K + 1).fill(BAD));
+    pre.push(new Int32Array(K + 1).fill(-1));
+  }
+  for (let i = 0; i < n; i++) {
+    dp[i][1] = cost(list[i].e) + gain(list[i].d);
+    for (let k = 2; k <= K; k++) {
+      for (let j = 0; j < i; j++) {
+        if (dp[j][k - 1] <= BAD) continue;
+        const len = list[i].e - list[j].e;
+        const v = dp[j][k - 1] + cost(len) + gain(list[i].d);
+        if (v > dp[i][k]) { dp[i][k] = v; pre[i][k] = j; }
+      }
+    }
+  }
+  let best = BAD, bi = -1;
+  for (let i = 0; i < n; i++) {
+    if (dp[i][K] <= BAD) continue;
+    const v = dp[i][K] + cost(T - list[i].e);
+    if (v > best) { best = v; bi = i; }
+  }
+  if (bi < 0) {
+    /* 约束太紧、DP 无解 → 退回到「均匀挑最长停顿」 */
+    const pool = list.slice().sort(function (a, b) { return b.d - a.d; });
+    const out = [];
+    for (let i = 0; i < pool.length && out.length < K; i++) {
+      let ok = true;
+      for (let j = 0; j < out.length; j++) if (Math.abs(out[j].e - pool[i].e) < ideal * 0.4) { ok = false; break; }
+      if (ok) out.push(pool[i]);
+    }
+    return out.sort(function (a, b) { return a.e - b.e; });
+  }
+  const out = [];
+  let i = bi;
+  for (let k = K; k >= 1; k--) { out.unshift(list[i]); i = pre[i][k]; if (i < 0) break; }
+  return out;
+}
+
+/* 把切好的段和试卷单元按顺序配起来 */
+function lsPair() {
+  const us = AUD.units;
+  AUD.segs.forEach(function (s, i) { s.unit = us[i] || null; });
+}
+
+/* =========================================================
+   三、波形绘制
+   ========================================================= */
+function lsPeaks(w) {
+  const m = AUD.mono, n = m.length;
+  const out = new Float32Array(w);
+  const step = n / w;
+  for (let x = 0; x < w; x++) {
+    const s = Math.floor(x * step);
+    const e = Math.min(n, Math.floor((x + 1) * step));
+    if (e <= s) { out[x] = 0; continue; }
+    const inc = Math.max(1, Math.floor((e - s) / 48));
+    let mx = 0;
+    for (let i = s; i < e; i += inc) { const v = m[i] < 0 ? -m[i] : m[i]; if (v > mx) mx = v; }
+    out[x] = mx;
+  }
+  return out;
+}
+
+function lsSetupCanvas() {
+  const c1 = $('#lsCv1');
+  if (!c1) return;
+  const W = c1.clientWidth, H = c1.clientHeight;
+  AUD.W = W; AUD.H = H;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  ['lsCv1', 'lsCv2'].forEach(function (id) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  });
+  if (!AUD.mono) { AUD.peaks = null; return; }     // 还没加载音频，波形留空
+  if (!AUD.peaks || AUD.pw !== W) { AUD.peaks = lsPeaks(W); AUD.pw = W; }
+}
+
+function lsDrawBase() {
+  const cv = $('#lsCv1');
+  if (!cv || !cv.clientWidth) return;
+  lsSetupCanvas();
+  const g = cv.getContext('2d');
+  const W = AUD.W, H = AUD.H;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#fbfdff'; g.fillRect(0, 0, W, H);
+  if (!AUD.peaks) return;
+
+  const mid = H / 2, amp = H * 0.44;
+  g.fillStyle = '#c3d2e4';
+  for (let x = 0; x < W; x++) {
+    const v = AUD.peaks[x];
+    const h = Math.max(0.7, v * amp);
+    g.fillRect(x, mid - h, 1, h * 2);
+  }
+
+  /* 段落底纹：交替着色，视觉上一段一段分得清 */
+  const segs = AUD.segs;
+  for (let i = 0; i < segs.length; i++) {
+    const x0 = Math.round(lsTToX(segs[i].start)), x1 = Math.round(lsTToX(segs[i].end));
+    if (i % 2 === 0) { g.fillStyle = 'rgba(43,95,168,.045)'; g.fillRect(x0, 0, Math.max(1, x1 - x0), H); }
+    if (i === AUD.sel) { g.fillStyle = 'rgba(224,123,27,.13)'; g.fillRect(x0, 0, Math.max(1, x1 - x0), H); }
+  }
+
+  /* 切点线 */
+  g.lineWidth = 1.5;
+  for (let i = 1; i < segs.length; i++) {
+    const x = Math.round(lsTToX(segs[i].start)) + 0.5;
+    g.strokeStyle = '#e07b1b';
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+    g.fillStyle = '#e07b1b';
+    g.beginPath(); g.arc(x, 9, 4, 0, 6.284); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(x, 9, 1.6, 0, 6.284); g.fill();
+  }
+
+  /* 段号 */
+  g.font = '600 11px "Microsoft YaHei",sans-serif';
+  g.textBaseline = 'bottom';
+  for (let i = 0; i < segs.length; i++) {
+    const x = lsTToX(segs[i].start) + 4;
+    if (x > W - 16) continue;
+    g.fillStyle = 'rgba(93,107,124,.85)';
+    g.fillText(String(i + 1), x, H - 4);
+  }
+}
+
+function lsDrawTop() {
+  const cv = $('#lsCv2');
+  if (!cv || !cv.clientWidth || !AUD.dur) return;
+  const g = cv.getContext('2d');
+  const W = AUD.W, H = AUD.H;
+  g.clearRect(0, 0, W, H);
+
+  /* 当前播放段：绿色描边 */
+  const s = AUD.segs[AUD.cur];
+  if (s) {
+    g.strokeStyle = 'rgba(26,155,82,.85)'; g.lineWidth = 2;
+    g.strokeRect(Math.round(lsTToX(s.start)) + 1, 1, Math.max(2, lsTToX(s.end) - lsTToX(s.start) - 2), H - 2);
+  }
+  /* 播放头 */
+  if (AUD.playing || AUD.now > 0) {
+    const x = Math.round(lsTToX(AUD.now)) + 0.5;
+    g.strokeStyle = '#d64545'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+    g.fillStyle = '#d64545';
+    g.beginPath(); g.moveTo(x - 5, 0); g.lineTo(x + 5, 0); g.lineTo(x, 7); g.closePath(); g.fill();
+  }
+}
+
+function lsTToX(t) { return AUD.dur ? (t / AUD.dur) * AUD.W : 0; }
+function lsXToT(x) { return AUD.W ? (x / AUD.W) * AUD.dur : 0; }
+
+/* =========================================================
+   四、播放（Web Audio，采样级精确，比 <audio> 跳转准）
+   ========================================================= */
+function lsKill() {
+  if (AUD.node) {
+    try { AUD.node.onended = null; AUD.node.stop(); } catch (e) {}
+    AUD.node = null;
+  }
+  if (AUD.raf) { cancelAnimationFrame(AUD.raf); AUD.raf = 0; }
+}
+
+function lsStart(a, b) {
+  if (!AUD.buf) return;
+  const c = AUD.ctx;
+  if (c.state === 'suspended') c.resume();
+  if (!AUD.gain) { AUD.gain = c.createGain(); AUD.gain.gain.value = 1; AUD.gain.connect(c.destination); }
+  lsKill();
+  const node = c.createBufferSource();
+  node.buffer = AUD.buf;
+  node.playbackRate.value = AUD.rate;
+  node.connect(AUD.gain);
+  node.onended = function () { if (AUD.playing) lsSegEnd(); };
+  node.start(0, a, b - a);
+  AUD.node = node;
+  AUD.off = a; AUD.playFrom = a; AUD.playTo = b;
+  AUD.t0 = c.currentTime;
+  AUD.playing = true;
+  AUD.raf = requestAnimationFrame(lsTick);
+}
+
+function lsPlay(i) {
+  const s = AUD.segs[i];
+  if (!s || !AUD.buf) return;
+  AUD.cur = i; AUD.sel = i; AUD.rep = 0;
+  AUD.now = s.start;
+  lsStart(s.start, s.end);
+  lsRenderList(); lsPaintPaper(); lsClock(); lsDrawTop();
+}
+
+function lsSegEnd() {
+  AUD.playing = false;
+  lsKill();
+  if (AUD.loop) { lsPlay(AUD.cur); return; }
+  if (AUD.rep + 1 < AUD.repeat) { AUD.rep++; lsStart(AUD.playFrom, AUD.playTo); return; }
+  AUD.now = AUD.playTo;
+  lsClock(); lsDrawTop(); lsRenderList();
+}
+
+function lsTick() {
+  if (!AUD.playing) return;
+  const c = AUD.ctx;
+  AUD.now = AUD.off + (c.currentTime - AUD.t0) * AUD.rate;
+  if (AUD.now >= AUD.playTo - 0.03) { AUD.now = AUD.playTo; lsSegEnd(); return; }
+  lsClock(); lsDrawTop();
+  AUD.raf = requestAnimationFrame(lsTick);
+}
+
+function lsPause() {
+  if (!AUD.playing) return;
+  AUD.playing = false;
+  lsKill();
+  lsClock(); lsDrawTop(); lsRenderList();
+}
+
+function lsToggle() {
+  if (!AUD.segs.length) return;
+  if (AUD.playing) { lsPause(); return; }
+  if (AUD.cur < 0) { lsPlay(0); return; }
+  const s = AUD.segs[AUD.cur];
+  if (AUD.now >= s.end - 0.05 || AUD.now < s.start) AUD.now = s.start;
+  lsStart(AUD.now, s.end);
+  lsRenderList();
+}
+
+function lsStep(d) {
+  if (!AUD.segs.length) return;
+  let i = AUD.cur < 0 ? (d > 0 ? 0 : AUD.segs.length - 1) : AUD.cur + d;
+  i = Math.max(0, Math.min(AUD.segs.length - 1, i));
+  lsPlay(i);
+}
+
+function lsClock() {
+  const n = $('#lsNow');
+  if (n) n.textContent = lsFmt(AUD.now);
+}
+
+/* =========================================================
+   五、分段列表
+   ========================================================= */
+function lsRenderList() {
+  const box = $('#lsList');
+  if (!AUD.segs.length) {
+    box.innerHTML = '<div class="ls-emptylist">还没有切分出段落。<br>先上传听力音频；再上传试卷可以让段数切得更准。</div>';
+    $('#lsSegN').textContent = '';
+    return;
+  }
+  const html = AUD.segs.map(function (s, i) {
+    const u = s.unit;
+    const tag = u && u.label ? u.label : ('第 ' + (i + 1) + ' 段');
+    let qs = '';
+    if (u && u.qs && u.qs.length) {
+      const nos = u.qs.map(function (q) { return q.no; });
+      const qa = Math.min.apply(null, nos), qb = Math.max.apply(null, nos);
+      qs = (qa === qb) ? ('第 ' + qa + ' 题') : ('第 ' + qa + '–' + qb + ' 题');
+    }
+    const cls = 'ls-item' + (i === AUD.sel ? ' on' : '') + (i === AUD.cur && AUD.playing ? ' playing' : '');
+    return '<div class="' + cls + '" data-i="' + i + '">'
+      + '<b class="ls-no">' + (i + 1) + '</b>'
+      + '<span class="ls-tag">' + esc(tag) + '</span>'
+      + (qs ? '<span class="ls-grow">' + esc(qs) + '</span>' : '<span class="ls-grow"></span>')
+      + '<span class="ls-tt">' + lsFmt(s.start) + ' → ' + lsFmt(s.end) + '</span>'
+      + '<span class="ls-dd">' + (s.end - s.start).toFixed(1) + 's</span>'
+      + '<button class="ls-mini" data-act="play" title="播放这一段">▶</button>'
+      + '<button class="ls-mini" data-act="export" title="把这一段导出成 wav">⬇</button>'
+      + (i > 0 ? '<button class="ls-mini" data-act="merge" title="和上一段合成一段">⇧合并</button>' : '')
+      + '</div>';
+  }).join('');
+  box.innerHTML = html;
+  $('#lsSegN').textContent = '共 ' + AUD.segs.length + ' 段';
+}
+
+function lsSelect(i) {
+  AUD.sel = i;
+  lsRenderList(); lsDrawBase(); lsPaintPaper();
+}
+
+/* =========================================================
+   六、右侧：题目 + 听力原文
+   ========================================================= */
+function lsPaintPaper() {
+  const box = $('#lsPaperBody'), tag = $('#lsPaperTag');
+  if (!box) return;
+  const s = AUD.segs[AUD.sel];
+  if (!s) {
+    tag.textContent = '';
+    box.innerHTML = '<div class="ls-none">点左边任意一段，<br>这里显示那一段的题目和听力原文。</div>';
+    return;
+  }
+  const u = s.unit;
+  if (!u || (!u.qs.length && !u.script.length)) {
+    tag.textContent = '';
+    box.innerHTML = '<div class="ls-none">这一段没找到对应的题目。<br><br>上传试卷（图片 / Word / PDF / 听力稿 txt）后会自动配对。<br>文末说明「怎么让配对更准」。</div>'
+      + '<div class="ls-sc"><div class="lb">关于配对</div>'
+      + '<p>试卷里只要出现 <b>Text 1</b>、<b>Text 2</b> 这样的段落标题，程序就按顺序把每段音频配上去。</p>'
+      + '<p>听力稿里若带 <b>(Q1 01:05 ~ 01:20)</b> 这类时间戳，会直接按时间戳切音频，误差为零。</p></div>';
+    return;
+  }
+  tag.textContent = (u.label || '') + (u.qs.length ? ' · ' + u.qs.length + ' 题' : '');
+  let h = '';
+  u.qs.forEach(function (q) {
+    h += '<div class="ls-q"><div class="stem">' + q.no + '. ' + esc(q.stem || '') + '</div>';
+    (q.opts || []).forEach(function (o) { h += '<span class="opt">' + esc(o) + '</span>'; });
+    h += '</div>';
+  });
+  if (u.script.length) {
+    h += '<div class="ls-sc"><div class="lb">听力原文</div>';
+    u.script.forEach(function (p) {
+      h += '<p>' + (p.sp ? '<b>' + esc(p.sp) + ':</b> ' : '') + esc(p.tx) + '</p>';
+    });
+    h += '</div>';
+  }
+  box.innerHTML = h || '<div class="ls-none">这一段还没有题目内容。</div>';
+}
+
+/* =========================================================
+   七、试卷 / 听力稿解析
+   ========================================================= */
+function lsSplitOpts(s) {
+  const out = { stem: '', opts: [] };
+  const m = s.match(/(?:^|\s)(A\s*[.、．)）])/);
+  if (!m) { out.stem = s.trim(); return out; }
+  const i = s.indexOf(m[1]);
+  out.stem = s.slice(0, i).trim();
+  s.slice(i).split(/(?=[A-D]\s*[.、．)）])/).forEach(function (p) {
+    const mm = p.match(/^\s*([A-D])\s*[.、．)）]\s*([\s\S]*)$/);
+    if (mm) out.opts.push(mm[1] + '. ' + mm[2].trim());
+  });
+  return out;
+}
+
+function lsParsePaper(txt) {
+  const lines = String(txt || '').replace(/\r/g, '').replace(/\u00a0/g, ' ').split('\n');
+  const units = [];
+  let cur = null;
+  const reText = /^\s*(?:Text|TEXT)\s*\.?\s*(\d{1,2})\b\s*[.、:：]?\s*(.*)$/i;
+  const reStamp = /(?:Q\s*)?(\d{1,2})\s*[^\d\n]{0,6}?(\d{1,3}:\d{2}(?:\.\d+)?)\s*[~～\-—–至到]+\s*(\d{1,3}:\d{2}(?:\.\d+)?)/;
+  const reQ = /^\s*(\d{1,2})\s*[.、．)）]\s*(\S[\s\S]*)$/;
+  const reSpk = /^\s*(W|M|Man|Woman|Narrator|Speaker\s*[AB]?|女|男)\s*[:：]\s*([\s\S]*)$/i;
+  const reOptOnly = /^\s*([A-D])\s*[.、．)）]\s*([\s\S]*)$/;
+
+  const mkUnit = function (no, label) {
+    const u = { no: no, label: label, tStart: null, tEnd: null, qs: [], script: [], head: '' };
+    units.push(u);
+    return u;
+  };
+
+  for (let li = 0; li < lines.length; li++) {
+    const raw = lines[li], t = raw.trim();
+    if (!t) continue;
+
+    const mt = t.match(reText);
+    if (mt) {
+      cur = mkUnit(+mt[1], 'Text ' + mt[1]);
+      cur.head = (mt[2] || '').trim();
+      const ms = t.match(reStamp);
+      if (ms) { cur.tStart = lsSec(ms[2]); cur.tEnd = lsSec(ms[3]); }
+      /* 标题行尾可能直接跟着题干 */
+      const mq = cur.head.match(reQ);
+      if (mq) { const o = lsSplitOpts(mq[2]); cur.qs.push({ no: +mq[1], stem: o.stem, opts: o.opts }); }
+      continue;
+    }
+    if (!cur) {
+      /* 第一段文本前的抬头：看看是不是题号开头，是就先建一个匿名单元 */
+      const mq0 = t.match(reQ);
+      if (!mq0) continue;
+      cur = mkUnit(0, '');
+    }
+
+    const msp = t.match(reSpk);
+    if (msp) { cur.script.push({ sp: msp[1], tx: (msp[2] || '').trim() || t }); continue; }
+
+    const mo = t.match(reOptOnly);
+    if (mo && cur.qs.length && cur.qs[cur.qs.length - 1].opts.length < 4 && !/[?？]\s*$/.test(t)) {
+      cur.qs[cur.qs.length - 1].opts.push(mo[1] + '. ' + mo[2].trim());
+      continue;
+    }
+
+    const mq = t.match(reQ);
+    if (mq) {
+      const o = lsSplitOpts(mq[2]);
+      const q = { no: +mq[1], stem: o.stem, opts: o.opts };
+      /* 选项可能被拆到后面几行，向后多看 4 行合并 */
+      if (o.opts.length < 4) {
+        for (let k = 1; k <= 4 && li + k < lines.length; k++) {
+          const nx = lines[li + k].trim();
+          if (!nx) continue;
+          if (reQ.test(nx) || reText.test(nx)) break;
+          const nxt = lsSplitOpts(nx);
+          if (nxt.opts.length && !nxt.stem) { q.opts = q.opts.concat(nxt.opts); li += k; break; }
+          if (nxt.opts.length && nxt.stem && q.opts.length) { q.opts = q.opts.concat(nxt.opts); li += k; break; }
+        }
+      }
+      cur.qs.push(q);
+      continue;
+    }
+
+    /* 既不是题目也不是选项：若像原文（较长英文行），收进原文 */
+    if (t.length > 12 && /[a-zA-Z]{3}/.test(t) && !cur.qs.length) {
+      cur.script.push({ sp: '', tx: t });
+    }
+  }
+
+  /* 清掉空单元（没有任何题目和原文的） */
+  return units.filter(function (u) { return u.qs.length || u.script.length || u.label; });
+}
+
+async function lsLoadPaper(file) {
+  lsMsg('正在读取试卷「' + file.name + '」…');
+  try {
+    const name = (file.name || '').toLowerCase();
+    let text = '';
+    if (/\.(txt|md|csv)$/.test(name)) text = await readTxtFile(file);
+    else if (/\.docx$/.test(name)) text = await readDocxFile(file);
+    else if (/\.pdf$/.test(name)) text = await readPdfFile(file);
+    else text = await readTxtFile(file);
+
+    const units = lsParsePaper(text);
+    AUD.units = units;
+    if (!units.length) {
+      lsMsg('试卷里没读到题目。若手头有带「Text 1」标题的听力稿，传那一份，题目能和音频精确配对。');
+      return;
+    }
+    /* 真题卷常常只有题号、没有 Text 标题，这时没法知道哪几题属于同一段材料 */
+    if (units.length === 1 && !units[0].label) {
+      lsAutoSplit(); lsRenderList(); lsDrawBase(); lsPaintPaper();
+      lsMsg('读到 ' + units[0].qs.length + ' 道题，但卷面没有「Text 1」这类段落标记，没法自动判断哪几题属于同一个材料 —— 在工具栏「段数」里填个数（高考听力一般 10 段），音频就按这个数切。');
+      return;
+    }
+    lsAutoSplit();
+    lsPair();
+    lsRenderList(); lsDrawBase(); lsPaintPaper();
+    const qn = units.reduce(function (a, u) { return a + u.qs.length; }, 0);
+    lsMsg('试卷已解析：' + units.length + ' 段 / ' + qn + ' 题'
+      + (AUD.mode === 'stamp' ? '　已按时间戳精确切分' : '　已按题数约束重新切分'));
+  } catch (e) {
+    lsMsg('试卷读取失败：' + ((e && e.message) || e) + '　（图片试卷请先另存为 Word 或截图后传 txt）');
+  }
+}
+
+/* =========================================================
+   八、导出裁好的片段
+   ========================================================= */
+function lsWavBytes(a, b) {
+  const buf = AUD.buf, sr = buf.sampleRate;
+  const s0 = Math.max(0, Math.floor(a * sr));
+  const s1 = Math.min(buf.length, Math.ceil(b * sr));
+  const n = Math.max(0, s1 - s0);
+  const ch = Math.min(2, buf.numberOfChannels);
+  const bytes = 44 + n * ch * 2;
+  const ab = new ArrayBuffer(bytes), dv = new DataView(ab);
+  const wr = function (o, s) { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  wr(0, 'RIFF'); dv.setUint32(4, bytes - 8, true); wr(8, 'WAVE');
+  wr(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+  dv.setUint16(22, ch, true); dv.setUint32(24, sr, true);
+  dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true);
+  wr(36, 'data'); dv.setUint32(40, n * ch * 2, true);
+  const chs = [];
+  for (let c = 0; c < ch; c++) chs.push(buf.getChannelData(c));
+  let o = 44;
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < ch; c++) {
+      let v = chs[c][s0 + i] || 0;
+      v = v > 1 ? 1 : (v < -1 ? -1 : v);
+      dv.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
+      o += 2;
+    }
+  }
+  return new Uint8Array(ab);
+}
+
+const LS_CRC = (function () {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[i] = c >>> 0; }
+  return t;
+})();
+function lsCrc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = LS_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+/* 不压缩的 zip（音频本来就压不动，纯打包） */
+function lsZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let off = 0;
+  files.forEach(function (f) {
+    const name = enc.encode(f.name);
+    const crc = lsCrc32(f.data);
+    const sz = f.data.length;
+    const lh = new Uint8Array(30 + name.length);
+    const dv = new DataView(lh.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true); dv.setUint16(6, 0x0800, true); dv.setUint16(8, 0, true);
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0, true);
+    dv.setUint32(14, crc, true); dv.setUint32(18, sz, true); dv.setUint32(22, sz, true);
+    dv.setUint16(26, name.length, true); dv.setUint16(28, 0, true);
+    lh.set(name, 30);
+    parts.push(lh, f.data);
+    const cd = new Uint8Array(46 + name.length);
+    const dv2 = new DataView(cd.buffer);
+    dv2.setUint32(0, 0x02014b50, true);
+    dv2.setUint16(4, 20, true); dv2.setUint16(6, 20, true);
+    dv2.setUint16(8, 0x0800, true); dv2.setUint16(10, 0, true);
+    dv2.setUint16(12, 0, true); dv2.setUint16(14, 0, true);
+    dv2.setUint32(16, crc, true); dv2.setUint32(20, sz, true); dv2.setUint32(24, sz, true);
+    dv2.setUint16(28, name.length, true);
+    dv2.setUint32(42, off, true);
+    cd.set(name, 46);
+    central.push(cd);
+    off += lh.length + sz;
+  });
+  let cdSize = 0;
+  central.forEach(function (c) { cdSize += c.length; });
+  const eocd = new Uint8Array(22);
+  const dv3 = new DataView(eocd.buffer);
+  dv3.setUint32(0, 0x06054b50, true);
+  dv3.setUint16(8, files.length, true); dv3.setUint16(10, files.length, true);
+  dv3.setUint32(12, cdSize, true); dv3.setUint32(16, off, true);
+  return new Blob(parts.concat(central, [eocd]), { type: 'application/zip' });
+}
+
+function lsDl(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+function lsExportOne(i) {
+  const s = AUD.segs[i];
+  if (!s || !AUD.buf) return;
+  const u = s.unit;
+  const base = (u && u.label ? u.label.replace(/\s+/g, '') : ('第' + (i + 1) + '段'));
+  lsMsg('正在导出 ' + base + ' …');
+  setTimeout(function () {
+    const data = lsWavBytes(s.start, s.end);
+    lsDl(new Blob([data], { type: 'audio/wav' }), base + '_' + lsFmt(s.start).replace(':', '分') + '.wav');
+    lsMsg('已导出 ' + base + '（' + (s.end - s.start).toFixed(1) + ' 秒）');
+  }, 20);
+}
+
+function lsExportAll() {
+  if (!AUD.segs.length || !AUD.buf) { lsMsg('还没有可导出的段落'); return; }
+  lsMsg('正在导出 ' + AUD.segs.length + ' 个片段并打包…大音频需要十几秒');
+  setTimeout(function () {
+    const files = AUD.segs.map(function (s, i) {
+      const u = s.unit;
+      const base = (u && u.label ? u.label.replace(/\s+/g, '') : ('第' + (i + 1) + '段'));
+      return { name: base + '.wav', data: lsWavBytes(s.start, s.end) };
+    });
+    lsDl(lsZip(files), '听力片段_' + files.length + '段.zip');
+    lsMsg('已导出 ' + files.length + ' 个 wav，打包为 zip');
+  }, 20);
+}
+
+/* =========================================================
+   九、波形交互：拖切点 / 双击插入 / 右键删除 / 点一下试听
+   ========================================================= */
+function lsHideTip() { const t = $('#lsTip'); if (t) t.style.display = 'none'; }
+function lsShowTip(x, y, txt) {
+  const t = $('#lsTip');
+  if (!t) return;
+  t.textContent = txt;
+  t.style.left = (x + 12) + 'px';
+  t.style.top = (y - 26) + 'px';
+  t.style.display = 'block';
+}
+function lsCutIdx() { return AUD.segs.slice(1).map(function (s) { return s.start; }); }
+
+function lsBindWave() {
+  const cv = $('#lsCv1');
+  if (!cv) return;
+  const relX = function (ev) {
+    const r = cv.getBoundingClientRect();
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    return Math.max(0, Math.min(r.width, cx - r.left));
+  };
+  const hitCut = function (x) {
+    const cs = lsCutIdx();
+    let best = -1, bd = 10;
+    for (let i = 0; i < cs.length; i++) {
+      const d = Math.abs(lsTToX(cs[i]) - x);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  };
+
+  const down = function (ev) {
+    if (!AUD.dur) return;
+    const x = relX(ev);
+    const ci = hitCut(x);
+    if (ci >= 0) {                       // 拖切点（ci 对应 segs[ci+1].start）
+      AUD.drag = ci + 1;
+      cv.style.cursor = 'ew-resize';
+      ev.preventDefault();
+      lsShowTip(ev.clientX, ev.clientY, lsFmt(AUD.segs[AUD.drag].start));
+    }
+  };
+  const move = function (ev) {
+    if (AUD.drag < 0) {
+      const x = relX(ev);
+      cv.style.cursor = hitCut(x) >= 0 ? 'ew-resize' : 'crosshair';
+      return;
+    }
+    const i = AUD.drag;
+    if (i <= 0 || i >= AUD.segs.length) return;
+    let t = lsXToT(relX(ev));
+    const lo = AUD.segs[i - 1].start + 1;
+    const hi = (AUD.segs[i + 1] ? AUD.segs[i + 1].start : AUD.dur) - 1;
+    t = Math.max(lo, Math.min(hi, t));
+    AUD.segs[i - 1].end = t;
+    AUD.segs[i].start = t;
+    lsDrawBase();
+    lsShowTip(ev.clientX, ev.clientY, lsFmt(t));
+    ev.preventDefault();
+  };
+  const up = function () {
+    if (AUD.drag >= 0) {
+      AUD.drag = -1;
+      cv.style.cursor = 'crosshair';
+      lsHideTip();
+      lsRenderList();
+    }
+  };
+
+  cv.addEventListener('mousedown', down);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+  cv.addEventListener('touchstart', down, { passive: false });
+  cv.addEventListener('touchmove', move, { passive: false });
+  cv.addEventListener('touchend', up);
+
+  /* 单击：跳到该位置所属段试听；双击：插入切点 */
+  cv.addEventListener('dblclick', function (ev) {
+    if (!AUD.dur) return;
+    const t = lsXToT(relX(ev));
+    if (t < 1 || t > AUD.dur - 1) return;
+    let k = -1;
+    for (let i = 1; i < AUD.segs.length; i++) if (AUD.segs[i].start <= t) k = i;
+    if (k < 0) return;
+    if (t - AUD.segs[k].start < 3 || AUD.segs[k].end - t < 3) return;
+    AUD.segs.splice(k + 1, 0, { start: t, end: AUD.segs[k].end, unit: null });
+    AUD.segs[k].end = t;
+    lsPair(); lsRenderList(); lsDrawBase();
+    lsMsg('已在 ' + lsFmt(t) + ' 处插入切点，共 ' + AUD.segs.length + ' 段');
+  });
+  cv.addEventListener('contextmenu', function (ev) {
+    const ci = hitCut(relX(ev));
+    if (ci < 0 || !AUD.dur) return;
+    ev.preventDefault();
+    const k = ci + 1;                     // 删掉这个切点 = 把 segs[k-1]、segs[k] 合并
+    if (k < 1 || k >= AUD.segs.length) return;
+    AUD.segs[k - 1].end = AUD.segs[k].end;
+    AUD.segs.splice(k, 1);
+    lsPair(); lsRenderList(); lsDrawBase();
+    lsMsg('已删除切点，两段合并，剩 ' + AUD.segs.length + ' 段');
+  });
+  cv.addEventListener('click', function (ev) {
+    if (!AUD.dur || AUD.drag >= 0) return;
+    if (hitCut(relX(ev)) >= 0) return;
+    const t = lsXToT(relX(ev));
+    let k = 0;
+    for (let i = 0; i < AUD.segs.length; i++) if (AUD.segs[i].start <= t) k = i;
+    /* 延后一点再响应，双击插切点时就不会连带触发一次单段播放 */
+    clearTimeout(AUD._ct);
+    AUD._ct = setTimeout(function () {
+      lsSelect(k);
+      if (AUD.playing) lsPlay(k);
+    }, 230);
+  });
+}
+
+/* =========================================================
+   十、事件绑定
+   ========================================================= */
+function lsBind() {
+  if (!$('#lsRoot') || AUD._bound) return;
+  AUD._bound = true;
+
+  $('#lsBtnA').onclick = function () { lsPick('audio/*', lsLoadAudio); };
+  $('#lsBtnP').onclick = function () { lsPick('.txt,.docx,.pdf,.md,.csv', lsLoadPaper); };
+  $('#lsBtnE').onclick = lsExportAll;
+  $('#lsBtnX').onclick = lsClose;
+
+  $('#lsPlay').onclick = lsToggle;
+  $('#lsPrev').onclick = function () { lsStep(-1); };
+  $('#lsNext').onclick = function () { lsStep(1); };
+  $('#lsStop').onclick = function () { lsStopAll(); const s = AUD.segs[AUD.cur]; if (s) AUD.now = s.start; lsClock(); lsDrawTop(); };
+
+  $('#lsLoop').onchange = function () { AUD.loop = this.checked; };
+  $('#lsRate').onchange = function () {
+    AUD.rate = +this.value || 1;
+    if (AUD.playing) { const n = AUD.now; AUD.playing = false; lsKill(); AUD.now = n; lsStart(n, AUD.playTo); }
+  };
+  $('#lsRepeat').onchange = function () { AUD.repeat = +this.value || 1; AUD.rep = 0; };
+
+  $('#lsGap').oninput = function () {
+    AUD.gapMin = +this.value;
+    $('#lsGapV').textContent = AUD.gapMin.toFixed(1) + 's';
+  };
+  $('#lsSens').oninput = function () {
+    AUD.sens = +this.value;
+    $('#lsSensV').textContent = AUD.sens.toFixed(1);
+  };
+  const redo = function () {
+    if (!AUD.env) return;
+    lsDetect(); lsAutoSplit(); lsRenderList(); lsDrawBase();
+    lsMsg('已按新参数重新切分，共 ' + AUD.segs.length + ' 段');
+  };
+  $('#lsGap').onchange = redo;
+  $('#lsSens').onchange = redo;
+  $('#lsRedo').onclick = redo;
+  $('#lsMergeS').onclick = lsMergeShort;
+  $('#lsWantN').onchange = function () {
+    const v = parseInt(this.value, 10);
+    AUD.wantN = (v > 0 && v <= 40) ? v : 0;
+    redo();
+  };
+
+  /* 列表点击 / 按钮 */
+  $('#lsList').addEventListener('click', function (ev) {
+    const item = ev.target.closest ? ev.target.closest('.ls-item') : null;
+    if (!item) return;
+    const i = +item.getAttribute('data-i');
+    const btn = ev.target.closest ? ev.target.closest('button[data-act]') : null;
+    if (btn) {
+      const act = btn.getAttribute('data-act');
+      ev.stopPropagation();
+      if (act === 'play') { if (AUD.cur === i && AUD.playing) lsPause(); else lsPlay(i); }
+      else if (act === 'export') { lsSelect(i); lsExportOne(i); }
+      else if (act === 'merge') {
+        if (i < 1) return;
+        AUD.segs[i - 1].end = AUD.segs[i].end;
+        AUD.segs.splice(i, 1);
+        lsPair(); lsRenderList(); lsDrawBase();
+        lsMsg('已与上一段合并，剩 ' + AUD.segs.length + ' 段');
+      }
+      return;
+    }
+    lsSelect(i);
+  });
+
+  /* 拖音频文件进来 */
+  const drop = $('#lsDrop'), wrap = $('#lsWave');
+  ['dragenter', 'dragover'].forEach(function (t) {
+    wrap.addEventListener(t, function (e) { e.preventDefault(); if (!AUD.buf) drop.classList.add('hot'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    wrap.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('hot'); });
+  });
+  wrap.addEventListener('drop', function (e) {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) lsLoadAudio(f);
+  });
+
+  /* 键盘：空格播放/暂停，左右切换段 */
+  document.addEventListener('keydown', function (e) {
+    if (!$('#lsRoot').classList.contains('on')) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (/INPUT|SELECT|TEXTAREA/.test(tag)) return;
+    if (e.code === 'Space') { e.preventDefault(); lsToggle(); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); lsStep(1); }
+    else if (e.code === 'ArrowLeft') { e.preventDefault(); lsStep(-1); }
+    else if (e.code === 'Escape') { lsClose(); }
+  });
+
+  /* 窗口尺寸变化重画波形 */
+  let rt = 0;
+  window.addEventListener('resize', function () {
+    if (!$('#lsRoot').classList.contains('on')) return;
+    clearTimeout(rt);
+    rt = setTimeout(function () { AUD.peaks = null; AUD.pw = 0; lsDrawBase(); lsDrawTop(); }, 120);
+  });
+
+  const lb = $('#btnListen');
+  if (lb) lb.onclick = lsOpen;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lsBind);
+else lsBind();
 </script>
 </body>
 </html>
