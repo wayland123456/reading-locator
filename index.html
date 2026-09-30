@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'd116946102';
+  var APP_VER = 'e44befb826';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -7355,8 +7355,30 @@ function lsSpeechIslands(sil, T, mg) {
      ③ 提示音后面不能是超长静音（那是片尾语）。
    用锚点当段起点，每段就正好从「Text N」开始，不会把中文提示音留在段首。 */
 function lsFindAnchors(sil, T) {
-  const sep = sil.filter(function (x) { return x.d >= 1.8; });
-  const isl = lsSpeechIslands(sil, T, 1.8);
+  /* 同一份录音里，「Text N」和材料之间的停顿长短并不统一 ——
+     实测同一份卷子前半段停 2 秒多、后半段停不到 1 秒。
+     用单一阈值切，总会有几段被漏掉（之前就出现过「只切出 9 段」），
+     所以换几个阈值各找一遍，再去重合并。 */
+  const TRY = [0.6, 1.0, 1.4, 1.8, 2.4];
+  let all = [];
+  TRY.forEach(function (g) { all = all.concat(lsFindAnchorsAt(sil, T, g)); });
+  all.sort(function (x, y) { return x.s - y.s; });
+  const out = [];
+  all.forEach(function (a) {
+    const last = out[out.length - 1];
+    if (last && a.s - last.s < 1.5) {      /* 起点差不到 1.5 秒 = 同一处，留前停顿更长的那个 */
+      if (a.pre.d > last.pre.d) out[out.length - 1] = a;
+      return;
+    }
+    out.push(a);
+  });
+  return out;
+}
+
+/* 单个合并阈值下的锚点查找（MG = 多大的停顿才算「分界」） */
+function lsFindAnchorsAt(sil, T, MG) {
+  const sep = sil.filter(function (x) { return x.d >= MG; });
+  const isl = lsSpeechIslands(sil, T, MG);
   const preOf = function (t) {
     for (let i = sep.length - 1; i >= 0; i--) if (Math.abs(sep[i].e - t) < 0.06) return sep[i];
     return null;
