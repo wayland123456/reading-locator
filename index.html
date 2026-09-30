@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'fee5cd1d30';
+  var APP_VER = 'eab5ddbf31';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -6776,11 +6776,16 @@ function lsOpen() {
   setTimeout(lsDrawBase, 30);
 }
 
-/* 打开课件时尝试自动接上音频：本机缓存有就直接用，没有才提示手动选 */
+/* 打开课件时尝试自动接上音频，三级递进：
+   ① 本机缓存（同一台电脑，最快，不联网）
+   ② 云端下载（教室那台电脑走这条）
+   ③ 都没有 → 请老师手动选一次 */
 async function lsAutoAudio() {
   const c = AUD.cloud;
   if (!c) return;
   const n = AUD.segs.length;
+
+  /* ① 本机缓存 */
   lsMsg('这份课件已存好听力切分（' + n + ' 段）—— 正在找本机上次用的音频…');
   let rec = null;
   try { rec = await lscGet(c.name, c.dur); } catch (e) { rec = null; }
@@ -6790,6 +6795,26 @@ async function lsAutoAudio() {
     await lsLoadAudio(f);
     return;
   }
+
+  /* ② 云端带音频 → 直接取，教室那台就靠这条 */
+  if (c.audio && c.audio.key) {
+    try {
+      lsMsg('正在从云端取音频…');
+      const ab = await sbDownloadAudio(c.audio.key, function (p, loaded) {
+        const s = p ? Math.round(p * 100) + '%' : (loaded ? sbMb(loaded) + 'MB' : '');
+        lsMsg('正在从云端取音频（' + s + '）…第一次要等十几秒，取到自动就能听');
+      });
+      lsMsg('音频已取到，正在解码…');
+      const ff = new File([ab], c.audio.name || c.name || 'audio.mp3', { type: 'audio/mpeg' });
+      await lsLoadAudio(ff);
+      return;
+    } catch (e) {
+      lsMsg('云端音频没取下来（' + ((e && e.message) || e) + '）—— 可以点「＋ 上传音频」选一次本地文件，不影响题目和切分');
+      return;
+    }
+  }
+
+  /* ③ 课件里没有音频 → 选一次（选完本机会记住，下次也不用选） */
   lsMsg('这份课件已存好听力切分（' + n + ' 段）—— 点「＋ 上传音频」选 '
     + (c.name ? '「' + c.name + '」' : '同一个听力音频')
     + '，选完立刻就能听，不用重新切；这台电脑选过一次之后就再也不用选了');
@@ -6816,6 +6841,7 @@ function lsApplyCloud() {
     return { start: o.s, end: o.e, unit: (o.u >= 0 ? AUD.units[o.u] : null) };
   });
   if (!AUD.dur && c.dur) AUD.dur = c.dur;
+  AUD.audioCloud = c.audio || null;   /* 课件里记的云端音频（教室那台就靠它自动取） */
   AUD.mode = 'cloud';
   AUD.sel = 0; AUD.cur = -1; AUD.now = 0;
   const tot = $('#lsTot'); if (tot && AUD.dur) tot.textContent = lsFmt(AUD.dur);
@@ -6831,6 +6857,8 @@ function lsCloudPayload() {
     paper: AUD.paperName || '',
     dur: AUD.dur ? +AUD.dur.toFixed(3) : 0,
     mode: AUD.mode,
+    /* 音频在云端的坐标（没有就是没传过）—— 教室那台电脑靠它自动下载 */
+    audio: AUD.audioCloud || null,
     segs: AUD.segs.map(function (s) {
       return { s: +s.start.toFixed(3), e: +s.end.toFixed(3), u: AUD.units.indexOf(s.unit) };
     }),
@@ -6972,6 +7000,80 @@ async function lsCacheClear() {
     : '清理失败，可以到浏览器设置里清掉本站数据');
 }
 
+/* ---------- 音频上云（Supabase Storage）
+   本机缓存解决「同一台电脑」；换台电脑（教室）靠这里 —— 音频也存到云端，
+   打开课件自动下载、自动接上，老师一根手指都不用动。
+   桶名固定 lesson-audio，需在 Supabase 里跑一次建桶 SQL（见说明书）。 */
+const AUDIO_BUCKET = 'lesson-audio';
+function sbSafeSeg(s, max) {
+  return String(s || '').replace(/[^\w\u4e00-\u9fff.\-]+/g, '_')
+    .replace(/^_+|_+$/g, '').slice(0, max || 60) || 'x';
+}
+/* 路径 = 姓名/文件名_时长.ext —— 同名同时长 = 同一个音频，天然去重，不会重复占空间 */
+function sbAudioPath(name, dur) {
+  const m = String(name || '').match(/\.([a-z0-9]{1,5})$/i);
+  const ext = m ? '.' + m[1].toLowerCase() : '.mp3';
+  const base = sbSafeSeg(String(name || 'audio').replace(/\.[a-z0-9]{1,5}$/i, ''), 60);
+  const owner = sbSafeSeg(ownerCode() || 'anon', 24);
+  return owner + '/' + base + '_' + Math.round(dur || 0) + ext;
+}
+function sbAudioUrl(key) {
+  return SB_URL + '/storage/v1/object/public/' + AUDIO_BUCKET + '/' +
+    String(key || '').split('/').map(encodeURIComponent).join('/');
+}
+function sbAudioApiUrl(key) {
+  return SB_URL + '/storage/v1/object/' + AUDIO_BUCKET + '/' +
+    String(key || '').split('/').map(encodeURIComponent).join('/');
+}
+/* 上传：用 XHR 而不是 fetch —— fetch 拿不到上传进度，几十 MB 传起来心里没底 */
+function sbUploadAudio(file, key, onProg) {
+  return new Promise(function (res, rej) {
+    const x = new XMLHttpRequest();
+    x.open('POST', sbAudioApiUrl(key), true);
+    x.setRequestHeader('apikey', PUB_KEY);
+    x.setRequestHeader('Authorization', 'Bearer ' + PUB_KEY);
+    x.setRequestHeader('Content-Type', file.type || 'audio/mpeg');
+    x.setRequestHeader('x-upsert', 'true');
+    if (x.upload) {
+      x.upload.onprogress = function (e) {
+        if (onProg && e.lengthComputable) onProg(e.loaded / e.total);
+      };
+    }
+    x.onload = function () {
+      if (x.status >= 200 && x.status < 300) return res(true);
+      const t = String(x.responseText || '');
+      if (/row-level security|policy/i.test(t)) {
+        return rej(new Error('云端音频桶还没配好 —— 到 Supabase 的 SQL Editor 跑一次说明书里那段建桶 SQL'));
+      }
+      if (x.status === 404) return rej(new Error('云端还没有 lesson-audio 这个桶 —— 先跑说明书里那段建桶 SQL'));
+      if (x.status === 413) return rej(new Error('音频超过云端单文件上限（默认 50MB）'));
+      rej(new Error('HTTP ' + x.status + (t ? '：' + t.slice(0, 120) : '')));
+    };
+    x.onerror = function () { rej(new Error('网络中断')); };
+    x.send(file);
+  });
+}
+/* 下载：同样用 XHR 拿进度，返回 ArrayBuffer */
+function sbDownloadAudio(key, onProg) {
+  return new Promise(function (res, rej) {
+    const x = new XMLHttpRequest();
+    x.open('GET', sbAudioUrl(key), true);
+    x.responseType = 'arraybuffer';
+    if (x.onprogress) {
+      x.onprogress = function (e) {
+        onProg && onProg(e.lengthComputable ? e.loaded / e.total : 0, e.loaded, e.total);
+      };
+    }
+    x.onload = function () {
+      if (x.status >= 200 && x.status < 300 && x.response) return res(x.response);
+      rej(new Error('HTTP ' + x.status));
+    };
+    x.onerror = function () { rej(new Error('网络中断')); };
+    x.send();
+  });
+}
+function sbMb(n) { return (n / 1048576).toFixed(1); }
+
 /* =========================================================
    一、加载音频 → 解码 → 包络 → 静音检测
    ========================================================= */
@@ -6980,6 +7082,7 @@ async function lsLoadAudio(file) {
   lsMsg('正在解码音频「' + file.name + '」…大文件要约几秒，请稍候');
   lsStopAll();
   AUD.name = file.name || '';
+  AUD.file = file;   /* 留着原文件：存课件时要把它传到云端 */
   if (AUD.cloud && AUD.cloud.name && AUD.name !== AUD.cloud.name) {
     lsMsg('注意：课件里存的是「' + AUD.cloud.name + '」，这次选的是「' + AUD.name + '」—— 会按时长自动判断是不是同一个文件');
   }
@@ -8042,6 +8145,36 @@ async function lsSaveLesson() {
   const btn = $('#lsBtnSave');
   if (btn) { btn.disabled = true; btn.textContent = '正在存…'; }
   try {
+    /* 先把音频传到云端 —— 教室那台电脑打开才能自动接上，不用 U 盘、不用再选文件。
+       只有「这份课件还没传过」或「换了另一个音频」才重传（路径由文件名+时长决定，天然去重）。 */
+    try {
+      const old = AUD.audioCloud || null;
+      const needUp = AUD.file && AUD.name && !(
+        old && old.name === AUD.name
+        && Math.abs((old.dur || 0) - (AUD.dur || 0)) <= 3
+      );
+      if (needUp) {
+        const key = sbAudioPath(AUD.name, AUD.dur);
+        lsMsg('正在把音频传到云端（' + sbMb(AUD.file.size) + 'MB）… '
+          + '传完在任何一台电脑打开都能自动听，这会儿别关页面');
+        await sbUploadAudio(AUD.file, key, function (p) {
+          lsMsg('正在把音频传到云端… ' + Math.round(p * 100) + '%　（'
+            + sbMb(AUD.file.size) + 'MB，别关页面）');
+        });
+        AUD.audioCloud = {
+          key: key, name: AUD.name,
+          dur: AUD.dur ? +AUD.dur.toFixed(3) : 0, size: AUD.file.size
+        };
+        lsMsg('音频已上云 —— 以后在任何一台电脑打开这份课件都会自动取下来');
+      } else if (old) {
+        AUD.audioCloud = old;
+      }
+    } catch (ue) {
+      lsMsg('⚠ 音频没传到云端：' + ((ue && ue.message) || ue)
+        + '　·　课件照存，下次再点一次「☁ 存课件」会重试');
+      await new Promise(function (r) { setTimeout(r, 1600); });
+    }
+
     const listen = lsCloudPayload();
     const title = (AUD.paperName ? AUD.paperName.replace(/\.[^.]+$/, '') : '')
       || (S.title || '').trim() || ('听力课件 ' + fmtTime(new Date().toISOString()));
@@ -8057,8 +8190,10 @@ async function lsSaveLesson() {
     };
     /* 同名已存过就直接覆盖，别再堆一条 */
     const dup = await findLessonByTitle(title);
-    const tail = '（' + AUD.segs.length + ' 段）—— 这台电脑再打开会自动接上音频，不用再选；'
-      + '教室那台第一次要选一次同一个文件（U 盘带着就行，之后也不用）';
+    const tail = '（' + AUD.segs.length + ' 段）'
+      + (AUD.audioCloud
+        ? '　·　音频已上云：任何一台电脑打开都会自动接上，什么都不用选'
+        : '　·　音频不在云端，别的电脑打开要选一次音频文件');
     if (dup) {
       await lessonUpdate(dup.id, title, data);
       lsMsg('已覆盖课件《' + title + '》' + tail);
