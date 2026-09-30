@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'e44befb826';
+  var APP_VER = '71e914d588';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -312,6 +312,30 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 }
 .anbox .lb{font-size:.7rem;font-weight:700;color:var(--primary);margin-bottom:5px;letter-spacing:.3px}
 .anbox .tx{font-size:calc(.86rem * var(--fs));line-height:1.82;color:#2f4257;white-space:pre-wrap}
+
+/* 2026-10-01：答案·解析框的两个小按钮（重写解析 / 手改）、解析过期黄条、手改文本域。
+   起因：改了答案，下面的解析却还是替旧答案说话 —— 投影上「答案 D、解析讲 C」很尴尬。 */
+.anbox .lb{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.anbox-tools{margin-left:auto;display:flex;gap:6px}
+.qmini{
+  font:inherit;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:6px;cursor:pointer;
+  border:1px solid #c8d8ea;background:#fff;color:var(--primary);white-space:nowrap;
+}
+.qmini:hover{background:#eaf2fd}
+.qmini[disabled]{opacity:.5;cursor:default}
+.qmini.ok{background:var(--primary);border-color:var(--primary);color:#fff}
+.xwarn{
+  margin:0 0 7px;padding:6px 9px;border-radius:6px;background:#fff7e6;border:1px solid #f0d39a;
+  color:#8a5a00;font-size:.74rem;line-height:1.6;
+}
+.xedit{
+  width:100%;min-height:76px;box-sizing:border-box;padding:8px 10px;border-radius:6px;
+  border:1px solid #c8d8ea;font:inherit;font-size:calc(.86rem * var(--fs));line-height:1.8;
+  color:#2f4257;resize:vertical;
+}
+.xrow{display:flex;gap:6px;margin-top:6px}
+.qtype.warn{background:#fff3d6;color:#a5670a}
+.toast.warn{background:rgba(176,110,10,.95)}
 
 /* ---------------- 单段视图 ---------------- */
 .single-wrap{flex:1;overflow-y:auto;padding:20px 26px 90px;background:var(--panel)}
@@ -3858,6 +3882,8 @@ function commitResult(data) {
   $('#docTitle').value = S.title;
   render();
   save();
+  /* 落地后顺手做一次「完形答案／解析自洽」自检 —— 后台跑，不挡着老师看讲解 */
+  selfCheckCloze();
 }
 
 /* ---------- 「并入当前讲解」（2026-09-26 新增） ----------
@@ -3901,6 +3927,7 @@ function mergeIntoCurrent(data) {
   toast('并入完成：' + msg + '（其他题型未动）', 'ok', 4200);
   render();
   save();
+  selfCheckCloze();   /* 并入的完形也过一遍自检 */
 }
 
 /* 2026-09-29 剥掉段首的印刷段落序号（「1 Winter doesn't…」→「Winter doesn't…」）：
@@ -3951,7 +3978,12 @@ function normalizePassage(p) {
       hint: String(q.hint || '').trim(),
       evidence: String(q.evidence || '').trim(),
       explain: String(q.explain || '').trim(),
-      type: q.type || ''
+      type: q.type || '',
+      /* 2026-10-01：这段解析是按哪个答案写的（空 = 和当前答案一致）。
+         改了答案后它停留在旧答案上，界面据此标「解析过期」，并让 AI 按新答案重写。 */
+      explainFor: String(q.explainFor || '').trim(),
+      /* 自检标出的「答案/解析疑似不一致」说明；空 = 没问题 */
+      suspect: String(q.suspect || '').trim()
     })),
     background: String(p.background || '').trim(),
     expressions: (p.expressions || []).map((e) => ({
@@ -4631,6 +4663,8 @@ function qHtml(q, kind) {
     +   '<span class="qno">' + esc(q.no) + '</span>'
     +   '<span class="qstem">' + esc(q.stem) + '</span>'
     +   (q.type ? '<span class="qtype">' + esc(q.type) + '</span>' : '')
+    /* 自检标出来的「答案/解析疑似不一致」——只在题号上挂个小黄签，不改答案 */
+    +   (q.suspect ? '<span class="qtype warn" title="' + esc(q.suspect) + '">⚠ 待复核</span>' : '')
     + '</div>'
     + (kind === 'grammar' ? grammarBody(q) : '<div class="opts' + (kind === 'cloze' ? ' two' : '') + '">' + optsHtml(q) + '</div>')
     + '<div class="qbtns">'
@@ -4643,12 +4677,173 @@ function qHtml(q, kind) {
     +     (isPicking ? '请点左侧句子…' : '✎ 改对应句') + '</button>'
     + '</div>'
     + (q.__shown && q.evidence ? '<div class="evbox"><div class="lb">原文对应句</div><div class="tx">' + esc(q.evidence) + '</div></div>' : '')
-    + (q.__ans
-        ? '<div class="anbox"><div class="lb">'
-          + (kind === 'grammar' ? '答案' : '答案 ' + esc(q.answer || '—')) + ' · 解析</div>'
-          + '<div class="tx">' + esc(q.explain || '（暂无解析）') + '</div></div>'
-        : '')
+    + (q.__ans ? explainBox(q, kind) : '')
     + '</div>';
+}
+
+/* ---------- 答案 · 解析 框（2026-10-01 新增） ----------
+   老师反馈：改完答案，下面那段解析还是原样 —— 投影上就成了「答案 D，解析却在讲 C」。
+   这里做三件事：
+     ① 解析和当前答案对不上时，顶上给一条黄条，明说「这段是按旧答案 X 写的」；
+     ② 「↻ 重写解析」：把题干、选项、新答案（和原文）交给模型重写这一段；
+     ③ 「✎ 手改」：直接改文字 —— AI 不通、或老师自己就想写两句时用，断网也能改。 */
+function explainBox(q, kind) {
+  const stale = isExplainStale(q);
+  const busy = !!q.__explainBusy;
+  const editing = !!q.__explainEdit;
+  const head = '<div class="lb">'
+    + (kind === 'grammar' ? '答案' : '答案 ' + esc(q.answer || '—')) + ' · 解析'
+    + '<span class="anbox-tools">'
+    + '<button class="qmini" data-rex="' + esc(q.no) + '"' + (busy ? ' disabled' : '') + '>'
+    + (busy ? '重写中…' : '↻ 重写解析') + '</button>'
+    + '<button class="qmini" data-xedit="' + esc(q.no) + '">' + (editing ? '✕ 取消' : '✎ 手改') + '</button>'
+    + '</span></div>';
+  const warn = stale
+    ? '<div class="xwarn">⚠ 下面这段解析是按原答案 <b>' + esc(q.explainFor) + '</b> 写的，'
+      + '跟现在的 <b>' + esc(q.answer) + '</b> 对不上 —— 点「↻ 重写解析」让 AI 重写，或「✎ 手改」自己写。</div>'
+    : '';
+  const body = editing
+    ? '<textarea class="xedit" data-xarea="' + esc(q.no) + '">' + esc(q.explain || '') + '</textarea>'
+      + '<div class="xrow"><button class="qmini ok" data-xsave="' + esc(q.no) + '">保存</button>'
+      + '<button class="qmini" data-xedit="' + esc(q.no) + '">取消</button></div>'
+    : '<div class="tx"' + (stale ? ' style="opacity:.6"' : '') + '>'
+      + esc(q.explain || '（暂无解析）') + '</div>';
+  return '<div class="anbox">' + head + warn + body + '</div>';
+}
+
+/* 解析是不是「过期」了：它对应的答案（explainFor）与现在的答案不一致。
+   空 explainFor = 不标记（老课件没有这个字段，按对得上处理，免得全篇标黄）。 */
+function isExplainStale(q) {
+  return !!(q && q.explainFor && q.answer && String(q.explainFor) !== String(q.answer));
+}
+
+/* 当前篇目（和 curQ 配套用） */
+function curP() { return S.passages[S.cur] || null; }
+
+/* ---------- 按当前答案重写解析（2026-10-01） ----------
+   把题干、选项、新答案和原文依据一起交给模型，只让它输出解析正文。 */
+function explainPrompt(p, q) {
+  const kind = p ? kindOf(p) : 'reading';
+  const opts = (q.options || []).map(function (o) { return o.key + '. ' + o.text; }).join('   ');
+  const hit = (q.options || []).filter(function (o) { return String(o.key) === String(q.answer); })[0];
+  const ansTxt = hit ? hit.text : '';
+  const ctx = (kind === 'grammar' || !p || !p.paragraphs) ? ''
+    : p.paragraphs.map(function (x) { return x.en; }).join('\n').slice(0, 1800);
+  const L = [
+    '你是高三英语阅卷老师。下面这道小题的正确答案已经定为 ' + q.answer
+      + (ansTxt ? '（' + ansTxt + '）' : '') + '，请为它写一条中文解析。',
+    '',
+    '【题干】' + q.stem
+  ];
+  if (opts) L.push('【选项】' + opts);
+  if (q.evidence) L.push('【原文对应句】' + q.evidence);
+  if (ctx) L.push('【原文】' + ctx);
+  L.push('',
+    '要求：',
+    '1. 说清楚「为什么选 ' + q.answer + '」——依据要落在上下文逻辑、固定搭配或语义上，尽量引到题干或原文里的词；',
+    kind === 'grammar'
+      ? '2. 说清考点（时态／语态／非谓语／词形转换／介词／连词等）和判断依据；'
+      : '2. 顺带点一句最像的那个干扰项为什么不对；',
+    '3. 中文，40～80 字，一段话说完，不要分点、不要换行；',
+    '4. 只输出解析正文 —— 不要写「答案：X」「解析：」这类开头，也不要重复抄题干。'
+  );
+  return L.join('\n');
+}
+
+/* 让 AI 按当前答案重写解析；失败就保留原文并提示老师手改 */
+async function rewriteExplain(q) {
+  if (!q || q.__explainBusy) return;
+  const p = curP();
+  q.__explainBusy = true;
+  renderView();
+  try {
+    const out = await aiCallSmart('parse', [{ role: 'user', content: explainPrompt(p, q) }], 700);
+    const s = String(out || '')
+      .replace(/^[\s\S]*?<\/think>/, '')                       /* 万一模型把思考过程带出来了 */
+      .replace(/^\s*(?:解析|分析)\s*[：:]\s*/, '')
+      .replace(/^\s*答案\s*[A-DＡ-Ｄ]?\s*[·、.．:：]?\s*/, '')
+      .trim();
+    if (!s) throw new Error('模型没返回内容');
+    q.explain = s;
+    q.explainFor = q.answer;      /* 重写完，解析就和新答案对上了 */
+    q.suspect = '';               /* 自检挂的「待复核」一并清掉 */
+    q.__explainBusy = false;
+    q.__explainEdit = false;
+    renderView(); save();
+    toast('第 ' + q.no + ' 题的解析已按『' + q.answer + '』重写', 'ok');
+  } catch (e) {
+    q.__explainBusy = false;
+    renderView();
+    toast('解析重写失败：' + ((e && e.message) || e) + '　可点「✎ 手改」自己写', 'err', 4600);
+  }
+}
+
+/* ---------- 完形填空「答案 / 解析是否自洽」自检（2026-10-01） ----------
+   老师反馈：完形填空出错率最高。查样本发现一种典型错法 —— 模型把卷面答案照抄了下来，
+   而下面那段解析其实在替另一个选项说话（例：解析写「后文拓展至扶树」＝ went beyond 的意思，
+   答案栏却填了 led to）。这种错光看静音结构、看语法都查不出来，只能让模型自己复读一遍。
+   ★ 只标记、不改答案 —— 卷面上印的答案由老师定夺。 */
+function clozeCheckPrompt(p) {
+  const ctx = (p.paragraphs || []).map(function (x) { return x.en; }).join('\n').slice(0, 1500);
+  const L = [
+    '下面是一篇高考英语完形填空。请逐题核对两件事：',
+    '  ① 现有答案和现有解析，是不是在说同一个选项？',
+    '  ② 现有答案放到上下文里，讲得通吗？',
+    '特别留意这种错：解析其实在为另一个选项辩护，答案栏却填了别的字母。',
+    ''
+  ];
+  if (ctx) L.push('【短文】' + ctx, '');
+  (p.questions || []).forEach(function (q) {
+    L.push('第 ' + q.no + ' 题　' + q.stem);
+    if (q.options && q.options.length) {
+      L.push('　选项：' + q.options.map(function (o) { return o.key + '. ' + o.text; }).join('　'));
+    }
+    L.push('　现有答案：' + (q.answer || '—'));
+    L.push('　现有解析：' + (q.explain || '（无）'));
+  });
+  L.push('',
+    '只输出如下 JSON，不要任何别的文字；核对下来没问题的题不要列出来（全对就给空数组）：',
+    '{"suspects":[{"no":50,"because":"解析在讲 lead to，答案却是 went beyond，两者对不上"}]}');
+  return L.join('\n');
+}
+
+let selfChecking = false;
+async function selfCheckCloze() {
+  if (selfChecking) return;          /* 上一次自检还没回来，不重复发 */
+  /* 只查完形填空（老师说完形错得最多）；题量太少的碎片不值得多花一次调用 */
+  const list = S.passages.filter(function (p) {
+    return kindOf(p) === 'cloze' && (p.questions || []).length >= 5 && !p.__checked;
+  });
+  if (!list.length) return;
+  selfChecking = true;
+  let flagged = 0;
+  try {
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      /* 自检期间老师换了课件 → 这篇已经不在当前讲解里了，别再动它 */
+      if (S.passages.indexOf(p) < 0) continue;
+      try {
+        const raw = await aiCallSmart('parse', [{ role: 'user', content: clozeCheckPrompt(p) }], 1024);
+        const d = jsonFromText(raw);
+        const bad = (d && d.suspects) || [];
+        bad.forEach(function (s) {
+          const q = (p.questions || []).filter(function (x) { return String(x.no) === String(s && s.no); })[0];
+          if (!q) return;
+          q.suspect = String((s && s.because) || '').trim() || '答案与解析疑似不一致';
+          flagged++;
+        });
+        p.__checked = true;   /* 查过就记一笔，下次解析不再重复查 */
+      } catch (e) {
+        /* 自检是「锦上添花」，失败绝不打扰老师正在讲的课 */
+      }
+    }
+  } finally {
+    selfChecking = false;
+  }
+  if (flagged) {
+    toast('自检：完形填空有 ' + flagged + ' 题的答案／解析疑似对不上，已在题号上挂黄签', 'warn', 5200);
+    renderView();
+  }
 }
 
 /* 选项：讲解中点选项不再改答案（以前一点就把答案改掉，投影上学生根本看不清）。
@@ -4732,6 +4927,39 @@ $('#content').addEventListener('click', (e) => {
   /* 译文开关 */
   if (t.closest('#zhToggle')) { S.showZh = !S.showZh; renderView(); return; }
 
+  /* ↻ 重写解析：按当前答案，让 AI 重写这一段 */
+  const rx = t.closest('[data-rex]');
+  if (rx) { const q = curQ(rx.dataset.rex); if (q) rewriteExplain(q); return; }
+
+  /* ✎ 手改解析：原地变成文本域（AI 不通、或老师想自己写两句时用，断网也行） */
+  const xe = t.closest('[data-xedit]');
+  if (xe) {
+    const q = curQ(xe.dataset.xedit);
+    if (!q) return;
+    q.__explainEdit = !q.__explainEdit;
+    renderView();
+    const card = xe.closest('.qcard') || document;
+    const ta = card.querySelector('textarea.xedit');
+    if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e2) {} }
+    return;
+  }
+
+  /* 保存手改的解析 */
+  const xs = t.closest('[data-xsave]');
+  if (xs) {
+    const q = curQ(xs.dataset.xsave);
+    if (!q) return;
+    const box = xs.closest('.anbox');
+    const ta = box ? box.querySelector('textarea.xedit') : null;
+    if (ta) q.explain = ta.value.trim();
+    q.explainFor = q.answer;      /* 手改完也算「和当前答案对上了」 */
+    q.suspect = '';
+    q.__explainEdit = false;
+    renderView(); save();
+    toast('第 ' + q.no + ' 题的解析已保存', 'ok');
+    return;
+  }
+
   /* 语法填空：点答案块 → 直接显示/隐藏（比找下面的按钮快，上课更顺手） */
   const gans = t.closest('[data-gans]');
   if (gans) {
@@ -4784,11 +5012,19 @@ $('#content').addEventListener('click', (e) => {
       if (q.__ans) toast('答案已锁定：要改请点正确答案右边的「✎ 更改答案」');
       return;
     }
+    const wasAns = q.answer;
     q.answer = op.dataset.pickans;
     q.__editing = false;
     q.__ans = true;
+    /* 解析是按旧答案写的：把旧答案记进 explainFor，界面才能标出「过期」并交给 AI 重写。
+       若改回了原答案（explainFor 和 answer 又一致），就算对上了，标记清掉。 */
+    if (!q.explainFor) q.explainFor = wasAns || '';
+    if (String(q.explainFor) === String(q.answer)) q.explainFor = '';
+    q.suspect = '';   /* 手改过答案 = 已经复核过，自检的黄签可以摘了 */
     toast('第 ' + q.no + ' 题答案已改为 ' + q.answer, 'ok');
     renderView(); save();
+    /* 答案变了、解析还停在旧答案上 → 立刻按新答案重写（改答案时解析要跟着变） */
+    if (q.explain && isExplainStale(q)) rewriteExplain(q);
     return;
   }
 
@@ -5666,7 +5902,8 @@ function cleanPassages() {
       paragraphs: p.paragraphs.map((x) => ({ en: x.en, zh: x.zh })),
       questions: p.questions.map((q) => ({
         no: q.no, stem: q.stem, options: q.options, answer: q.answer,
-        hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type
+        hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type,
+        explainFor: q.explainFor, suspect: q.suspect   /* 2026-10-01：解析对应的答案、自检黄签 */
       })),
       background: p.background,
       expressions: p.expressions
