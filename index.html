@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '71e914d588';
+  var APP_VER = 'f11c892aea';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1765,6 +1765,10 @@ const S = {
   picking: null,     // {pi, qi} 正在为该题指定对应句
   fs: 1,
   zoom: 1,           // 整页缩放（后排看不清时用；和 fs 只管文字不同，这个是连排版一起放大）
+  /* 左右分栏比例（0.22~0.78）；0 = 用 CSS 里的默认 52%（左栏）。
+     拖动分隔条时写进这里，重渲染（显示答案、点题目、改答案…）照着它还原 ——
+     2026-10-01 之前比例只写在内联样式上，一重渲染就跳回默认值。 */
+  split: 0,
   showZh: false,
   files: [],         // {id, name, dataUrl}  —— 只用于缩略图显示
   /* 本次上传的图片「页序」（存 id，不存对象）：
@@ -4384,6 +4388,16 @@ const VIEW_TIP = {
 };
 
 /* ---------- 视图：整篇（左右分栏） ---------- */
+/* ---------- 左右分栏比例（2026-10-01 新增） ----------
+   老师拖完分隔条调好比例，一点「显示答案」页面就跳回原来的比例 ——
+   因为比例原先只写在内联样式上，renderView() 重建 innerHTML 时就丢了。
+   现在比例存进 S.split，渲染时照着它出 inline style：重渲染、重开页面都还在。 */
+function splitStyle() {
+  const r = Number(S.split);
+  if (!(r >= 0.22 && r <= 0.78)) return '';      /* 没拖过（0）或数据坏了 → 用 CSS 里的默认 52% */
+  return ' style="flex:0 0 ' + (r * 100).toFixed(2) + '%"';
+}
+
 function viewSplit(p) {
   const k = kindOf(p);
   if (isWriteKind(k)) return viewWrite(p);   /* 写作题走专用布局：左材料+范文 / 右要求+要点 */
@@ -4404,7 +4418,7 @@ function viewSplit(p) {
     + esc(VIEW_TIP[k] || VIEW_TIP.reading) + '</div>'
     + (p.questions.length ? p.questions.map((q) => qHtml(q, k)).join('') : emptyQs(p));
 
-  return '<div class="pane pane-left">' + left + '</div>'
+  return '<div class="pane pane-left"' + splitStyle() + '>' + left + '</div>'
        + '<div class="divider" id="divider"></div>'
        + '<div class="pane pane-right">' + right + '</div>';
 }
@@ -4544,7 +4558,7 @@ function emptyWrite() {
 }
 
 function viewWrite(p) {
-  return '<div class="pane pane-left">' + writeLeftHtml(p) + '</div>'
+  return '<div class="pane pane-left"' + splitStyle() + '>' + writeLeftHtml(p) + '</div>'
        + '<div class="divider" id="divider"></div>'
        + '<div class="pane pane-right">' + writeRightHtml(p) + '</div>';
 }
@@ -5292,15 +5306,36 @@ $('#content').addEventListener('dblclick', (e) => {
   el.onkeydown = (ev) => { if (ev.key === 'Escape') { el.onblur = null; renderView(); } };
 });
 
-/* 分隔条拖拽（pointer 事件统一处理鼠标和触摸，希沃电子屏上也能拖） */
+/* 分隔条拖拽（pointer 事件统一处理鼠标和触摸，希沃电子屏上也能拖）。
+   松手时把比例记进 S.split 并落盘 —— 否则一重渲染（点「显示答案」、点题目、改答案…）
+   就跳回默认的 52%，白拖一场。
+   双击分隔条 = 恢复默认比例（用 pointerdown 自己数连击，不依赖 dblclick：
+   这里 preventDefault 过，兼容鼠标事件不一定还会派发）。 */
+let divTappedAt = 0;
 document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest('#divider')) return;
   const left = $('.pane-left');
   if (!left) return;
+
+  /* 连击第二下 → 恢复默认（左右各半） */
+  const now = Date.now();
+  if (now - divTappedAt < 420) {
+    divTappedAt = 0;
+    e.preventDefault();
+    S.split = 0;
+    left.style.flex = '';        /* 清掉内联样式，交回 CSS 的默认 52% */
+    save();
+    toast('分栏比例已恢复默认');
+    return;
+  }
+  divTappedAt = now;
+
   e.preventDefault();
   document.body.style.cursor = 'col-resize';
+  let last = NaN;
   const move = (ev) => {
     const ratio = Math.min(0.78, Math.max(0.22, ev.clientX / window.innerWidth));
+    last = ratio;
     left.style.flex = '0 0 ' + (ratio * 100) + '%';
   };
   const up = () => {
@@ -5308,6 +5343,8 @@ document.addEventListener('pointerdown', (e) => {
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
     document.body.style.cursor = '';
+    /* 拖动过程中不写盘；松手记一次就够。原地单击（没动过）不覆盖已有比例 */
+    if (isFinite(last)) { S.split = last; save(); }
   };
   document.addEventListener('pointermove', move);
   document.addEventListener('pointerup', up);
@@ -5972,7 +6009,7 @@ function cacheKey() {
 function save() {
   try {
     localStorage.setItem(cacheKey(), JSON.stringify({
-      title: S.title, engine: S.engine, fs: S.fs, zoom: S.zoom, showZh: S.showZh, view: S.view,
+      title: S.title, engine: S.engine, fs: S.fs, zoom: S.zoom, split: S.split, showZh: S.showZh, view: S.view,
       cur: S.cur, activeQ: S.activeQ, passages: cleanPassages()
     }));
   } catch (e) { /* 超配额忽略 */ }
@@ -5989,6 +6026,8 @@ function restore() {
     S.passages = mergeSameKind(d.passages.map(normalizePassage));
     S.title = d.title || '';
     S.fs = d.fs || 1;
+    /* 左右分栏比例也一起还原：上节课拖好的比例，下节课打开还在（越界/没有 = 用默认 52%） */
+    S.split = (typeof d.split === 'number' && d.split >= 0.22 && d.split <= 0.78) ? d.split : 0;
     /* 整页缩放也一起还原：上次调到 150% 的班，下次打开还是 150%，不用每节课重调 */
     S.zoom = (typeof d.zoom === 'number' && d.zoom >= PAGE_ZOOM.min && d.zoom <= PAGE_ZOOM.max)
       ? zoomRound(d.zoom) : 1;
