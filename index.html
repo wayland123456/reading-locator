@@ -1073,6 +1073,78 @@ function looksLikeSkippedParas(t) {
   return false;
 }
 
+/* ---------- 完形/语法填空短文「整段漏读」检测（2026-09-30）----------
+   案例（黄冈·十堰 9 月调研卷）：完形 15 题全解析出来了，短文却只转出
+   41~45 空那半篇 —— 停在「…spent her ____45____ film roll on the local
+   architecture.」，46~55 空所在的整段凭空消失。
+   特征：题行（41. A. … 55.）一个不少，短文里的挖空号却断了半截。
+   段落号断档检测（looksLikeSkippedParas）只看印刷段号，这种短文往往没有
+   段号（只有首行缩进），所以看不见；解析阶段的段落盘点又只能「从转录文本
+   里再找一遍」，源文本就缺的话无解 —— 而那时图片早清掉了。
+   所以把闸门设在转写完成、图片还在的时候：题号区间里「有的号有挖空、
+   有的号没有」= 有整段短文没被认出来 → 重识别相关页，谁覆盖全用谁。
+   判据从严（三个条件同时成立才动手），宁可不改也不错动：
+     ① 题行形成连续区间、长度 ≥ 5（完形 41~55 / 语法填空 56~65 这种大题）；
+     ② 该区间在正文里至少有 2 个「带号挖空」（阅读题一个都没有，直接排除）；
+     ③ 缺号个数 ≥ 2（只缺 1 个多半是排版变体，不值当重转一页）。 */
+function missingHolesOverall(t) {
+  const B = blankNosIn(t);                        /* 正文里出现过的带号挖空 */
+  const marks = questionMarksOf(t);               /* 题行（41. A. …） */
+  if (marks.length < 5) return [];
+  const qnos = marks.map(function (m) { return m.no; })
+    .filter(function (n, i, a) { return a.indexOf(n) === i; })
+    .filter(function (n) { return n >= 21 && n <= 75; })
+    .sort(function (a, b) { return a - b; });
+  const miss = [];
+  let i = 0;
+  while (i < qnos.length) {
+    let j = i;
+    while (j + 1 < qnos.length && qnos[j + 1] === qnos[j] + 1) j++;
+    if (j - i + 1 >= 5) {
+      const span = [];
+      for (let n = qnos[i]; n <= qnos[j]; n++) span.push(n);
+      const haveIn = span.filter(function (n) { return B[n]; });
+      if (haveIn.length >= 2 && span.length - haveIn.length >= 2) {
+        span.forEach(function (n) { if (!B[n]) miss.push(n); });
+      }
+    }
+    i = j + 1;
+  }
+  return miss;
+}
+
+const RETRY_SHORT_NOTE = '\n\n【本次特别要求 · 上一轮有整段漏读】'
+  + '上一轮转写这张图时，完形填空（或语法填空）的短文只转了前一半，后面整段被跳过了。'
+  + '请再看一遍这张图：**这道题的短文从头到尾是连贯的，一段都不能少**。要求：'
+  + '① 短文有几段就转几段，跨栏、跨页的也要接上，逐行读完再往下写；'
+  + '② 短文里的每一个挖空（如 ______46______）必须原样转写出来，一个都不许丢；'
+  + '③ 题目（题号 + A. B. C. D. 选项）照常全部转写。';
+
+/* 重转单页（短文漏读兜底专用）：不走 S.pageTexts 缓存，直接拿原图再识一次。
+   extraNote 追加在转写提示词后面，把上一轮漏掉的地方点出来。 */
+async function retranscribePage(fid, extraNote) {
+  const F = (S.files || []).filter(function (f) { return f.id === fid; })[0];
+  if (!F) return '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const url = F.file
+        ? await prepareImage(F.file, attempt === 0 ? 2400 : 1600, 0.85)
+        : F.dataUrl;
+      if (!url) return '';
+      const content = [
+        { type: 'image_url', image_url: { url: url } },
+        { type: 'text', text: TRANSCRIBE_PROMPT + (extraNote || '') }
+      ];
+      const t = await aiCallSmart('transcribe', [{ role: 'user', content: content }], 4000);
+      if (t && t.trim()) return stripLineStartPhantomBlanks(t.trim());
+    } catch (e) {
+      console.warn('[转写] 重识别第 ' + (attempt + 1) + ' 次失败：' + e.message);
+      await sleep(attempt === 0 ? 3000 : 8000);
+    }
+  }
+  return '';
+}
+
 /* ---------- 幻觉下划线清理（2026-09-28）----------
    案例：语法填空短文，行首的段落序号被识图模型当成了「挖空」，
    于是模型在句首凭空写出 ______ (2) Having learned… —— 卷面上那里
@@ -3292,10 +3364,14 @@ async function runPipeline() {
       }
     }
     /* 并发跑完再按页序统一汇总/写缓存，避免多张同时改 S.pageTexts */
+    /* pages 与 texts 同序（{fid, text}）：短文漏读兜底要按页 id 重识别，
+       而 texts 只存文本、和 order 的下标对不上（失败页不 push） */
+    const pages = [];
     outcomes.forEach(function (o, i) {
       if (!o || o.bad) { badPages.push(i + 1); return; }
-      if (o.reuse) { texts.push(o.text); reusedPages++; return; }
+      if (o.reuse) { texts.push(o.text); pages.push({ fid: order[i], text: o.text }); reusedPages++; return; }
       texts.push(o.text);
+      pages.push({ fid: order[i], text: o.text });
       S.pageTexts[order[i]] = { e: S.engine, t: o.text };   /* 记下是哪个引擎识别的 */
       if (o.fallback) {
         /* 新引擎这次没读出来（多半是限流），退回旧结果 —— 总比整页内容凭空丢掉强。
@@ -3340,11 +3416,50 @@ async function runPipeline() {
     setStep(1);
 
     /* --- 2~4. 结构化解析（整卷自动分批，避免输出被截断丢题型） --- */
-    const transcript = texts.join('\n\n');
+    let transcript = texts.join('\n\n');
     /* 留一份转写原文（只存内存、不写缓存，省得撑爆 localStorage）：
        图片在解析成功后会被清掉，老师事后想「换更好的模型重新解析一遍」时，
        还能靠它跳过识图直接把文字重跑一次，不用重新拍照。 */
     S.lastTranscript = transcript;
+    /* 2026-09-30 短文漏读兜底（图片解析成功后才清空，这里是最后机会）：
+       完形/语法填空的短文被识图模型整段跳过时（实测：只剩 41~45 空那半篇），
+       解析阶段的段落盘点没有图片可用、救不回来，所以在这一步重识别相关页。 */
+    try {
+      const missHoles = missingHolesOverall(transcript);
+      if (missHoles.length >= 2) {
+        console.warn('[转写] 短文疑漏读：题号 ' + missHoles.join('、') + ' 的挖空没转出来，尝试重识别相关页');
+        let fixedPage = 0;
+        for (let pi = 0; pi < pages.length; pi++) {
+          /* 缺号题行落在哪一页 → 短文后半通常紧挨着题行，就在同一页 */
+          const inPage = missHoles.filter(function (n) {
+            return new RegExp('(?:^|\\n)[^\\S\\n]*' + n + '\\s*[.、．]?\\s*(?:A|Ａ)').test(pages[pi].text);
+          });
+          if (!inPage.length) continue;
+          setRunLabel('完形短文有整段没识别出来，正在重识别第 ' + (pi + 1) + ' 张…');
+          const t2 = await retranscribePage(pages[pi].fid, RETRY_SHORT_NOTE);
+          if (!t2) continue;
+          const coverOf = function (txt) {
+            const hs = blankNosIn(txt);
+            return inPage.filter(function (n) { return hs[n]; }).length;
+          };
+          /* 择优：新结果必须把缺的挖空补回更多，且整体不能明显变短（防丢内容） */
+          if (coverOf(t2) > coverOf(pages[pi].text) && t2.length >= pages[pi].text.length * 0.6) {
+            texts[pi] = t2;
+            pages[pi].text = t2;
+            S.pageTexts[pages[pi].fid] = { e: S.engine, t: t2 };
+            fixedPage++;
+          } else {
+            console.warn('[转写] 第 ' + (pi + 1) + ' 张重识别没更全，放弃替换');
+          }
+        }
+        if (fixedPage) {
+          transcript = texts.join('\n\n');
+          S.lastTranscript = transcript;
+          toast('完形短文缺了一段，已自动重识别补回（' + fixedPage + ' 张）', 'ok', 6000);
+          console.log('[转写] 短文漏读已补：重识别 ' + fixedPage + ' 张');
+        }
+      }
+    } catch (e) { console.warn('[转写] 短文漏读兜底失败：' + e.message); }
     setStep(2);
     const data = await parseInChunks(transcript);
 
