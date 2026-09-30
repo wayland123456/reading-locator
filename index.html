@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '2666120a3c';
+  var APP_VER = '8deab5bd80';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -107,6 +107,9 @@ input,select,textarea{font-family:inherit;color:inherit}
   display:flex; align-items:center; gap:5px;
 }
 .top-hint b{color:#fff;font-weight:600}
+/* 2026-10-01：常驻提示文案删掉了，这个 span 现在只当「解析进度」状态行用。
+   空闲时里面是空的 —— :empty 直接不占位，免得顶栏留个空档。 */
+.top-hint:empty{display:none}
 .spacer{flex:1}
 .tb-btn{
   display:inline-flex;align-items:center;gap:5px;
@@ -735,9 +738,19 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
   position:fixed;right:16px;bottom:78px;z-index:70;display:flex;align-items:center;gap:5px;  /* 抬到题目导航上面，别打架 */
   background:#fff;border:1px solid var(--border);border-radius:14px;padding:6px 8px;
   box-shadow:0 10px 26px rgba(20,30,50,.16);
-  opacity:.5;transition:opacity .18s;
+  /* 2026-10-01：原来 opacity 只有 .5，而且只靠 :hover 才变不透明 ——
+     触摸屏（希沃电子屏）根本没有 hover，整条一直半透明，白底上看着就像「无故消失」。
+     默认提到 .86；触摸设备直接给 1。 */
+  opacity:.86;transition:opacity .18s;
 }
 .pen-bar:hover,.pen-bar.busy{opacity:1}
+@media (hover:none){.pen-bar{opacity:1}}
+/* 从顶栏「🖊 工具条」点回时闪一圈，让人一眼看到它在哪 */
+.pen-bar.flash{opacity:1;animation:penFlash 1.25s ease}
+@keyframes penFlash{
+  0%,100%{box-shadow:0 10px 26px rgba(20,30,50,.16)}
+  35%{box-shadow:0 0 0 7px rgba(59,130,246,.4)}
+}
 /* 拖动手柄：挡住内容时可以整条挪开；touch-action:none 让触摸屏拖动不会顺带滚页面 */
 .pen-bar .grip{
   cursor:move;display:inline-flex;align-items:center;justify-content:center;
@@ -912,12 +925,10 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="logo" data-page-node-id="pvYxCJFogItWDyLbqqEDm0">📖</span>
   <span class="brand" data-page-node-id="C7e13Ab8YDj7bAysRD8xlv">英语阅读讲解器</span>
   <input id="docTitle" class="doc-title" placeholder="未命名文档 · 双击可改标题" data-page-node-id="LcwYz6p0tdzQQdwDyKUy6y">
-  <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi">点题目定位 · 双击原文可改 · 后排看不清就 Ctrl＋滚轮放大整页</span>
+  <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi"></span>
   <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
   <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
-  <select class="tb-sel" id="modelSelTop" title="解析引擎" data-page-node-id="Relsu60R5Ns09B4jBrkqkB">
-    <option value="pro" data-page-node-id="G9d2dkbYfcApgw80P4swnA">标准 · 通义 VL-Max + Plus（最准）</option>
-  </select>
+  <button class="tb-btn" id="btnPenShow" title="记号笔工具条（右下角那排：笔 / 荧光笔 / 橡皮 / 全屏 / 缩放）不见了？点这里把它拉回右下角">🖊 工具条</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
   <button class="tb-btn" id="btnFullTop" title="全屏讲解：地址栏消失，原文和题目占满整屏（ESC 或右下角按钮退出）">⛶ 全屏</button>
   <button class="tb-btn" id="btnMerge" title="上传时同一题型被拆成多篇，在这里合并成一整篇" data-page-node-id="7hgePhBzubQRcstGgDOGeC">⇄ 合并同题型</button>
@@ -980,12 +991,9 @@ body.focus #btnExitFs{display:inline-flex}
     <div style="margin-top:20px;text-align:center" data-page-node-id="dVQNcP17zkV39z0IIChAAU">
       <button class="linkbtn" id="btnPasteText" data-page-node-id="RovnPahGP2AvlMGcGDTC18">📋 没有图片？直接粘贴试卷文本解析 →</button>
     </div>
-    <div class="model-row" data-page-node-id="q3ax8VeFEzQspxYlLgSx4F">
-      <span data-page-node-id="WAxXHam12OombJhAHDmKqT">解析引擎：</span>
-      <select id="modelSel" data-page-node-id="HiF9gGsRloEF5g28KtDN4u">
-        <option value="pro" data-page-node-id="tuE7Td2YBLeOfHo44T6cqu">标准 · 通义 VL-Max + Plus（最准）</option>
-      </select>
-    </div>
+    <!-- 2026-10-01：这排「解析引擎」下拉删掉了 —— 现在只剩「标准档 pro」一档，
+         一个只有单项的下拉框只会让老师犯嘀咕。setEngine / S.engine 仍然留着，
+         以后要重新加档位，把下拉放回这个位置就行。 -->
 
     <div class="progress" id="progress" data-page-node-id="RawuDVlecsINtpV5uENCY1">
       <div class="bar" data-page-node-id="BTi9VkDM5pkm1xENLa99ML"><i id="barFill" data-page-node-id="OkLpOEMfBQNuxTzF0Zbrox"></i></div>
@@ -3440,7 +3448,8 @@ function startRunClock(label) {
   stopRunClock();
   _runT0 = Date.now();
   _runLabel = label || '';
-  $('#topHint').textContent = _runLabel;
+  const h0 = $('#topHint');
+  if (h0) h0.textContent = _runLabel;
   _runTimer = setInterval(function () {
     const s = Math.round((Date.now() - _runT0) / 1000);
     const el = $('#topHint');
@@ -3771,7 +3780,9 @@ async function runPipeline() {
     stopRunClock();
     $('#btnRun').disabled = false;
     $('#btnClear').disabled = false;
-    $('#topHint').textContent = '点题目定位 · 双击原文可改 · 后排看不清就 Ctrl＋滚轮放大整页';
+    /* 空闲时把状态行清空 —— 常驻提示文案已经删掉了，.top-hint:empty 在 CSS 里不占位 */
+    const h1 = $('#topHint');
+    if (h1) h1.textContent = '';
   }
 }
 
@@ -5852,18 +5863,24 @@ $('#btnReupBack').addEventListener('click', () => {
 $('#btnRun').addEventListener('click', runPipeline);
 $('#btnPasteText').addEventListener('click', runFromText);
 
-/* 引擎档位（两处下拉同步） */
+/* 引擎档位。
+   2026-10-01：目前只剩「标准档 pro」一档，顶栏和首页那两个只有单项的下拉都删了。
+   setEngine / S.engine 保留 —— 以后要重新加档位，把下拉放回 HTML 就能直接用。 */
+function syncEngineUI() {
+  const a = $('#modelSel'), b = $('#modelSelTop');
+  if (a) a.value = S.engine;
+  if (b) b.value = S.engine;
+}
 function setEngine(v, silent) {
   S.engine = ENGINES[v] ? v : 'pro';
-  $('#modelSel').value = S.engine;
-  $('#modelSelTop').value = S.engine;
+  syncEngineUI();
   if (!silent) {
     toast('解析引擎：' + (ENGINES[S.engine] || ENGINES.pro).label);
   }
   save();
 }
-$('#modelSel').addEventListener('change', (e) => setEngine(e.target.value));
-$('#modelSelTop').addEventListener('change', (e) => setEngine(e.target.value));
+/* 下拉已删 → $$ 拿到空集也不会报错；哪天把下拉加回来，这两行绑定自动生效 */
+$$('#modelSel, #modelSelTop').forEach((el) => el.addEventListener('change', (e) => setEngine(e.target.value)));
 
 /* =========================================================
    顶栏功能
@@ -6061,8 +6078,7 @@ function restore() {
       ? zoomRound(d.zoom) : 1;
     S.showZh = !!d.showZh;
     S.engine = ENGINES[d.engine] ? d.engine : 'pro';
-    $('#modelSel').value = S.engine;
-    $('#modelSelTop').value = S.engine;
+    syncEngineUI();
     S.view = d.view || 'split';
     S.cur = Math.min(d.cur || 0, S.passages.length - 1);
     /* 上次讲到第几题也一并还原 —— 题号得真存在，防止缓存对不上时硬跳 */
@@ -6980,14 +6996,51 @@ function initPenBarDrag() {
 
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
+  /* 把工具条夹回可见区域。
+     ★ 这是「工具条无故消失」的头号原因：位置记在本机，换台机器 / 教室投影分辨率变小后，
+     上次存的 left/top 可能整条落在屏幕外 —— 而恢复时原来没做任何夹紧。 */
+  function clampIntoView() {
+    if (!bar.style.left) return;
+    var r = bar.getBoundingClientRect();
+    if (r.right > window.innerWidth - 2 || r.bottom > window.innerHeight - 2
+        || r.left < 0 || r.top < 0) {
+      bar.style.left = clamp(r.left, 4, Math.max(4, window.innerWidth - r.width - 4)) + 'px';
+      bar.style.top = clamp(r.top, 4, Math.max(4, window.innerHeight - r.height - 4)) + 'px';
+    }
+  }
+  window.addEventListener('resize', clampIntoView);
+
+  /* 回到默认右下角（顺手清掉存的位置）；flash=true 时闪一圈，让人看到它在哪 */
+  function resetPenBar(flash) {
+    bar.style.left = ''; bar.style.top = '';
+    bar.style.right = ''; bar.style.bottom = '';
+    try { window.localStorage.removeItem(LS); } catch (e) {}
+    if (flash) {
+      bar.classList.remove('flash');
+      void bar.offsetWidth;              /* 触发一次重排，连点时动画还能重放 */
+      bar.classList.add('flash');
+      setTimeout(function () { bar.classList.remove('flash'); }, 1400);
+    }
+  }
+
   /* 恢复上次位置 */
   try {
     var saved = JSON.parse(window.localStorage.getItem(LS) || 'null');
     if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
       bar.style.right = 'auto'; bar.style.bottom = 'auto';
       bar.style.left = saved.left + 'px'; bar.style.top = saved.top + 'px';
+      clampIntoView();     /* ★ 恢复后立刻夹一次：老位置可能是在大屏上存的 */
     }
   } catch (e) {}
+
+  /* 顶栏「🖊 工具条」：跑出屏幕 / 找不着了，一键拉回右下角 */
+  var showBtn = document.getElementById('btnPenShow');
+  if (showBtn) {
+    showBtn.addEventListener('click', function () {
+      resetPenBar(true);
+      toast('记号笔工具条已回到右下角', 'ok');
+    });
+  }
 
   grip.addEventListener('pointerdown', function (ev) {
     ev.preventDefault(); ev.stopPropagation();
@@ -7024,22 +7077,12 @@ function initPenBarDrag() {
   grip.addEventListener('pointerup', endDrag);
   grip.addEventListener('pointercancel', endDrag);
 
-  /* 拖出屏幕外（比如换了小显示器）自动拉回来 */
-  window.addEventListener('resize', function () {
-    if (!bar.style.left) return;
-    var r = bar.getBoundingClientRect();
-    if (r.right > window.innerWidth - 2 || r.bottom > window.innerHeight - 2 || r.left < 0 || r.top < 0) {
-      bar.style.left = clamp(r.left, 4, Math.max(4, window.innerWidth - r.width - 4)) + 'px';
-      bar.style.top = clamp(r.top, 4, Math.max(4, window.innerHeight - r.height - 4)) + 'px';
-    }
-  });
+  /* 拖出屏幕外（换小显示器、改投影分辨率…）自动拉回来 —— 统一走上面的 clampIntoView */
 
   /* 双击手柄 = 复位到默认右下角 */
   grip.addEventListener('dblclick', function (ev) {
     ev.stopPropagation();
-    bar.style.left = ''; bar.style.top = '';
-    bar.style.right = ''; bar.style.bottom = '';
-    try { window.localStorage.removeItem(LS); } catch (e) {}
+    resetPenBar(false);
   });
 }
 if (document.readyState === 'loading') {
