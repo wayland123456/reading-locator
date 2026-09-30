@@ -752,13 +752,13 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-root.on{display:flex}
 .ls-top{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);box-shadow:var(--shadow);flex:none;flex-wrap:wrap;z-index:3}
 .ls-brand{font-weight:700;color:var(--primary);font-size:15px;white-space:nowrap}
-.ls-hint{color:var(--text-3);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw}
-.ls-b{border:1px solid var(--border-2);background:var(--panel);color:var(--text);border-radius:8px;padding:6px 11px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.12s}
+.ls-hint{color:var(--text-3);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw}
+.ls-b{border:1px solid var(--border-2);background:var(--panel);color:var(--text);border-radius:8px;padding:7px 13px;font-size:14.5px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.12s}
 .ls-b:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .ls-b.solid{background:var(--primary);color:#fff;border-color:var(--primary)}
 .ls-b.solid:hover{background:var(--primary-2);color:#fff}
 .ls-b.ghost{color:var(--text-2)}
-.ls-b.sm{padding:3px 9px;font-size:12px}
+.ls-b.sm{padding:5px 10px;font-size:13px}
 .ls-b:disabled{opacity:.45;cursor:default;background:var(--panel);color:var(--text-3);border-color:var(--border)}
 .ls-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 12px 12px;gap:8px}
 
@@ -766,59 +766,56 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-tabs{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:1px 1px 5px;flex:none;scrollbar-width:thin}
 .ls-tabs::-webkit-scrollbar{height:6px}
 .ls-tabs::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
-.ls-tab{border:1px solid var(--border-2);background:var(--panel);color:var(--text-2);border-radius:8px;
-  padding:5px 14px;font-size:13px;font-family:inherit;font-weight:600;letter-spacing:.3px;
+.ls-tab{border:1px solid var(--border-2);background:var(--panel);color:var(--text-2);border-radius:9px;
+  padding:8px 18px;font-size:15px;font-family:inherit;font-weight:600;letter-spacing:.3px;
   cursor:pointer;white-space:nowrap;flex:none;transition:.12s}
 .ls-tab:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .ls-tab.on{background:var(--primary);border-color:var(--primary);color:#fff}
 .ls-tab.on.play{background:var(--ok);border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
-.ls-tip2{color:var(--text-3);font-size:13px;padding:8px 4px;line-height:1.8}
+.ls-tip2{color:var(--text-3);font-size:15px;padding:8px 4px;line-height:1.8}
 
 /* 下方：试题 | 听力稿 */
-.ls-panes{flex:1;display:flex;gap:10px;min-height:0}
+.ls-panes{flex:1;display:flex;gap:12px;min-height:0}
+.ls-panes.hide-tr .ls-pane.tr{display:none}
 .ls-pane{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--panel);
   border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
 .ls-pane .ls-ph{border-radius:10px 10px 0 0}
 
 /* 切分参数（默认收起） */
-.ls-adv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 11px;flex:none;
-  background:var(--panel-2);border:1px solid var(--border);border-radius:9px;font-size:12.5px;color:var(--text-2)}
+.ls-adv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;flex:none;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:9px;font-size:13.5px;color:var(--text-2)}
 .ls-adv input[type=range]{width:92px;accent-color:var(--primary);vertical-align:middle}
 .ls-adv .v{font-variant-numeric:tabular-nums;color:var(--primary);font-weight:600;min-width:34px;display:inline-block}
-.ls-advtip{flex-basis:100%;color:var(--text-3);font-size:12px;line-height:1.7}
+.ls-advtip{flex-basis:100%;color:var(--text-3);font-size:13px;line-height:1.75}
 
-/* 波形 */
-.ls-wave{position:relative;height:96px;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex:none;box-shadow:var(--shadow)}
-.ls-wave canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
-#lsCv2{pointer-events:none}
-#lsCv1{cursor:crosshair}
-.ls-drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:13px;background:var(--panel-2);text-align:center;padding:0 20px;line-height:1.9}
+/* 拖音频进来的提示条（不画波形了） */
+.ls-dropbar{flex:none}
+.ls-dropbar.off{display:none}
+.ls-drop{border:1.5px dashed var(--border-2);background:var(--panel-2);border-radius:10px;padding:10px 14px;text-align:center;color:var(--text-3);font-size:14px;line-height:1.7}
 .ls-drop b{color:var(--primary);font-size:15px}
-.ls-drop.off{display:none}
-.ls-drop.hot{border:2px dashed var(--primary);color:var(--primary);background:var(--primary-soft)}
-.ls-drop .sm2{font-size:12px;color:var(--text-3)}
+.ls-drop.hot{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 
 /* 播放控制条 */
-.ls-trans{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:none}
-.ls-t{border:1px solid var(--border-2);background:var(--panel);border-radius:8px;min-width:34px;height:30px;cursor:pointer;font-size:13px;color:var(--text);padding:0 6px}
+.ls-trans{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:none}
+.ls-t{border:1px solid var(--border-2);background:var(--panel);border-radius:8px;min-width:38px;height:34px;cursor:pointer;font-size:15px;color:var(--text);padding:0 7px}
 .ls-t:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
-.ls-t.play{min-width:46px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:15px}
+.ls-t.play{min-width:52px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:17px}
 .ls-t.play:hover{background:var(--primary-2);color:#fff}
-.ls-clock{font-variant-numeric:tabular-nums;color:var(--text-2);font-size:13px;margin-left:2px}
+.ls-clock{font-variant-numeric:tabular-nums;color:var(--text-2);font-size:14.5px;margin-left:2px}
 .ls-clock b{color:var(--accent);font-weight:700}
-.ls-chk{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none}
-.ls-sel{border:1px solid var(--border-2);border-radius:7px;padding:4px 6px;font-size:12.5px;background:var(--panel);color:var(--text);font-family:inherit;cursor:pointer}
+.ls-chk{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text-2);cursor:pointer;user-select:none}
+.ls-sel{border:1px solid var(--border-2);border-radius:7px;padding:5px 8px;font-size:14px;background:var(--panel);color:var(--text);font-family:inherit;cursor:pointer}
 
 /* 题目/原文面板 */
-.ls-ph{padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:13px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
-.ls-ph .tag{font-weight:600;color:var(--primary);font-size:12.5px}
-.ls-pb{flex:1;overflow:auto;padding:12px 16px 20px;font-size:13.5px;line-height:1.8}
-.ls-pb p{margin:5px 0;color:var(--text-2);font-size:13.5px;line-height:1.85}
+.ls-ph{padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:15px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
+.ls-ph .tag{font-weight:600;color:var(--primary);font-size:13.5px}
+.ls-pb{flex:1;overflow:auto;padding:14px 18px 24px;font-size:16px;line-height:1.95}
+.ls-pb p{margin:7px 0;color:var(--text-2);font-size:16px;line-height:2}
 .ls-pb p b{color:var(--primary);font-weight:600}
-.ls-none{color:var(--text-3);font-size:13px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
-.ls-q{margin-bottom:12px}
-.ls-q .stem{font-weight:600;color:var(--text)}
-.ls-q .opt{color:var(--text-2);margin-left:16px;display:block}
+.ls-none{color:var(--text-3);font-size:15px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
+.ls-q{margin-bottom:16px}
+.ls-q .stem{font-weight:600;color:var(--text);font-size:16px;line-height:1.7}
+.ls-q .opt{color:var(--text-2);margin-left:16px;display:block;font-size:15.5px;line-height:1.75;margin-top:3px}
 
 /* 拖动切点时的提示气泡 */
 .ls-tip{position:fixed;z-index:99;background:rgba(28,39,51,.92);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;pointer-events:none;display:none;font-variant-numeric:tabular-nums}
@@ -978,22 +975,17 @@ body.focus #btnExitFs{display:inline-flex}
 <div class="ls-root" id="lsRoot">
   <header class="ls-top">
     <span class="ls-brand">🎧 听力训练</span>
-    <span class="ls-hint" id="lsHint">① 上传听力音频　② 上传试卷或听力稿（稿里带 Text 1 最好，带时间戳更准）</span>
+    <span class="ls-hint" id="lsHint">① 上传听力音频　② 上传听力稿（稿里带 Text 1 分段最好，带时间戳更准）</span>
     <span class="ls-sp" style="flex:1"></span>
     <button class="ls-b" id="lsBtnA">＋ 上传音频</button>
-    <button class="ls-b" id="lsBtnP">📄 上传试卷</button>
+    <button class="ls-b" id="lsBtnP">📄 上传听力稿</button>
     <button class="ls-b" id="lsBtnE" title="把切好的每一段导出成独立音频文件（zip 打包）">⬇ 导出片段</button>
     <button class="ls-b ghost" id="lsBtnX">✕ 返回讲解</button>
   </header>
 
   <div class="ls-body">
-    <div class="ls-wave" id="lsWave">
-      <canvas id="lsCv1"></canvas>
-      <canvas id="lsCv2"></canvas>
-      <div class="ls-drop" id="lsDrop">
-        <b>把听力音频拖到这里</b>
-        <span>支持 mp3 / wav / m4a / ogg，也可以点右上角「＋ 上传音频」</span>
-      </div>
+    <div class="ls-dropbar" id="lsWave">
+      <div class="ls-drop" id="lsDrop"><b>把听力音频拖到这里</b>　也可以点右上角「＋ 上传音频」（mp3 / wav / m4a / ogg）</div>
     </div>
 
     <div class="ls-trans">
@@ -1003,6 +995,7 @@ body.focus #btnExitFs{display:inline-flex}
       <button class="ls-t" id="lsStop" title="停止（回到段首）">⏹</button>
       <span class="ls-clock"><b id="lsNow">00:00</b> / <span id="lsTot">00:00</span></span>
       <span style="flex:1"></span>
+      <button class="ls-b sm" id="lsBtnTr" title="老师讲解时先把听力稿藏起来，学生听完再点开给全班看">👁 显示听力稿</button>
       <label class="ls-chk"><input type="checkbox" id="lsLoop" checked>单段循环</label>
       <select class="ls-sel" id="lsRate" title="播放速度">
         <option value="0.7">0.7×</option>
@@ -1027,28 +1020,28 @@ body.focus #btnExitFs{display:inline-flex}
       <input type="range" id="lsSens" min="0.4" max="3" step="0.1" value="1">
       <span class="v" id="lsSensV">1.0</span>
       <span style="margin-left:10px">段数</span>
-      <input type="number" id="lsWantN" min="0" max="40" step="1" placeholder="自动" title="试卷里没有 Text 标记时，直接告诉程序音频该切几段（高考一般 10 段）" style="width:58px;border:1px solid var(--border-2);border-radius:7px;padding:2px 6px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--panel)">
+      <input type="number" id="lsWantN" min="0" max="40" step="1" placeholder="自动" title="填 0 或留空＝自动（高考听力一般 10 段）；也可以直接填想要的段数" style="width:62px;border:1px solid var(--border-2);border-radius:7px;padding:4px 6px;font-size:13.5px;font-family:inherit;color:var(--text);background:var(--panel)">
       <button class="ls-b sm" id="lsRedo" disabled>重新自动切分</button>
       <button class="ls-b sm" id="lsMergeS" disabled title="把 15 秒以内的小段并到后一段：音频里的中文引导语常被切成这种小段">合并短段</button>
       <span id="lsSegN" style="color:var(--text-3)"></span>
-      <div class="ls-advtip">波形上：拖橙色切点＝调边界，双击＝拆成两段，右键切点＝合并；点标签也能切换。</div>
+      <div class="ls-advtip">点上面的 TEXT 标签切换段落，标签上<b>右键</b>＝把这一段并进上一段。段数默认按高考的 10 段切，要多要少改上面的「段数」。</div>
     </div>
 
     <div class="ls-tabs" id="lsTabs">
       <span class="ls-tip2">上传听力音频后，这里会按题排成 TEXT1、TEXT2…，点一下就能单独听。</span>
     </div>
 
-    <div class="ls-panes">
+    <div class="ls-panes hide-tr" id="lsPanes">
       <section class="ls-pane">
         <div class="ls-ph">试题<span class="tag" id="lsQTag"></span></div>
         <div class="ls-pb" id="lsQBody">
-          <div class="ls-none">上传试卷或听力稿后，<br>这里显示这一段对应的题目。</div>
+          <div class="ls-none">上传听力稿后，<br>这里显示这一段对应的题目和选项。</div>
         </div>
       </section>
-      <section class="ls-pane">
+      <section class="ls-pane tr">
         <div class="ls-ph">听力稿<span class="tag" id="lsSTag"></span></div>
         <div class="ls-pb" id="lsSBody">
-          <div class="ls-none">听力稿里带 <b>W:</b> / <b>M:</b> 开头的原文行，<br>会显示在这里。</div>
+          <div class="ls-none">上传听力稿后，这一段对应的原文<br>会显示在这里（点上面的「👁 显示听力稿」打开）。</div>
         </div>
       </section>
     </div>
@@ -6747,7 +6740,7 @@ async function lsLoadAudio(file) {
     lsEnvelope();
     lsDetect();
 
-    $('#lsDrop').classList.add('off');
+    $('#lsWave') && $('#lsWave').classList.add('off');
     $('#lsRedo').disabled = false;
     $('#lsMergeS').disabled = false;
     $('#lsTot').textContent = lsFmt(AUD.dur);
@@ -6755,9 +6748,9 @@ async function lsLoadAudio(file) {
     lsDrawBase();
 
     const note = AUD.mode === 'stamp'
-      ? '已按试卷里的时间戳切分（最准）'
+      ? '已按听力稿里的时间戳切分（最准）'
       : '已按停顿自动切分';
-    lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　点下面的 TEXT1 开始听');
+    lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　共 ' + AUD.segs.length + ' 段，点上面的 TEXT1 开始听');
   } catch (e) {
     lsMsg('音频解码失败：' + ((e && e.message) || e) + '　（试试 mp3 / wav / m4a）');
   }
@@ -6837,7 +6830,9 @@ function lsAutoSplit(verbose) {
   });
   AUD.cands = cands;
 
-  const N = AUD.wantN || AUD.units.length;   // 段数：优先用手填的，其次用试卷上的 Text 数
+  /* 段数：手填的 > 听力稿里的 Text 数 > 高考默认 10 段（前面 5 段短对话 + 后面 5 段长对话）。
+     听力稿只有 1 个单元（没有 Text 标记）时按 10 段算，不能按 1 段。 */
+  const N = AUD.wantN || (AUD.units.length > 1 ? AUD.units.length : 10);
   let cuts;
   if (N > 1 && cands.length >= N - 1) {
     cuts = lsPickCuts(cands, N, T);
@@ -6850,8 +6845,30 @@ function lsAutoSplit(verbose) {
     });
   }
   AUD.segs = lsBuildSegs(lsGroup(cuts), T);
+  if (N > 1) lsTrimTo(N);
   lsPair();
   lsRenderList(); lsDrawBase();
+}
+
+/* 段数比目标多时，把最短的段并进「后一段」（直到段数＝目标）。
+   音频里播音员的「听下面一段对话，回答第 6 和第 7 两个小题」这类提示音会自成一段，
+   把它并进后面的材料才是正确的听感；最后一段就并进前一段。 */
+function lsTrimTo(N) {
+  let guard = 0;
+  while (AUD.segs.length > N && AUD.segs.length > 1 && guard++ < 300) {
+    let mi = 0, md = Infinity;
+    for (let i = 0; i < AUD.segs.length; i++) {
+      const d = AUD.segs[i].end - AUD.segs[i].start;
+      if (d < md) { md = d; mi = i; }
+    }
+    if (mi + 1 < AUD.segs.length) {
+      AUD.segs[mi + 1].start = AUD.segs[mi].start;
+      AUD.segs.splice(mi, 1);
+    } else {
+      AUD.segs[mi - 1].end = AUD.segs[mi].end;
+      AUD.segs.splice(mi, 1);
+    }
+  }
 }
 
 /* 把挨得很近的几个停顿并成同一处「段落分界」。
@@ -7204,8 +7221,8 @@ function lsPaintPaper() {
   if (qt) qt.textContent = label + (qs.length ? ' · ' + qs.length + ' 题' : '');
   if (!qs.length) {
     qb.innerHTML = '<div class="ls-none">这一段没有配到题目。<br><br>'
-      + '试卷里只要有 <b>Text 1</b> 这样的段落标题，<br>程序就会按顺序把题目配到各段；<br>'
-      + '没有标题时，也可以点「⚙ 切分」自己定段数。</div>';
+      + '听力稿里只要有 <b>Text 1</b> 这样的段落标题，<br>程序就会按顺序把题目配到各段；<br>'
+      + '没有标题时，可以点「⚙ 切分」自己定段数。</div>';
   } else {
     qb.innerHTML = qs.map(function (q) {
       return '<div class="ls-q"><div class="stem">' + q.no + '. ' + esc(q.stem || '') + '</div>'
@@ -7219,8 +7236,8 @@ function lsPaintPaper() {
   if (st) st.textContent = label + (sc.length ? ' · ' + sc.length + ' 行' : '');
   if (!sc.length) {
     sb.innerHTML = '<div class="ls-none">这一段没有听力稿。<br><br>'
-      + '听力稿里带 <b>W:</b> / <b>M:</b> 开头的原文行会显示在这里；<br>'
-      + '题目和选项显示在左边。</div>';
+      + '点右上角「<b>📄 上传听力稿</b>」传一份原文，<br>'
+      + '带 <b>Text 1</b> 分段（或 W: / M: 说话人）的那份都能认。</div>';
   } else {
     sb.innerHTML = sc.map(function (p) {
       return '<p>' + (p.sp ? '<b>' + esc(p.sp) + ':</b> ' : '') + esc(p.tx) + '</p>';
@@ -7253,6 +7270,8 @@ function lsParsePaper(txt) {
   const reQ = /^\s*(\d{1,2})\s*[.、．)）]\s*(\S[\s\S]*)$/;
   const reSpk = /^\s*(W|M|Man|Woman|Narrator|Speaker\s*[AB]?|女|男)\s*[:：]\s*([\s\S]*)$/i;
   const reOptOnly = /^\s*([A-D])\s*[.、．)）]\s*([\s\S]*)$/;
+  /* 卷面说明行（「第一节 听力」「满分 30 分」这类）不是原文，别收进听力稿面板 */
+  const reHead = /^(?:第[一二三四五六七八九十]+[部分节讲]|听力|注意事项|满分|本试卷|说明|录音|请听|听下面)/;
 
   const mkUnit = function (no, label) {
     const u = { no: no, label: label, tStart: null, tEnd: null, qs: [], script: [], head: '' };
@@ -7273,6 +7292,16 @@ function lsParsePaper(txt) {
       /* 标题行尾可能直接跟着题干 */
       const mq = cur.head.match(reQ);
       if (mq) { const o = lsSplitOpts(mq[2]); cur.qs.push({ no: +mq[1], stem: o.stem, opts: o.opts }); }
+      else if (cur.head) {
+        /* 也可能是「Text 1 W: Hello…」这种标题＋原文挤在一行；
+           只带的 (Q1 01:05 ~ 01:20) 时间戳批注剥掉后就没内容了，不用管 */
+        const rest = cur.head.replace(/\([^)]*\)/g, '').replace(/[（][^）]*[）]/g, '').trim();
+        if (rest) {
+          const msp2 = rest.match(reSpk);
+          if (msp2) cur.script.push({ sp: msp2[1], tx: (msp2[2] || '').trim() || rest });
+          else cur.script.push({ sp: '', tx: rest });
+        }
+      }
       continue;
     }
     if (!cur) {
@@ -7310,8 +7339,10 @@ function lsParsePaper(txt) {
       continue;
     }
 
-    /* 既不是题目也不是选项：若像原文（较长英文行），收进原文 */
-    if (t.length > 12 && /[a-zA-Z]{3}/.test(t) && !cur.qs.length) {
+    /* 既不是题目也不是选项：当原文收进去。
+       听力稿里的对话常常没有 W:/M: 前缀 —— 所以不能再要求「本段还没有题目」，
+       否则题目在前、对话在后的听力稿，对话会整段丢掉（右侧听力稿永远是空的）。 */
+    if (t.length >= 6 && /[a-zA-Z]{2}/.test(t) && !reHead.test(t) && !reOptOnly.test(t)) {
       cur.script.push({ sp: '', tx: t });
     }
   }
@@ -7321,7 +7352,7 @@ function lsParsePaper(txt) {
 }
 
 async function lsLoadPaper(file) {
-  lsMsg('正在读取试卷「' + file.name + '」…');
+  lsMsg('正在读取听力稿「' + file.name + '」…');
   try {
     const name = (file.name || '').toLowerCase();
     let text = '';
@@ -7333,7 +7364,7 @@ async function lsLoadPaper(file) {
     const units = lsParsePaper(text);
     AUD.units = units;
     if (!units.length) {
-      lsMsg('试卷里没读到题目。若手头有带「Text 1」标题的听力稿，传那一份，题目能和音频精确配对。');
+      lsMsg('听力稿里没读到文字。传 .docx / .txt / .pdf 都行；图片请先转成 Word 或 txt。');
       return;
     }
     /* 真题卷常常只有题号、没有 Text 标题，这时没法知道哪几题属于同一段材料 */
@@ -7346,10 +7377,11 @@ async function lsLoadPaper(file) {
     lsPair();
     lsRenderList(); lsDrawBase(); lsPaintPaper();
     const qn = units.reduce(function (a, u) { return a + u.qs.length; }, 0);
-    lsMsg('试卷已解析：' + units.length + ' 段 / ' + qn + ' 题'
-      + (AUD.mode === 'stamp' ? '　已按时间戳精确切分' : '　已按题数约束重新切分'));
+    lsMsg('听力稿已解析：' + units.length + ' 段'
+      + (qn ? ' / ' + qn + ' 题' : '（稿里没有题目，右侧听力稿照常显示）')
+      + (AUD.mode === 'stamp' ? '　已按时间戳精确切分' : '　已按段数重新切分'));
   } catch (e) {
-    lsMsg('试卷读取失败：' + ((e && e.message) || e) + '　（图片试卷请先另存为 Word 或截图后传 txt）');
+    lsMsg('听力稿读取失败：' + ((e && e.message) || e) + '　（图片请先另存为 Word 或转成 txt）');
   }
 }
 
@@ -7636,6 +7668,12 @@ function lsBind() {
     const show = (a.style.display === 'none');
     a.style.display = show ? 'flex' : 'none';
     this.classList.toggle('solid', show);
+  };
+  /* 听力稿：讲解时先藏起来，学生听完再点开给全班看 */
+  $('#lsBtnTr').onclick = function () {
+    const hidden = $('#lsPanes').classList.toggle('hide-tr');
+    this.textContent = hidden ? '👁 显示听力稿' : '🙈 隐藏听力稿';
+    this.classList.toggle('solid', !hidden);
   };
   /* 导出当前选中的这一段 */
   $('#lsBtnEx1').onclick = function () {
