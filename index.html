@@ -6006,10 +6006,11 @@ async function refreshLessons() {
       info.appendChild(t); info.appendChild(d);
       /* 列表里就标出「上次讲到哪」，一眼看出这份能不能接着讲 */
       const pg = it.progress;
-      if (pg && (pg.cur != null || pg.activeQ != null)) {
+      if (pg && (pg.cur != null || pg.activeQ != null || pg.focus === 'listen' || pg.kind === 'listen')) {
         const m = document.createElement('div');
         m.className = 'lsmark';
-        m.innerHTML = '上次讲到 <em>' + esc(describeProgress(pg)) + '</em>';
+        m.innerHTML = (pg.focus === 'listen' || pg.kind === 'listen' ? '上次停在 ' : '上次讲到 ')
+          + '<em>' + esc(describeProgress(pg)) + '</em>';
         info.appendChild(m);
       }
       const acts = document.createElement('div');
@@ -6034,6 +6035,7 @@ async function refreshLessons() {
 /* 把一段 progress 描述成人话：阅读 A · 第 23 题 / 语法填空 · 第 56 空 / 整篇视图 */
 function describeProgress(pg) {
   if (!pg) return '';
+  if (pg.focus === 'listen') return '听力 · 已切好';
   const k = pg.kind || 'reading';
   if (k === 'listen') return '听力 · 已切好';
   const kn = kindShort(k);
@@ -6134,12 +6136,27 @@ async function openLesson(id) {
       return;
     }
     commitResult(it.data);
-    /* 有讲解进度就接着讲，没有就照常落在速览页 */
-    if (it.data.progress && applyProgress(it.data.progress)) {
-      toast('已接着上次的位置：' + describeProgress(it.data.progress), 'ok');
-    } else {
-      toast('已打开：' + (it.title || '未命名课件'), 'ok');
+    /* 上次是从听力面板存的 → 直接进听力，别再落回讲解那一页（老师反馈过这个坑）。
+       讲解内容已经 commitResult 装好了，点「✕ 返回讲解」随时能回去接着讲。 */
+    if (it.data.progress && it.data.progress.focus === 'listen' && AUD.cloud) {
+      $('#modal').classList.remove('on');
+      toast('已打开听力课件（' + AUD.segs.length + ' 段）—— 点「＋ 上传音频」选同一个音频就能听', 'ok');
+      lsOpen();
+      return;
     }
+    /* 有讲解进度就接着讲，没有就照常落在速览页 */
+    let msg = '';
+    if (it.data.progress && applyProgress(it.data.progress)) {
+      msg = '已接着上次的位置：' + describeProgress(it.data.progress);
+    } else {
+      msg = '已打开：' + (it.title || '未命名课件');
+    }
+    /* 老课件（存的时候还没记「停在听力」）：带听力切分但没标记，把入口告诉老师 */
+    if (AUD.cloud && !(it.data.progress && it.data.progress.focus)) {
+      msg += '　·　这份课件带着听力切分（' + AUD.segs.length + ' 段）：点右上角「🎧 听力」进去；'
+        + '在听力面板再点一次「☁ 存课件」，以后打开就直接跳到听力';
+    }
+    toast(msg, 'ok');
     $('#modal').classList.remove('on');
   } catch (e) {
     lessonMsg('打开失败：' + e.message, 'err');
@@ -7857,9 +7874,11 @@ async function lsSaveLesson() {
     const data = {
       title: title,
       passages: cleanPassages(),
+      /* focus:'listen' 是关键 —— 这份课件是从听力面板存的，
+         下次在课件库点「打开」要直接进听力，而不是落回讲解那一页 */
       progress: S.passages.length
-        ? { view: S.view, cur: S.cur, activeQ: S.activeQ, kind: curKind() }
-        : { kind: 'listen' },
+        ? { view: S.view, cur: S.cur, activeQ: S.activeQ, kind: curKind(), focus: 'listen' }
+        : { kind: 'listen', focus: 'listen' },
       listen: listen
     };
     /* 同名已存过就直接覆盖，别再堆一条 */
