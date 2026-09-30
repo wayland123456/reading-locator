@@ -760,12 +760,35 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-b.ghost{color:var(--text-2)}
 .ls-b.sm{padding:3px 9px;font-size:12px}
 .ls-b:disabled{opacity:.45;cursor:default;background:var(--panel);color:var(--text-3);border-color:var(--border)}
-.ls-body{flex:1;display:flex;min-height:0}
-.ls-col-l{flex:1;display:flex;flex-direction:column;min-width:0;padding:10px 10px 0}
-.ls-col-r{width:370px;flex:none;border-left:1px solid var(--border);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.ls-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:10px 12px 12px;gap:8px}
+
+/* 横向 TEXT 标签栏 */
+.ls-tabs{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:1px 1px 5px;flex:none;scrollbar-width:thin}
+.ls-tabs::-webkit-scrollbar{height:6px}
+.ls-tabs::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+.ls-tab{border:1px solid var(--border-2);background:var(--panel);color:var(--text-2);border-radius:8px;
+  padding:5px 14px;font-size:13px;font-family:inherit;font-weight:600;letter-spacing:.3px;
+  cursor:pointer;white-space:nowrap;flex:none;transition:.12s}
+.ls-tab:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.ls-tab.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.ls-tab.on.play{background:var(--ok);border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.ls-tip2{color:var(--text-3);font-size:13px;padding:8px 4px;line-height:1.8}
+
+/* 下方：试题 | 听力稿 */
+.ls-panes{flex:1;display:flex;gap:10px;min-height:0}
+.ls-pane{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.ls-pane .ls-ph{border-radius:10px 10px 0 0}
+
+/* 切分参数（默认收起） */
+.ls-adv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 11px;flex:none;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:9px;font-size:12.5px;color:var(--text-2)}
+.ls-adv input[type=range]{width:92px;accent-color:var(--primary);vertical-align:middle}
+.ls-adv .v{font-variant-numeric:tabular-nums;color:var(--primary);font-weight:600;min-width:34px;display:inline-block}
+.ls-advtip{flex-basis:100%;color:var(--text-3);font-size:12px;line-height:1.7}
 
 /* 波形 */
-.ls-wave{position:relative;height:152px;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex:none;box-shadow:var(--shadow)}
+.ls-wave{position:relative;height:96px;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex:none;box-shadow:var(--shadow)}
 .ls-wave canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
 #lsCv2{pointer-events:none}
 #lsCv1{cursor:crosshair}
@@ -776,7 +799,7 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-drop .sm2{font-size:12px;color:var(--text-3)}
 
 /* 播放控制条 */
-.ls-trans{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;flex:none}
+.ls-trans{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:none}
 .ls-t{border:1px solid var(--border-2);background:var(--panel);border-radius:8px;min-width:34px;height:30px;cursor:pointer;font-size:13px;color:var(--text);padding:0 6px}
 .ls-t:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .ls-t.play{min-width:46px;background:var(--primary);color:#fff;border-color:var(--primary);font-size:15px}
@@ -786,39 +809,16 @@ body.focus #btnExitFs{display:inline-flex}
 .ls-chk{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none}
 .ls-sel{border:1px solid var(--border-2);border-radius:7px;padding:4px 6px;font-size:12.5px;background:var(--panel);color:var(--text);font-family:inherit;cursor:pointer}
 
-/* 参数条 */
-.ls-tools{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap;font-size:12.5px;color:var(--text-2);flex:none}
-.ls-tools input[type=range]{width:92px;accent-color:var(--primary);vertical-align:middle}
-.ls-tools .v{font-variant-numeric:tabular-nums;color:var(--primary);font-weight:600;min-width:38px;display:inline-block}
-
-/* 分段列表 */
-.ls-list{flex:1;overflow:auto;margin:10px 0;display:flex;flex-direction:column;gap:6px;padding-right:3px;min-height:60px}
-.ls-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--border-2);border-radius:9px;font-size:13px;cursor:pointer;transition:.1s}
-.ls-item:hover{background:var(--panel-2)}
-.ls-item.on{border-left-color:var(--accent);background:var(--accent-soft);border-color:#f2d3a5}
-.ls-item.playing{border-left-color:var(--ok);background:var(--ok-soft);border-color:#bfe7d0}
-.ls-no{width:24px;text-align:center;font-weight:700;color:var(--text-3);font-size:12px;flex:none}
-.ls-tag{font-weight:600;color:var(--primary);flex:none}
-.ls-tt{font-variant-numeric:tabular-nums;color:var(--text-3);font-size:12px;flex:none}
-.ls-dd{color:var(--text-2);font-size:12px;flex:none;font-variant-numeric:tabular-nums}
-.ls-grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-3);font-size:12px}
-.ls-mini{border:1px solid var(--border-2);background:var(--panel);border-radius:6px;padding:2px 7px;font-size:12px;cursor:pointer;color:var(--text-2);flex:none;white-space:nowrap}
-.ls-mini:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
-.ls-mini.warn:hover{border-color:var(--err);color:var(--err);background:#fdeaea}
-.ls-emptylist{color:var(--text-3);font-size:13px;text-align:center;padding:24px 10px;line-height:2}
-
-/* 右侧题目/原文 */
+/* 题目/原文面板 */
 .ls-ph{padding:10px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:13px;flex:none;display:flex;align-items:center;gap:8px;background:var(--panel-2)}
 .ls-ph .tag{font-weight:600;color:var(--primary);font-size:12.5px}
-.ls-pb{flex:1;overflow:auto;padding:12px 15px 20px;font-size:13.5px;line-height:1.8}
+.ls-pb{flex:1;overflow:auto;padding:12px 16px 20px;font-size:13.5px;line-height:1.8}
+.ls-pb p{margin:5px 0;color:var(--text-2);font-size:13.5px;line-height:1.85}
+.ls-pb p b{color:var(--primary);font-weight:600}
 .ls-none{color:var(--text-3);font-size:13px;text-align:center;margin-top:36px;line-height:2.1;padding:0 10px}
 .ls-q{margin-bottom:12px}
 .ls-q .stem{font-weight:600;color:var(--text)}
 .ls-q .opt{color:var(--text-2);margin-left:16px;display:block}
-.ls-sc{margin-top:16px;padding-top:11px;border-top:1px dashed var(--border-2)}
-.ls-sc .lb{color:var(--accent);font-weight:700;font-size:12.5px;margin-bottom:5px}
-.ls-sc p{margin:4px 0;color:var(--text-2);font-size:13px;line-height:1.75}
-.ls-sc p b{color:var(--primary);font-weight:600}
 
 /* 拖动切点时的提示气泡 */
 .ls-tip{position:fixed;z-index:99;background:rgba(28,39,51,.92);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;pointer-events:none;display:none;font-variant-numeric:tabular-nums}
@@ -987,63 +987,71 @@ body.focus #btnExitFs{display:inline-flex}
   </header>
 
   <div class="ls-body">
-    <div class="ls-col-l">
-      <div class="ls-wave" id="lsWave">
-        <canvas id="lsCv1"></canvas>
-        <canvas id="lsCv2"></canvas>
-        <div class="ls-drop" id="lsDrop">
-          <b>把听力音频拖到这里</b>
-          <span>支持 mp3 / wav / m4a / ogg，直接点「＋ 上传音频」也行</span>
-          <span class="sm2">音频不上传服务器，全程在你本机浏览器里处理</span>
-        </div>
-      </div>
-
-      <div class="ls-trans">
-        <button class="ls-t" id="lsPrev" title="上一段">⏮</button>
-        <button class="ls-t play" id="lsPlay" title="播放 / 暂停（空格）">▶</button>
-        <button class="ls-t" id="lsNext" title="下一段">⏭</button>
-        <button class="ls-t" id="lsStop" title="停止（回到段首）">⏹</button>
-        <span class="ls-clock"><b id="lsNow">00:00</b> / <span id="lsTot">00:00</span></span>
-        <span style="flex:1"></span>
-        <label class="ls-chk"><input type="checkbox" id="lsLoop" checked>单段循环</label>
-        <select class="ls-sel" id="lsRate" title="播放速度">
-          <option value="0.7">0.7×</option>
-          <option value="0.85">0.85×</option>
-          <option value="1" selected>1.0×</option>
-          <option value="1.15">1.15×</option>
-        </select>
-        <select class="ls-sel" id="lsRepeat" title="每段连播几遍">
-          <option value="1">连播 1 遍</option>
-          <option value="2">连播 2 遍</option>
-          <option value="3">连播 3 遍</option>
-        </select>
-      </div>
-
-      <div class="ls-tools">
-        <span>切分停顿 ≥</span>
-        <input type="range" id="lsGap" min="1.5" max="15" step="0.5" value="4">
-        <span class="v" id="lsGapV">4.0s</span>
-        <span style="margin-left:8px">静音灵敏度</span>
-        <input type="range" id="lsSens" min="0.4" max="3" step="0.1" value="1">
-        <span class="v" id="lsSensV">1.0</span>
-        <button class="ls-b sm" id="lsRedo" disabled>重新自动切分</button>
-        <button class="ls-b sm" id="lsMergeS" disabled title="把 15 秒以内的小段并到后一段：音频里的中文引导语常被切成这种小段">合并短段</button>
-        <span style="margin-left:8px">段数</span>
-        <input type="number" id="lsWantN" min="0" max="40" step="1" placeholder="自动" title="试卷里没有 Text 1 这种标记时，直接告诉程序音频该切几段（高考一般 10 段）" style="width:60px;border:1px solid var(--border-2);border-radius:7px;padding:3px 6px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--panel)">
-        <span id="lsSegN" style="color:var(--text-3)"></span>
-      </div>
-
-      <div class="ls-list" id="lsList">
-        <div class="ls-emptylist">还没有音频。<br>上传后这里会列出切好的每一段，点一下就能单独播放。</div>
+    <div class="ls-wave" id="lsWave">
+      <canvas id="lsCv1"></canvas>
+      <canvas id="lsCv2"></canvas>
+      <div class="ls-drop" id="lsDrop">
+        <b>把听力音频拖到这里</b>
+        <span>支持 mp3 / wav / m4a / ogg，也可以点右上角「＋ 上传音频」</span>
       </div>
     </div>
 
-    <aside class="ls-col-r">
-      <div class="ls-ph">题目 · 听力原文 <span class="tag" id="lsPaperTag"></span></div>
-      <div class="ls-pb" id="lsPaperBody">
-        <div class="ls-none">上传试卷或听力稿后，<br>这里会显示每段对应的题目和听力原文。</div>
-      </div>
-    </aside>
+    <div class="ls-trans">
+      <button class="ls-t" id="lsPrev" title="上一段">⏮</button>
+      <button class="ls-t play" id="lsPlay" title="播放 / 暂停（空格）">▶</button>
+      <button class="ls-t" id="lsNext" title="下一段">⏭</button>
+      <button class="ls-t" id="lsStop" title="停止（回到段首）">⏹</button>
+      <span class="ls-clock"><b id="lsNow">00:00</b> / <span id="lsTot">00:00</span></span>
+      <span style="flex:1"></span>
+      <label class="ls-chk"><input type="checkbox" id="lsLoop" checked>单段循环</label>
+      <select class="ls-sel" id="lsRate" title="播放速度">
+        <option value="0.7">0.7×</option>
+        <option value="0.85">0.85×</option>
+        <option value="1" selected>1.0×</option>
+        <option value="1.15">1.15×</option>
+      </select>
+      <select class="ls-sel" id="lsRepeat" title="每段连播几遍">
+        <option value="1">连播 1 遍</option>
+        <option value="2">连播 2 遍</option>
+        <option value="3">连播 3 遍</option>
+      </select>
+      <button class="ls-b sm" id="lsBtnEx1" title="把当前这一段导出成 wav 文件">⬇ 导出本段</button>
+      <button class="ls-b sm" id="lsAdvBtn" title="切分参数：停顿门槛 / 灵敏度 / 段数">⚙ 切分</button>
+    </div>
+
+    <div class="ls-adv" id="lsAdv" style="display:none">
+      <span>切分停顿 ≥</span>
+      <input type="range" id="lsGap" min="1.5" max="15" step="0.5" value="4">
+      <span class="v" id="lsGapV">4.0s</span>
+      <span style="margin-left:10px">静音灵敏度</span>
+      <input type="range" id="lsSens" min="0.4" max="3" step="0.1" value="1">
+      <span class="v" id="lsSensV">1.0</span>
+      <span style="margin-left:10px">段数</span>
+      <input type="number" id="lsWantN" min="0" max="40" step="1" placeholder="自动" title="试卷里没有 Text 标记时，直接告诉程序音频该切几段（高考一般 10 段）" style="width:58px;border:1px solid var(--border-2);border-radius:7px;padding:2px 6px;font-size:12.5px;font-family:inherit;color:var(--text);background:var(--panel)">
+      <button class="ls-b sm" id="lsRedo" disabled>重新自动切分</button>
+      <button class="ls-b sm" id="lsMergeS" disabled title="把 15 秒以内的小段并到后一段：音频里的中文引导语常被切成这种小段">合并短段</button>
+      <span id="lsSegN" style="color:var(--text-3)"></span>
+      <div class="ls-advtip">波形上：拖橙色切点＝调边界，双击＝拆成两段，右键切点＝合并；点标签也能切换。</div>
+    </div>
+
+    <div class="ls-tabs" id="lsTabs">
+      <span class="ls-tip2">上传听力音频后，这里会按题排成 TEXT1、TEXT2…，点一下就能单独听。</span>
+    </div>
+
+    <div class="ls-panes">
+      <section class="ls-pane">
+        <div class="ls-ph">试题<span class="tag" id="lsQTag"></span></div>
+        <div class="ls-pb" id="lsQBody">
+          <div class="ls-none">上传试卷或听力稿后，<br>这里显示这一段对应的题目。</div>
+        </div>
+      </section>
+      <section class="ls-pane">
+        <div class="ls-ph">听力稿<span class="tag" id="lsSTag"></span></div>
+        <div class="ls-pb" id="lsSBody">
+          <div class="ls-none">听力稿里带 <b>W:</b> / <b>M:</b> 开头的原文行，<br>会显示在这里。</div>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 <div class="ls-tip" id="lsTip"></div>
@@ -6748,8 +6756,8 @@ async function lsLoadAudio(file) {
 
     const note = AUD.mode === 'stamp'
       ? '已按试卷里的时间戳切分（最准）'
-      : '已按停顿自动切分，可用波形图微调';
-    lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　共 ' + AUD.segs.length + ' 段');
+      : '已按停顿自动切分';
+    lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　点下面的 TEXT1 开始听');
   } catch (e) {
     lsMsg('音频解码失败：' + ((e && e.message) || e) + '　（试试 mp3 / wav / m4a）');
   }
@@ -7035,15 +7043,6 @@ function lsDrawBase() {
     g.beginPath(); g.arc(x, 9, 1.6, 0, 6.284); g.fill();
   }
 
-  /* 段号 */
-  g.font = '600 11px "Microsoft YaHei",sans-serif';
-  g.textBaseline = 'bottom';
-  for (let i = 0; i < segs.length; i++) {
-    const x = lsTToX(segs[i].start) + 4;
-    if (x > W - 16) continue;
-    g.fillStyle = 'rgba(93,107,124,.85)';
-    g.fillText(String(i + 1), x, H - 4);
-  }
 }
 
 function lsDrawTop() {
@@ -7162,35 +7161,19 @@ function lsClock() {
    五、分段列表
    ========================================================= */
 function lsRenderList() {
-  const box = $('#lsList');
+  const box = $('#lsTabs');
+  if (!box) return;
   if (!AUD.segs.length) {
-    box.innerHTML = '<div class="ls-emptylist">还没有切分出段落。<br>先上传听力音频；再上传试卷可以让段数切得更准。</div>';
-    $('#lsSegN').textContent = '';
+    box.innerHTML = '<span class="ls-tip2">上传听力音频后，这里会按题排成 TEXT1、TEXT2…，点一下就能单独听。</span>';
+    const g0 = $('#lsSegN'); if (g0) g0.textContent = '';
     return;
   }
-  const html = AUD.segs.map(function (s, i) {
-    const u = s.unit;
-    const tag = u && u.label ? u.label : ('第 ' + (i + 1) + ' 段');
-    let qs = '';
-    if (u && u.qs && u.qs.length) {
-      const nos = u.qs.map(function (q) { return q.no; });
-      const qa = Math.min.apply(null, nos), qb = Math.max.apply(null, nos);
-      qs = (qa === qb) ? ('第 ' + qa + ' 题') : ('第 ' + qa + '–' + qb + ' 题');
-    }
-    const cls = 'ls-item' + (i === AUD.sel ? ' on' : '') + (i === AUD.cur && AUD.playing ? ' playing' : '');
-    return '<div class="' + cls + '" data-i="' + i + '">'
-      + '<b class="ls-no">' + (i + 1) + '</b>'
-      + '<span class="ls-tag">' + esc(tag) + '</span>'
-      + (qs ? '<span class="ls-grow">' + esc(qs) + '</span>' : '<span class="ls-grow"></span>')
-      + '<span class="ls-tt">' + lsFmt(s.start) + ' → ' + lsFmt(s.end) + '</span>'
-      + '<span class="ls-dd">' + (s.end - s.start).toFixed(1) + 's</span>'
-      + '<button class="ls-mini" data-act="play" title="播放这一段">▶</button>'
-      + '<button class="ls-mini" data-act="export" title="把这一段导出成 wav">⬇</button>'
-      + (i > 0 ? '<button class="ls-mini" data-act="merge" title="和上一段合成一段">⇧合并</button>' : '')
-      + '</div>';
+  box.innerHTML = AUD.segs.map(function (s, i) {
+    const cls = 'ls-tab' + (i === AUD.sel ? ' on' : '') + (i === AUD.cur && AUD.playing ? ' play' : '');
+    const tip = lsFmt(s.start) + ' → ' + lsFmt(s.end) + '（' + (s.end - s.start).toFixed(1) + ' 秒）　右键可以并进上一段';
+    return '<button class="' + cls + '" data-i="' + i + '" title="' + tip + '">TEXT' + (i + 1) + '</button>';
   }).join('');
-  box.innerHTML = html;
-  $('#lsSegN').textContent = '共 ' + AUD.segs.length + ' 段';
+  const g = $('#lsSegN'); if (g) g.textContent = '共 ' + AUD.segs.length + ' 段';
 }
 
 function lsSelect(i) {
@@ -7202,38 +7185,47 @@ function lsSelect(i) {
    六、右侧：题目 + 听力原文
    ========================================================= */
 function lsPaintPaper() {
-  const box = $('#lsPaperBody'), tag = $('#lsPaperTag');
-  if (!box) return;
+  const qb = $('#lsQBody'), sb = $('#lsSBody');
+  const qt = $('#lsQTag'), st = $('#lsSTag');
+  if (!qb || !sb) return;
   const s = AUD.segs[AUD.sel];
+  const none = '<div class="ls-none">点上面的 TEXT 标签，<br>这里显示那一段的内容。</div>';
   if (!s) {
-    tag.textContent = '';
-    box.innerHTML = '<div class="ls-none">点左边任意一段，<br>这里显示那一段的题目和听力原文。</div>';
+    if (qt) qt.textContent = '';
+    if (st) st.textContent = '';
+    qb.innerHTML = none; sb.innerHTML = none;
     return;
   }
   const u = s.unit;
-  if (!u || (!u.qs.length && !u.script.length)) {
-    tag.textContent = '';
-    box.innerHTML = '<div class="ls-none">这一段没找到对应的题目。<br><br>上传试卷（图片 / Word / PDF / 听力稿 txt）后会自动配对。<br>文末说明「怎么让配对更准」。</div>'
-      + '<div class="ls-sc"><div class="lb">关于配对</div>'
-      + '<p>试卷里只要出现 <b>Text 1</b>、<b>Text 2</b> 这样的段落标题，程序就按顺序把每段音频配上去。</p>'
-      + '<p>听力稿里若带 <b>(Q1 01:05 ~ 01:20)</b> 这类时间戳，会直接按时间戳切音频，误差为零。</p></div>';
-    return;
+  const label = 'TEXT' + (AUD.sel + 1);
+
+  /* 左边：试题 */
+  const qs = (u && u.qs) || [];
+  if (qt) qt.textContent = label + (qs.length ? ' · ' + qs.length + ' 题' : '');
+  if (!qs.length) {
+    qb.innerHTML = '<div class="ls-none">这一段没有配到题目。<br><br>'
+      + '试卷里只要有 <b>Text 1</b> 这样的段落标题，<br>程序就会按顺序把题目配到各段；<br>'
+      + '没有标题时，也可以点「⚙ 切分」自己定段数。</div>';
+  } else {
+    qb.innerHTML = qs.map(function (q) {
+      return '<div class="ls-q"><div class="stem">' + q.no + '. ' + esc(q.stem || '') + '</div>'
+        + (q.opts || []).map(function (o) { return '<span class="opt">' + esc(o) + '</span>'; }).join('')
+        + '</div>';
+    }).join('');
   }
-  tag.textContent = (u.label || '') + (u.qs.length ? ' · ' + u.qs.length + ' 题' : '');
-  let h = '';
-  u.qs.forEach(function (q) {
-    h += '<div class="ls-q"><div class="stem">' + q.no + '. ' + esc(q.stem || '') + '</div>';
-    (q.opts || []).forEach(function (o) { h += '<span class="opt">' + esc(o) + '</span>'; });
-    h += '</div>';
-  });
-  if (u.script.length) {
-    h += '<div class="ls-sc"><div class="lb">听力原文</div>';
-    u.script.forEach(function (p) {
-      h += '<p>' + (p.sp ? '<b>' + esc(p.sp) + ':</b> ' : '') + esc(p.tx) + '</p>';
-    });
-    h += '</div>';
+
+  /* 右边：听力稿 */
+  const sc = (u && u.script) || [];
+  if (st) st.textContent = label + (sc.length ? ' · ' + sc.length + ' 行' : '');
+  if (!sc.length) {
+    sb.innerHTML = '<div class="ls-none">这一段没有听力稿。<br><br>'
+      + '听力稿里带 <b>W:</b> / <b>M:</b> 开头的原文行会显示在这里；<br>'
+      + '题目和选项显示在左边。</div>';
+  } else {
+    sb.innerHTML = sc.map(function (p) {
+      return '<p>' + (p.sp ? '<b>' + esc(p.sp) + ':</b> ' : '') + esc(p.tx) + '</p>';
+    }).join('');
   }
-  box.innerHTML = h || '<div class="ls-none">这一段还没有题目内容。</div>';
 }
 
 /* =========================================================
@@ -7637,33 +7629,45 @@ function lsBind() {
   $('#lsSens').onchange = redo;
   $('#lsRedo').onclick = redo;
   $('#lsMergeS').onclick = lsMergeShort;
+
+  /* 切分参数面板：默认收起，需要时再展开 */
+  $('#lsAdvBtn').onclick = function () {
+    const a = $('#lsAdv');
+    const show = (a.style.display === 'none');
+    a.style.display = show ? 'flex' : 'none';
+    this.classList.toggle('solid', show);
+  };
+  /* 导出当前选中的这一段 */
+  $('#lsBtnEx1').onclick = function () {
+    if (AUD.sel < 0) { lsMsg('先点一个 TEXT 标签，选中要导出的那一段'); return; }
+    lsExportOne(AUD.sel);
+  };
   $('#lsWantN').onchange = function () {
     const v = parseInt(this.value, 10);
     AUD.wantN = (v > 0 && v <= 40) ? v : 0;
     redo();
   };
 
-  /* 列表点击 / 按钮 */
-  $('#lsList').addEventListener('click', function (ev) {
-    const item = ev.target.closest ? ev.target.closest('.ls-item') : null;
-    if (!item) return;
-    const i = +item.getAttribute('data-i');
-    const btn = ev.target.closest ? ev.target.closest('button[data-act]') : null;
-    if (btn) {
-      const act = btn.getAttribute('data-act');
-      ev.stopPropagation();
-      if (act === 'play') { if (AUD.cur === i && AUD.playing) lsPause(); else lsPlay(i); }
-      else if (act === 'export') { lsSelect(i); lsExportOne(i); }
-      else if (act === 'merge') {
-        if (i < 1) return;
-        AUD.segs[i - 1].end = AUD.segs[i].end;
-        AUD.segs.splice(i, 1);
-        lsPair(); lsRenderList(); lsDrawBase();
-        lsMsg('已与上一段合并，剩 ' + AUD.segs.length + ' 段');
-      }
-      return;
-    }
-    lsSelect(i);
+  /* TEXT 标签：点一下＝选中并播放；右键＝并进上一段 */
+  $('#lsTabs').addEventListener('click', function (ev) {
+    const t = ev.target.closest ? ev.target.closest('.ls-tab') : null;
+    if (!t) return;
+    const i = +t.getAttribute('data-i');
+    if (AUD.cur === i && AUD.playing) lsPause();
+    else lsPlay(i);
+  });
+  $('#lsTabs').addEventListener('contextmenu', function (ev) {
+    const t = ev.target.closest ? ev.target.closest('.ls-tab') : null;
+    if (!t) return;
+    ev.preventDefault();
+    const i = +t.getAttribute('data-i');
+    if (i < 1) { lsMsg('TEXT1 前面没有可以合并的段'); return; }
+    AUD.segs[i - 1].end = AUD.segs[i].end;
+    AUD.segs.splice(i, 1);
+    AUD.playing = false; lsKill();
+    AUD.sel = i - 1; AUD.cur = -1;
+    lsPair(); lsRenderList(); lsPaintPaper(); lsDrawBase(); lsDrawTop();
+    lsMsg('TEXT' + (i + 1) + ' 已并进 TEXT' + i + '，现在共 ' + AUD.segs.length + ' 段');
   });
 
   /* 拖音频文件进来 */
