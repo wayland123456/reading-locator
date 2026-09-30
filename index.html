@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '8deab5bd80';
+  var APP_VER = '884c37a73d';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -7604,6 +7604,8 @@ async function lsLoadAudio(file) {
     await new Promise(function (r) { setTimeout(r, 16); });
     lsEnvelope();
     lsDetect();
+    lsMsg('正在识别播音提示音…（大文件要几秒）');
+    await new Promise(function (r) { setTimeout(r, 16); });
 
     $('#lsWave') && $('#lsWave').classList.add('off');
     $('#lsRedo').disabled = false;
@@ -7627,7 +7629,7 @@ async function lsLoadAudio(file) {
 
     const note = AUD.mode === 'stamp'
       ? '已按试卷里的时间戳切分（最准）'
-      : '已按停顿自动切分';
+      : (AUD.mode === 'chime' ? '已按播音提示音「噔」切分（最准）' : '已按停顿自动切分');
     const warn = cd ? '　⚠ 这次选的音频和课件里存的不是同一个（时长差了 '
       + Math.round(Math.abs((AUD.cloud.dur || 0) - AUD.dur)) + ' 秒），已重新切分' : '';
     lsMsg('音频 ' + lsFmt(AUD.dur) + '　' + note + '　共 ' + AUD.segs.length + ' 段，点上面的 TEXT1 开始听' + warn);
@@ -7803,6 +7805,183 @@ function lsSegsFromAnchors(anch, T) {
 }
 
 /* =========================================================
+   一之二、播音提示音（「噔」）识别 —— 定段最稳的一路
+   实测高考听力录音在每段材料开始前都响一声「叮—咚」提示音
+   （约 2.6kHz 0.3 秒 + 2.06kHz 0.8 秒，两个降调纯音；前后都是静音）。
+   它比「停顿长短」稳得多 —— 不管录音出自哪家、说话人快慢、音频长短，
+   提示音的位置就是材料起点，所以优先拿它定段。
+   判据（全部用波形自身的统计量，不写死频率）：
+     ① 纯音度 = 谱能量集中在单一频率的比例，高 —— 语音是宽带频谱，纯音不是；
+     ② 电平明显高于本段录音的本底（中位电平 + 10dB）；
+     ③ 单个音符 0.25~1.6 秒，且音高稳定（极差 / 中位 < 10%）；
+     ④ 同音高的提示音在整份录音里反复出现 ≥3 次 ——
+        背景音乐的一个长音、偶发铃声不会重复，就被滤掉了。
+   ========================================================= */
+const LS_CH = { lead: 0.55, ton: 0.45, dbUp: 10, noteMin: 0.25, noteMax: 1.6,
+  stab: 0.10, gap: 1.2, rep: 3, repTol: 0.15, pairGap: 42 };
+
+/* 迭代版 radix-2 FFT（原地） */
+function lsFFT(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci;
+        const vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi;
+        re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+        const ncr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = ncr;
+      }
+    }
+  }
+}
+
+function lsChimes() {
+  const sr = AUD.sr, m = AUD.mono;
+  if (!sr || !m || !m.length) return [];
+  /* 先降到 ~16kHz 再分析：够用又快（频率不变，只是采样率变小） */
+  const f = Math.max(1, Math.round(sr / 16000));
+  const dsr = sr / f, dn = Math.floor(m.length / f);
+  if (dn < 4096) return [];
+  const d = new Float32Array(dn);
+  for (let i = 0; i < dn; i++) {
+    let s = 0;
+    for (let k = 0; k < f; k++) s += m[i * f + k];
+    d[i] = s / f;
+  }
+  const N = 512, hopS = Math.max(1, Math.round(dsr * 0.02));
+  const nf = Math.floor((dn - N) / hopS) + 1;
+  if (nf < 8) return [];
+  const win = new Float32Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const fdb = new Float32Array(nf), fton = new Float32Array(nf), fhz = new Float32Array(nf);
+  const binHz = dsr / N;
+  const k0 = Math.max(1, Math.ceil(400 / binHz)), k1 = Math.min(N / 2 - 1, Math.floor(7000 / binHz));
+  for (let fi = 0; fi < nf; fi++) {
+    const st = fi * hopS;
+    let rms = 0;
+    for (let i = 0; i < N; i++) { const v = d[st + i] || 0; rms += v * v; re[i] = v * win[i]; im[i] = 0; }
+    fdb[fi] = 20 * Math.log10(Math.sqrt(rms / N) + 1e-9);
+    lsFFT(re, im);
+    let tot = 0, best = 0, bestK = k0;
+    for (let k = 1; k < N / 2; k++) {
+      const p = re[k] * re[k] + im[k] * im[k];
+      tot += p;
+      if (k >= k0 && k <= k1 && p > best) { best = p; bestK = k; }
+    }
+    fton[fi] = tot > 0 ? best / tot : 0;
+    fhz[fi] = bestK * binHz;
+  }
+  /* 本底 = 帧电平中位数；判据用「本底 + 10dB」，不用绝对电平，换音频也不用调参 */
+  const sd = Float32Array.from(fdb).sort();
+  const floor = sd[Math.floor(sd.length * 0.5)];
+  const dbOn = floor + LS_CH.dbUp;
+
+  const notes = [];
+  let nst = -1, nstz = -1;
+  const push = function (a, b) {                 /* a/b = 起止帧（含） */
+    const s = a * hopS / dsr, e = (b + 1) * hopS / dsr, dd = e - s;
+    if (dd < LS_CH.noteMin || dd > LS_CH.noteMax) return;
+    const hzs = [];
+    for (let z = a; z <= b; z++) hzs.push(fhz[z]);
+    hzs.sort(function (x, y) { return x - y; });
+    const med = hzs[Math.floor(hzs.length / 2)];
+    const lo = hzs[Math.floor(hzs.length * 0.1)], hi = hzs[Math.floor(hzs.length * 0.9)];
+    if (!med || (hi - lo) / med > LS_CH.stab) return;
+    notes.push({ s: s, e: e, d: dd, hz: med });
+  };
+  for (let fi = 0; fi < nf; fi++) {
+    const ok = fton[fi] >= LS_CH.ton && fdb[fi] >= dbOn;
+    if (ok) { if (nst < 0) { nst = fi; nstz = fi; } }
+    else if (nst >= 0) {
+      /* 迟滞延长：提示音尾巴渐弱，小起伏别把同一个音符切成两截 */
+      let e2 = fi - 1;
+      while (e2 + 1 < nf && fton[e2 + 1] >= 0.30 && fdb[e2 + 1] >= floor + 4) e2++;
+      push(nstz, e2);
+      nst = -1;
+    }
+  }
+  if (nst >= 0) push(nstz, nf - 1);
+  if (!notes.length) return [];
+
+  /* 音符 → 提示音：相邻音符间隔 ≤1.2s 算同一次（「叮—咚」两声是一次） */
+  const chs = [];
+  notes.forEach(function (o) {
+    const last = chs[chs.length - 1];
+    if (last && o.s - last.e <= LS_CH.gap) { last.e = o.e; last.notes.push(o); }
+    else chs.push({ s: o.s, e: o.e, notes: [o] });
+  });
+  chs.forEach(function (c) {
+    let a = 0, b = 0;
+    c.notes.forEach(function (o) { a += o.hz * o.d; b += o.d; });
+    c.hz = b > 0 ? a / b : 0;
+    c.t = Math.max(0, c.s - LS_CH.lead);       /* 边界往前留一点，别把提示音切掉 */
+  });
+  /* 只留「反复出现」的（同音高 ±15% 至少 3 次） */
+  return chs.filter(function (c) {
+    let n = 0;
+    chs.forEach(function (o) { if (Math.abs(o.hz - c.hz) <= c.hz * LS_CH.repTol) n++; });
+    return n >= LS_CH.rep;
+  });
+}
+
+/* 提示音 → 段边界。
+   有的录音每篇材料响两声：第一声在引导语前、第二声才进正文，两声只隔 20~35 秒
+   （武汉卷就是这种，10 篇共 16 声）。这种「挨得很近的两声」算同一篇，取前一声当边界。
+   做法：反复挑「间隔最小的那一对」拆掉后一声，直到段数降到目标 N 为止 ——
+   只在段数多于 N 时才合并，所以标准的 10 声录音一声都不会被动到。
+   从最小间隔开始配（不是从左到右），才不会被中段的一对带偏。 */
+function lsChimeBounds(chs, N) {
+  const list = chs.map(function (c) { return c.t; });
+  const want = N > 1 ? N : 1;
+  let guard = 0;
+  while (list.length > want && guard++ < 500) {
+    let bi = -1, bg = Infinity;
+    for (let i = 0; i + 1 < list.length; i++) {
+      const g = list[i + 1] - list[i];
+      if (g <= LS_CH.pairGap && g < bg) { bg = g; bi = i; }
+    }
+    if (bi < 0) break;
+    list.splice(bi + 1, 1);
+  }
+  return list;
+}
+
+/* 边界 → 段：段首＝提示音起点（前面那一段中文开场白／试音整块丢掉，
+   老师要的就是「第一段从 TEXT1 开始」）；段尾＝下一次提示音起点。
+   最后一段收在「最后一次长停顿」前，免得把片尾几十秒静音也带上。 */
+function lsSegsFromChimes(bnd, T) {
+  if (!bnd || bnd.length < 2) return [];
+  const segs = [];
+  for (let i = 0; i < bnd.length; i++) {
+    const s = bnd[i];
+    const e = (i + 1 < bnd.length) ? bnd[i + 1] : T;
+    if (e - s < 1) continue;
+    segs.push({ start: s, end: e });
+  }
+  if (segs.length) {
+    const last = segs[segs.length - 1];
+    let cut = 0;
+    (AUD.sil || []).forEach(function (x) {
+      if (x.d < 15 || x.s <= last.start + 30 || x.s >= last.end - 0.5) return;
+      if (!cut || x.s < cut) cut = x.s;
+    });
+    if (cut > last.start + 30) last.end = cut;
+  }
+  return segs;
+}
+
+/* =========================================================
    二、切分：试卷时间戳优先，否则提示音锚点，再退回静音检测
    ========================================================= */
 function lsAutoSplit(verbose) {
@@ -7831,8 +8010,24 @@ function lsAutoSplit(verbose) {
      听力稿只有 1 个单元（没有 Text 标记）时按 10 段算，不能按 1 段。 */
   const N = AUD.wantN || (AUD.units.length > 1 ? AUD.units.length : 10);
 
-  /* —— 通道②：播音员提示音定位（每段起点＝「Text N」那一句） —— */
+  /* —— 通道②：播音提示音「噔」定位（最稳，优先用）——
+     每段起点＝提示音起点＝「TEXT N」那句；识别不到才退回下面的停顿法。 */
   AUD.mode = 'silence';
+  const chs = lsChimes();
+  if (chs.length >= 4) {
+    const bnd = lsChimeBounds(chs, N);
+    const csg = lsSegsFromChimes(bnd, T);
+    if (csg.length >= 2) {
+      AUD.mode = 'chime';
+      AUD.segs = csg;
+      if (N > 1 && csg.length > N) lsTrimTo(N);
+      lsPair();
+      lsRenderList(); lsDrawBase();
+      return;
+    }
+  }
+
+  /* —— 通道③：播音员提示音定位（每段起点＝「Text N」那一句） —— */
   const anch = lsFindAnchors(AUD.sil, T);
   const asg = lsSegsFromAnchors(anch, T);
   if (asg.length >= Math.max(2, N - 1)) {
@@ -7844,7 +8039,7 @@ function lsAutoSplit(verbose) {
     return;
   }
 
-  /* —— 通道③：退回到声学静音检测 —— */
+  /* —— 通道④：退回到声学静音检测 —— */
   const cands = AUD.sil.filter(function (x) {
     return x.d >= AUD.gapMin && x.s > 0.25 && x.e < T - 0.25;
   });
@@ -8577,7 +8772,10 @@ async function lsLoadPaper(file) {
     const parts = [units.length + ' 段'];
     if (qn) parts.push(qn + ' 题');
     if (sn) parts.push('原文 ' + sn + ' 行');
-    if (AUD.segs.length) parts.push(AUD.mode === 'stamp' ? '已按时间戳精确切分' : '已按停顿切成 ' + AUD.segs.length + ' 段');
+    if (AUD.segs.length) parts.push(AUD.mode === 'stamp' ? '已按时间戳精确切分'
+      : (AUD.mode === 'chime'
+        ? '已按播音提示音切成 ' + AUD.segs.length + ' 段'
+        : '已按停顿切成 ' + AUD.segs.length + ' 段'));
     lsMsg('试卷已解析：' + parts.join('　') + (lsPaperNote ? '　⚠ ' + lsPaperNote : ''));
   } catch (e) {
     lsMsg('试卷读取失败：' + ((e && e.message) || e) + '　（图片请先另存为 Word 或转成 txt）');
