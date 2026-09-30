@@ -182,6 +182,8 @@ input,select,textarea{font-family:inherit;color:inherit}
   display:none;
 }
 body.show-zh .para-zh{display:block}
+/* 2026-09-29 写作题（应用文/续写）范文与卷面材料：段首空两格（书写排版习惯，学生照着抄格式） */
+.para.indent2 .para-en,.para.indent2 .para-zh{text-indent:2em}
 
 /* 句子级高亮 */
 .s{border-radius:3px;transition:background .25s, box-shadow .25s;padding:1px 0}
@@ -2040,6 +2042,20 @@ async function autoRescueMissing(transcript, data) {
       }
     }
   } catch (e) { console.warn('[题号盘点] 失败：' + e.message); }
+  /* 第三级盘点：段落完整性（2026-09-30）。题都在，但短文只转出前一两段 ——
+     页面上就是「共 1 段」，后半篇挖空在原文里找不到。逐号核对后单独补转录。 */
+  try {
+    const bigKinds3 = ['cloze', 'grammar'].filter(function (k) { return expected[k]; });
+    for (let j3 = 0; j3 < bigKinds3.length; j3++) {
+      const k3 = bigKinds3[j3];
+      const seg3 = extractKindSegment(transcript, k3) || transcript;
+      const n3 = await rescueMissingParas(k3, seg3, data.passages);
+      if (n3 > 0) {
+        toast(kindName(k3) + '短文缺段，已自动补转录（补回 ' + n3 + ' 个空的段落）', 'ok', 6000);
+        try { window.__rescuedKinds = (window.__rescuedKinds || []).concat([kindName(k3) + '缺段' + n3 + '空']); } catch (e) {}
+      }
+    }
+  } catch (e) { console.warn('[段落盘点] 失败：' + e.message); }
   if (qFixed.length) {
     toast('已自动补回缺题：' + qFixed.join('、'), 'ok', 6000);
     try { window.__rescuedKinds = (window.__rescuedKinds || []).concat(qFixed); } catch (e) {}
@@ -2609,6 +2625,80 @@ async function rescueMissingQuestions(kind, seg, passages) {
     passages.push(p0);
   }
   return fresh.length;
+}
+
+/* =========================================================
+   段落完整性盘点（2026-09-30）
+   实测（浪浪完形篇）：15 题全解析出来了，但 paragraphs 只有 1 段 ——
+   完形按 4 题一份拆块解析，每份各自转录短文，有的份偷懒/截断只给了短文前半，
+   uniqParas 合并后短文后半（挖空 46~55）整段消失，页面就是「共 1 段」。
+   以前只有题型盘点 / 题号盘点两级，段落缺半截没有任何兜底。
+   第三级：逐号核对每个挖空是否能在 paragraphs 里找到，
+   缺了就拿转录原文把短文单独重新转录一遍（只转录段落，输出短，必不截断）。
+   ========================================================= */
+/* 数出一段文本里出现过的挖空号（______41______ / ___46___ / ______ (56) 都算） */
+function blankNosIn(text) {
+  const t = normalizeQText(String(text || ''));
+  const set = {};
+  let m; const re = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?|[（(]?\s*(\d{1,2})\s*[)）]?\s*_{2,}/g;
+  while ((m = re.exec(t))) {
+    const n = Number(m[1] || m[2]);
+    if (n >= 21 && n <= 75) set[n] = 1;
+  }
+  return set;
+}
+/* 只补段落：把短文从转录原文里单独重新转录成 paragraphs（配中文翻译） */
+async function rescueMissingParas(kind, seg, passages) {
+  let target = null;
+  (passages || []).forEach(function (p) { if (!target && kindOf(p) === kind) target = p; });
+  if (!target) return 0;
+  const nos = (target.questions || []).map(function (q) { return Number(q.no); })
+    .filter(function (n) { return n >= 21 && n <= 75; });
+  if (nos.length < 5) return 0;
+  const parasText = (target.paragraphs || []).map(function (x) { return String(x.en || ''); }).join('\n');
+  const have = blankNosIn(parasText);
+  const miss = nos.filter(function (n) { return !have[n]; });
+  if (!miss.length) return 0;
+  /* 挖空没带号（纯 ______）时没法逐号核对：空的总数不少就当完整，别瞎折腾 */
+  const plainHoles = (parasText.match(/_{2,}/g) || []).length;
+  if (!Object.keys(have).length && plainHoles >= nos.length) return 0;
+  /* 短文原文 = 题行之前的部分；题行认不出来就整段给它（提示词里说明只要短文） */
+  const t = normalizeQText(String(seg || ''));
+  const marks = questionMarksOf(t);
+  const body = marks.length ? t.slice(0, marks[0].at).trim() : t.trim();
+  if (body.length < 120) return 0;
+  const bodyHaves = blankNosIn(body);
+  const hitMiss = miss.filter(function (n) { return bodyHaves[n]; });
+  /* 转录原文里根本没有缺的那几个空 = 识图阶段就把文字丢了，补不了 */
+  if (!hitMiss.length) { console.warn('[段落盘点] 转录原文里没有挖空 ' + miss.join('、') + ' 的文字，无法补段落'); return 0; }
+  setRunLabel(kindName(kind) + '短文只转出了 ' + (target.paragraphs || []).length + ' 段，正在单独补转录…');
+  const prompt = '下面是一篇' + kindName(kind) + '的转录文本（含短文和题目列表）。'
+    + '**只需把短文部分按自然段完整转录成 JSON，不要解析题目**：\n'
+    + '{"paragraphs":[{"en":"第1段英文原文","zh":"该段中文翻译"}]}\n'
+    + '要求：① 自然段一段不落，原文有几段就给几段（跨栏 / 跨页的也要接上）；'
+    + '② en 逐字照抄转录文本里的短文，不许把挖空填上、不许改写增删；'
+    + '③ 挖空标记（如 ______41______、___46___）原样保留，一个都不能丢；'
+    + '④ 每段配中文翻译。只输出 JSON，不要输出其他文字。\n\n【转录文本】\n' + body;
+  let paras = [];
+  try {
+    const raw = await aiCallSmart('parse', [{ role: 'user', content: prompt }], parseBudget(body));
+    const d = jsonFromText(raw);
+    paras = (d && d.paragraphs) || (d && d.passages && d.passages[0] && d.passages[0].paragraphs) || [];
+  } catch (e) { console.warn('[段落盘点] 补转录失败：' + e.message); return 0; }
+  if (!paras.length) return 0;
+  const np = normalizePassage({ kind: kind, label: target.label, paragraphs: paras });
+  if (!np.paragraphs.length) return 0;
+  const newHaves = blankNosIn(np.paragraphs.map(function (x) { return String(x.en || ''); }).join('\n'));
+  const oldGot = nos.filter(function (n) { return have[n]; }).length;
+  const newGot = nos.filter(function (n) { return newHaves[n]; }).length;
+  /* 新转录必须比原来的更全才替换，防止越补越少 */
+  if (newGot <= oldGot) {
+    console.warn('[段落盘点] 补转录没更全（原 ' + oldGot + '/' + nos.length + '，新 ' + newGot + '/' + nos.length + '），放弃替换');
+    return 0;
+  }
+  target.paragraphs = np.paragraphs;
+  console.log('[段落盘点] ' + kindName(kind) + ' 短文已补全：挖空覆盖 ' + oldGot + ' → ' + newGot + ' / ' + nos.length);
+  return newGot - oldGot;
 }
 
 /* 只对「完形 / 语法填空」这类一道大题装很多空、输出特别长的块做细分 */
@@ -3462,16 +3552,46 @@ function mergeIntoCurrent(data) {
   save();
 }
 
+/* 2026-09-29 剥掉段首的印刷段落序号（「1 Winter doesn't…」→「Winter doesn't…」）：
+   试卷版面每段前的 1、2、3… 只是排版序号，混进正文里很碍眼。
+   判据与转写层的段号识别一致：行首 1~2 位数字 + 空白 + 英文字母/引号 ——
+   题号后面是「.」或「______」匹配不上，4 位年份（1986 was…）超出 1~2 位也匹配不上。
+   只处理英文段：中文正文「3 天后，他……」是正常写法，不能剥。 */
+function stripParaNo(t) {
+  return String(t).replace(/^\s*\d{1,2}\s+(?=[A-Za-z"'\u2018\u201c])/, '').trim();
+}
+
+/* 2026-09-29 应用文范文常被 AI 塞成一项（标题+三段之间用换行分隔），
+   HTML 不认 \n，页面上就连成一大片，「三段看不出来是三段」。
+   这里把段内换行拆成独立段落；zh 同步按行拆，
+   两边行数对不上时（少见），zh 整条挂到第一段。 */
+function splitInlineParas(list) {
+  const out = [];
+  (list || []).forEach((x) => {
+    const enLines = String(x.en || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
+    if (enLines.length <= 1) { out.push({ en: enLines[0] || '', zh: String(x.zh || '').trim() }); return; }
+    const zhLines = String(x.zh || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
+    enLines.forEach((en, i) => {
+      out.push({
+        en: en,
+        zh: (zhLines.length === enLines.length) ? zhLines[i] : (i === 0 ? String(x.zh || '').trim() : '')
+      });
+    });
+  });
+  return out.filter((x) => x.en);
+}
+
 function normalizePassage(p) {
   const raw = {
     kind: p.kind || '',
     label: p.label || 'A',
     genre: p.genre || '',
     topic: p.topic || '',
-    paragraphs: (p.paragraphs || []).map((x) => ({
+    /* 先把段内换行拆成独立段落，再逐段剥段首序号（AI 可能把多段连在一个字段里） */
+    paragraphs: splitInlineParas((p.paragraphs || []).map((x) => ({
       en: String(x.en || '').trim(),
       zh: String(x.zh || '').trim()
-    })).filter((x) => x.en),
+    }))).map((x) => ({ en: stripParaNo(x.en), zh: x.zh })).filter((x) => x.en),
     questions: (p.questions || []).map((q) => ({
       no: q.no,
       stem: String(q.stem || '').trim(),
@@ -3511,10 +3631,10 @@ function normalizePassage(p) {
       role: String((s && s.role) || '').trim(), content: String((s && s.content) || '').trim(),
       pattern: String((s && s.pattern) || '').trim(), tip: String((s && s.tip) || '').trim()
     })).filter((s) => s.content || s.role || s.pattern),
-    sample: (p.sample || []).map((x) => ({                          /* 参考范文（逐段 英+中） */
+    sample: splitInlineParas((p.sample || []).map((x) => ({         /* 参考范文（逐段 英+中）；段内换行拆成多段 */
       en: String(x.en || '').trim(),
       zh: String(x.zh || '').trim()
-    })).filter((x) => x.en),
+    }))),
     sampleSource: (p.sampleSource === 'paper' || p.sampleSource === 'ai') ? p.sampleSource : ''   /* paper=卷面自带，ai=模型写的 */
   };
   /* 单选/完形/七选五的答案是大写字母；语法填空的答案是一个词，
@@ -3815,8 +3935,8 @@ function restorePaneTops(tops) {
   }
 }
 
-/* 段落块（句子级 span） */
-function parasHtml(p, evPartsForPara) {
+/* 段落块（句子级 span）；indent=true 时段首空两格（写作题的范文/卷面材料用） */
+function parasHtml(p, evPartsForPara, indent) {
   return p.paragraphs.map((para, pi) => {
     const sents = splitSentences(para.en);
     const html = sents.map((s, si) => {
@@ -3826,7 +3946,7 @@ function parasHtml(p, evPartsForPara) {
         + esc(s) + '</span> ';
     }).join('');
     return ''
-      + '<div class="para" data-para="' + pi + '">'
+      + '<div class="para' + (indent ? ' indent2' : '') + '" data-para="' + pi + '">'
       + '  <span class="para-tag">第 ' + (pi + 1) + ' 段</span>'
       + '  <div class="para-en" data-para="' + pi + '" title="双击可编辑">' + html + '</div>'
       + (para.zh ? '<div class="para-zh">' + esc(para.zh) + '</div>' : '')
@@ -3938,14 +4058,14 @@ function writeLeftHtml(p) {
 
   if (p.paragraphs.length) {
     html += '<div class="wsep">' + (isCont ? '读后续写 · 卷面原文' : '题目材料（卷面原文）') + '</div>'
-          + parasHtml(p, null);   /* 写作题没有 evidence，不做高亮 */
+          + parasHtml(p, null, true);   /* 写作题没有 evidence，不做高亮；段首空两格 */
   }
   if (hasSample) {
     const tag = p.sampleSource === 'ai'
       ? '<span class="wsample-tag">AI 范文 · 非官方答案</span>'
       : (p.sampleSource === 'paper' ? '<span class="wsample-tag paper">卷面参考答案</span>' : '');
     html += '<div class="wsep">参考范文' + tag + '</div>'
-          + parasHtml({ paragraphs: p.sample, questions: [] }, null);
+          + parasHtml({ paragraphs: p.sample, questions: [] }, null, true);
   }
   if (!p.paragraphs.length && !hasSample) html += emptyWrite();
   return html;
