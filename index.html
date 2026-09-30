@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '7288555ed2';
+  var APP_VER = 'fee5cd1d30';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1070,6 +1070,7 @@ body.focus #btnExitFs{display:inline-flex}
         <button class="ls-b sm" id="lsSetE" title="把当前播放位置设为这段的终点">⇥ 设为终点</button>
         <button class="ls-b sm" id="lsDelS" title="把这一段整段删掉（后面每一段自动往前顶）">🗑 删掉本段</button>
         <button class="ls-b sm" id="lsSplitS" title="在当前播放位置把这一段切成两段">✂ 在此处切开</button>
+        <button class="ls-b sm" id="lsCacheDel" title="清掉这台电脑记住的音频文件（课件、切分方案都不受影响，只是下次打开要重新选一次音频）">🧹 清本机音频</button>
       </div>
     </div>
 
@@ -6173,7 +6174,7 @@ async function openLesson(id) {
        讲解内容已经 commitResult 装好了，点「✕ 返回讲解」随时能回去接着讲。 */
     if (it.data.progress && it.data.progress.focus === 'listen' && AUD.cloud) {
       $('#modal').classList.remove('on');
-      toast('已打开听力课件（' + AUD.segs.length + ' 段）—— 点「＋ 上传音频」选同一个音频就能听', 'ok');
+      toast('已打开听力课件（' + AUD.segs.length + ' 段）', 'ok');
       lsOpen();
       return;
     }
@@ -6767,14 +6768,31 @@ function lsMsg(s) { const e = $('#lsHint'); if (e) e.textContent = s; }
 function lsOpen() {
   $('#lsRoot').classList.add('on');
   document.body.style.overflow = 'hidden';
-  /* 从课件库打开的：先把存好的切分和内容摆出来，等老师选音频 */
+  /* 从课件库打开的：先把存好的切分和内容摆出来 */
   if (AUD.cloud && !AUD.segs.length) lsApplyCloud();
-  if (AUD.cloud && !AUD.buf) {
-    lsMsg('这份课件已经存好听力切分（' + AUD.segs.length + ' 段）—— 点「＋ 上传音频」选 '
-      + (AUD.cloud.name ? '「' + AUD.cloud.name + '」' : '同一个听力音频')
-      + '，选完立刻就能听，不用重新切');
-  }
+  /* 音频不跟着课件上云（几十 MB 传上去太慢）。
+     先翻本机缓存 —— 这台电脑传过一次就直接接上；找不到才请老师选一次。 */
+  if (AUD.cloud && !AUD.buf) lsAutoAudio();
   setTimeout(lsDrawBase, 30);
+}
+
+/* 打开课件时尝试自动接上音频：本机缓存有就直接用，没有才提示手动选 */
+async function lsAutoAudio() {
+  const c = AUD.cloud;
+  if (!c) return;
+  const n = AUD.segs.length;
+  lsMsg('这份课件已存好听力切分（' + n + ' 段）—— 正在找本机上次用的音频…');
+  let rec = null;
+  try { rec = await lscGet(c.name, c.dur); } catch (e) { rec = null; }
+  const f = lsCacheFile(rec, c.name);
+  if (f) {
+    lsMsg('找到本机上次用的「' + (rec.name || c.name) + '」—— 正在自动载入，稍等几秒…');
+    await lsLoadAudio(f);
+    return;
+  }
+  lsMsg('这份课件已存好听力切分（' + n + ' 段）—— 点「＋ 上传音频」选 '
+    + (c.name ? '「' + c.name + '」' : '同一个听力音频')
+    + '，选完立刻就能听，不用重新切；这台电脑选过一次之后就再也不用选了');
 }
 function lsClose() {
   lsStopAll();
@@ -6840,6 +6858,120 @@ function lsPick(accept, cb) {
   inp.click();
 }
 
+/* ---------- 本机音频缓存（IndexedDB）
+   音频几十 MB，不跟着课件上云。但同一台电脑上传过一次，就把文件留一份在本机，
+   下次打开这份课件直接从本地取出来接上 —— 老师不用再选一次文件。
+   只存本机、不上传：换一台电脑（比如教室那台）第一次仍要选一次 U 盘里的音频。 */
+const LSC_DB = 'ls-audio-cache';
+const LSC_STORE = 'audio';
+let lscDb = null;
+function lscOpen() {
+  if (lscDb) return Promise.resolve(lscDb);
+  return new Promise(function (res) {
+    let rq;
+    try { rq = indexedDB.open(LSC_DB, 1); } catch (e) { return res(null); }
+    rq.onupgradeneeded = function () {
+      const db = rq.result;
+      if (!db.objectStoreNames.contains(LSC_STORE)) {
+        db.createObjectStore(LSC_STORE, { keyPath: 'key' });
+      }
+    };
+    rq.onsuccess = function () { lscDb = rq.result; res(lscDb); };
+    rq.onerror = function () { res(null); };
+  });
+}
+/* 键 = 文件名 + 时长取整 —— 和课件里存的 name/dur 对得上才算同一个音频 */
+function lscKey(name, dur) {
+  return String(name || '').toLowerCase() + '@' + Math.round(dur || 0);
+}
+function lscPut(name, dur, file) {
+  return lscOpen().then(function (db) {
+    if (!db || !name) return false;
+    return new Promise(function (res) {
+      try {
+        const tx = db.transaction(LSC_STORE, 'readwrite');
+        tx.objectStore(LSC_STORE).put({
+          key: lscKey(name, dur), name: name, dur: dur, blob: file, at: Date.now()
+        });
+        tx.oncomplete = function () { res(true); };
+        tx.onerror = function () { res(false); };
+      } catch (e) { res(false); }
+    });
+  }).catch(function () { return false; });
+}
+/* 查找：文件名对得上、时长差 ≤3 秒就算同一个音频（和「选文件」那套判据一致）。
+   分两个事务：第一个只用 openKeyCursor 扫主键（不会把几十 MB 的 blob 拉进内存），
+   第二个拿命中的那个主键取整条记录 —— 游标走完事务就提交了，同一个事务里再取会报
+   TransactionInactiveError。 */
+function lscGet(name, dur) {
+  return lscOpen().then(function (db) {
+    if (!db || !name) return null;
+    return new Promise(function (res) {
+      const want = String(name).toLowerCase() + '@';
+      let hit = null;
+      try {
+        const tx = db.transaction(LSC_STORE, 'readonly');
+        const cur = tx.objectStore(LSC_STORE).openKeyCursor();
+        cur.onsuccess = function () {
+          const c = cur.result;
+          if (c) {
+            const k = String(c.key);
+            if (k.indexOf(want) === 0) {
+              const d = parseFloat(k.slice(want.length));
+              if (!dur || !d || Math.abs(d - dur) <= 3) hit = c.key;
+            }
+            c.continue();
+            return;
+          }
+          res(hit);
+        };
+        cur.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  }).then(function (hit) {
+    if (hit == null) return null;
+    return lscOpen().then(function (db) {
+      return new Promise(function (res) {
+        try {
+          const tx = db.transaction(LSC_STORE, 'readonly');
+          const g = tx.objectStore(LSC_STORE).get(hit);
+          g.onsuccess = function () { res(g.result || null); };
+          g.onerror = function () { res(null); };
+        } catch (e) { res(null); }
+      });
+    });
+  }).catch(function () { return null; });
+}
+/* 从缓存记录还原出一个能给 lsLoadAudio 用的 File（Blob 没有 name 就补一个） */
+function lsCacheFile(rec, fallback) {
+  const b = rec && rec.blob;
+  if (!b) return null;
+  if (b.name) return b;
+  try {
+    return new File([b], rec.name || fallback || 'audio.mp3', { type: (b && b.type) || 'audio/mpeg' });
+  } catch (e) { return b; }
+}
+/* 清掉本机记住的音频：课件、切分方案、题目都在云端，不受影响。
+   只是下次打开课件要重新选一次音频文件（再选一次就会重新记住）。 */
+async function lsCacheClear() {
+  if (!confirm('清掉这台电脑记住的听力音频？\n\n'
+    + '· 课件、切分方案、题目都不受影响（这些在云端）\n'
+    + '· 只是下次打开课件要重新选一次音频文件\n\n'
+    + '继续吗？')) return;
+  const db = await lscOpen();
+  if (!db) { lsMsg('本机缓存用不了（可能是隐私模式），没什么可清的'); return; }
+  const ok = await new Promise(function (res) {
+    try {
+      const tx = db.transaction(LSC_STORE, 'readwrite');
+      tx.objectStore(LSC_STORE).clear();
+      tx.oncomplete = function () { res(true); };
+      tx.onerror = function () { res(false); };
+    } catch (e) { res(false); }
+  });
+  lsMsg(ok ? '已清掉本机记住的音频 —— 下次打开课件要重新选一次音频文件'
+    : '清理失败，可以到浏览器设置里清掉本站数据');
+}
+
 /* =========================================================
    一、加载音频 → 解码 → 包络 → 静音检测
    ========================================================= */
@@ -6862,6 +6994,15 @@ async function lsLoadAudio(file) {
     AUD.sr = buf.sampleRate;
     AUD.dur = buf.duration;
     AUD.peaks = null; AUD.pw = 0;
+
+    /* 本机留一份：下次打开这份课件直接自动接上，不用老师再选一次文件。
+       存不进（配额满 / 隐私模式）也不影响这次使用，静默跳过。 */
+    lscPut(AUD.name, AUD.dur, file);
+    try {
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(function () {});
+      }
+    } catch (e) {}
 
     /* 混单声道，只用于分析（播放仍走原始 stereo buffer） */
     const ch = buf.numberOfChannels, n = buf.length;
@@ -7916,12 +8057,14 @@ async function lsSaveLesson() {
     };
     /* 同名已存过就直接覆盖，别再堆一条 */
     const dup = await findLessonByTitle(title);
+    const tail = '（' + AUD.segs.length + ' 段）—— 这台电脑再打开会自动接上音频，不用再选；'
+      + '教室那台第一次要选一次同一个文件（U 盘带着就行，之后也不用）';
     if (dup) {
       await lessonUpdate(dup.id, title, data);
-      lsMsg('已覆盖课件《' + title + '》—— 到教室登录后打开它，选一次同一个音频就能听');
+      lsMsg('已覆盖课件《' + title + '》' + tail);
     } else {
       await lessonSave(title, data);
-      lsMsg('已存到课件库：《' + title + '》（' + AUD.segs.length + ' 段）—— 到教室登录后打开它，选一次同一个音频就能听');
+      lsMsg('已存到课件库：《' + title + '》' + tail);
     }
     await refreshLessons();
   } catch (e) {
@@ -8217,6 +8360,7 @@ function lsBind() {
   bind2('#lsSetE', function () { lsSetEdge('e'); });
   bind2('#lsDelS', lsDelSeg);
   bind2('#lsSplitS', lsSplitSeg);
+  bind2('#lsCacheDel', lsCacheClear);
 
   /* 切分参数面板：默认收起，需要时再展开 */
   $('#lsAdvBtn').onclick = function () {
