@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '02514ffb2a';
+  var APP_VER = '0bceb85790';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1186,7 +1186,8 @@ bitsperframe:             %d
 const AUTH_LS = 'reading_locator_user';
 const TEACHERS = [
   '王淑芬', '鲍芳', '陈晶晶', '范智能', '付雯静', '胡凤凰', '姜明翠',
-  '李海峰', '李悦', '王浪', '熊婧', '叶红', '曾淑琼', '张莉', '张玲俐'
+  '李海峰', '李悦', '王浪', '熊婧', '叶红', '曾淑琼', '张莉', '张玲俐',
+  '任莉娟'
 ];
 const TEACHER_MAP = {};
 TEACHERS.forEach(function (n) { TEACHER_MAP[n] = n; });
@@ -1760,9 +1761,50 @@ function groupByKind(passages) {
   return out;
 }
 
+/* 同一篇阅读被吐成两条时合并（2026-10-02 新增）：
+   阅读 A/B/C/D 本来各篇独立、不参与 groupByKind 的合并，可模型偶尔会把同一篇
+   吐成两条 —— 一条正篇（带题）、一条空壳（0 题），顶部就冒出两个「阅读 A」、
+   两个「阅读 B」（一个 4 题、一个 0 题）。这里按 label 把同名阅读合成一条：
+   段落依序拼接去重、题目按题号合并去重；两条都带题时不动（怕把两篇真文章揉一起）。
+   label 缺省时 normalizePassage 会补成 'A'，所以「没标 label 的碎片」也会落到这里。 */
+function mergeSameLabelReading(passages) {
+  const out = [];
+  const at = {};   // 归一化 label（去掉「阅读」前缀和空格）→ out 里的下标
+  passages.forEach(function (p) {
+    if (kindOf(p) !== 'reading') { out.push(p); return; }
+    const key = String(p.label || '')
+      .replace(/[\s\u3000\u00a0]+/g, '').replace(/^阅读/, '').toUpperCase();
+    const qs = p.questions || [];
+    if (!key || at[key] === undefined) {
+      if (key) at[key] = out.length;
+      out.push(p);
+      return;
+    }
+    const dst = out[at[key]];
+    /* 两条都带题目 → 各自保留（同 label 又都是真篇目，不敢乱揉） */
+    if (qs.length && (dst.questions || []).length) { out.push(p); return; }
+    dst.paragraphs = uniqParas((dst.paragraphs || []).concat(p.paragraphs || []));
+    dst.questions = uniqQuestions((dst.questions || []).concat(qs)
+      .sort(function (a, b) { return (Number(a.no) || 0) - (Number(b.no) || 0); }));
+    if (!dst.background) dst.background = p.background || '';
+    if (!dst.topic) dst.topic = p.topic || '';
+    if (!dst.genre) dst.genre = p.genre || '';
+    if (!(dst.expressions || []).length) dst.expressions = p.expressions || [];
+  });
+  const before = passages.length;
+  const keep = out.filter(function (p) {
+    /* 空壳（没段落也没题目）直接丢掉，别再占一个「0 题」标签 */
+    return kindOf(p) !== 'reading' || (p.paragraphs || []).length || (p.questions || []).length;
+  });
+  if (keep.length < before) console.log('[阅读合并] ' + before + ' 篇 → ' + keep.length + ' 篇（合并了同名阅读碎片）');
+  return keep;
+}
+
 /* 前端补正：把被拆碎的同类文章合并回去，主题不足 2 篇时不做任何改动 */
 function mergeSameKind(passages) {
   if (!passages || passages.length < 2) return passages || [];
+  /* 先做阅读的同名合并 —— 它独立于下面的「同题型合并」（阅读本来就不合并） */
+  passages = mergeSameLabelReading(passages);
   const keys = {};
   passages.forEach(function (p) { const k = kindOf(p); keys[k] = (keys[k] || 0) + 1; });
   const dup = Object.keys(keys).some(function (k) { return k !== 'reading' && keys[k] > 1; });
