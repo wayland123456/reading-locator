@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '3a3813771a';
+  var APP_VER = '72abea4fe8';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -754,14 +754,20 @@ body.focus .topbar,body.focus .subbar{display:none}
 body.focus .main{height:100vh}
 body.focus #emptyState{height:100vh}
 
-/* ---------- 记号笔：整页画布 + 右下角浮动工具条 ---------- */
+/* ---------- 记号笔：整页画布 + 右侧竖排浮动工具条 ---------- */
 #inkCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:60;pointer-events:none}
 body.pen-mode #inkCanvas{pointer-events:auto;cursor:crosshair;touch-action:none}
 body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
+/* 2026-10-03 改：原来横在右下角，投影时压住题目正文和题目导航。
+   改成**竖排贴在最右侧中间**（right 贴边、top:50% 垂直居中）——
+   右侧本来就是页边留白，竖着站不挡字；90% 的讲解动作也不用再横向找按钮。
+   flex-direction:column 让所有子项依次向下排；gap 稍微收一点，竖着站更紧凑。 */
 .pen-bar{
-  position:fixed;right:16px;bottom:78px;z-index:70;display:flex;align-items:center;gap:5px;  /* 抬到题目导航上面，别打架 */
-  background:#fff;border:1px solid var(--border);border-radius:14px;padding:6px 8px;
+  position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:70;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:#fff;border:1px solid var(--border);border-radius:16px;padding:8px 6px;
   box-shadow:0 10px 26px rgba(20,30,50,.16);
+  max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;
   /* 2026-10-01：原来 opacity 只有 .5，而且只靠 :hover 才变不透明 ——
      触摸屏（希沃电子屏）根本没有 hover，整条一直半透明，白底上看着就像「无故消失」。
      默认提到 .86；触摸设备直接给 1。 */
@@ -775,26 +781,37 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
   0%,100%{box-shadow:0 10px 26px rgba(20,30,50,.16)}
   35%{box-shadow:0 0 0 7px rgba(59,130,246,.4)}
 }
-/* 拖动手柄：挡住内容时可以整条挪开；touch-action:none 让触摸屏拖动不会顺带滚页面 */
+/* 拖动手柄：挡住内容时可以整条挪开；touch-action:none 让触摸屏拖动不会顺带滚页面。
+   竖排后手柄在**顶上**（原来是左边），高度改成宽度、字距沿纵向排开。 */
 .pen-bar .grip{
   cursor:move;display:inline-flex;align-items:center;justify-content:center;
-  min-width:14px;height:24px;margin-right:3px;padding:0 1px;
+  width:24px;min-height:14px;margin-bottom:3px;padding:1px 0;
   color:var(--text-3,#9aa4b2);font-size:12px;line-height:1;letter-spacing:-1px;
+  writing-mode:vertical-rl;                    /* 「⋮⋮」两个字横排会撑宽，竖过来站得住 */
   user-select:none;-webkit-user-select:none;touch-action:none;opacity:.8;
 }
 .pen-bar .grip:hover{opacity:1;color:var(--brand,#4f46e5)}
 .pen-bar.dragging{opacity:1;transition:none;box-shadow:0 16px 38px rgba(20,30,50,.32)}
-/* 平时只显示图标（窄，少挡内容），鼠标移上去或正在用笔时才展开文字 */
-.pen-bar .lbl{display:none;margin-left:4px}
+/* 平时只显示图标（窄，少挡内容），鼠标移上去或正在用笔时才展开文字。
+   竖排后「展开文字」要往**左**长，不然会顶出屏幕右缘。 */
+.pen-bar .lbl{display:none;margin-left:0;margin-right:4px}
 .pen-bar:hover .lbl,.pen-bar.busy .lbl{display:inline}
+/* 竖排时按钮：整排撑满工具条宽度，「图标 + 文字」朝左排 ——
+   展开文字（hover）时向左延伸，工具条右缘贴着的边不动，位置不跳。 */
 .pen-bar .pb{
   display:inline-flex;align-items:center;gap:4px;font-size:.78rem;font-weight:700;color:var(--text-2);
   background:var(--panel-2);border:1px solid var(--border);border-radius:9px;padding:6px 10px;
   cursor:pointer;font-family:inherit;transition:.14s;white-space:nowrap;
+  flex-direction:row-reverse;justify-content:flex-start;
+  width:100%;box-sizing:border-box;
 }
 .pen-bar .pb:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .pen-bar .pb.on{background:var(--primary);border-color:var(--primary);color:#fff}
-.pen-bar .sep{width:1px;height:20px;background:var(--border);margin:0 3px}
+.pen-bar .pb:disabled{opacity:.42;cursor:default}
+.pen-bar .pb:disabled:hover{border-color:var(--border);color:var(--text-2);background:var(--panel-2)}
+/* 分隔线：横排是竖线，竖排要改成横线 */
+.pen-bar .sep{width:20px;height:1px;background:var(--border);margin:3px 0}
+/* 颜色圆点：竖排时三个点并成一列，各自贴中间 */
 .pen-bar .dot{
   width:19px;height:19px;border-radius:50%;border:2px solid #fff;
   box-shadow:0 0 0 1px var(--border);cursor:pointer;padding:0;transition:.14s;
@@ -804,10 +821,11 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 .pen-bar .dot[data-ink-color="red"]{background:#e23b3b}
 .pen-bar .dot[data-ink-color="blue"]{background:#2b5fa8}
 .pen-bar .dot[data-ink-color="yellow"]{background:#ffd640}
-/* 整页缩放读数：点一下复位 100% */
+/* 整页缩放读数：点一下复位 100%。
+   竖排后这一格和按钮同宽（撑满工具条），数字居中 —— 横排时那个 min-width:62px 会顶宽整条。 */
 .pen-bar .zoom-pct{
   font-family:inherit;font-size:.78rem;font-weight:800;color:var(--text-2);
-  min-width:62px;text-align:center;padding:6px 7px;border-radius:9px;
+  width:100%;box-sizing:border-box;text-align:center;padding:6px 7px;border-radius:9px;
   background:var(--panel-2);border:1px solid var(--border);cursor:pointer;
   font-variant-numeric:tabular-nums;white-space:nowrap;transition:.14s;
 }
@@ -816,6 +834,10 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 #btnExitFs{display:none}
 body.focus #btnExitFs{display:inline-flex}
 
+/* 听力工作台是全屏的（z-index 70，和工具条同级）。
+   工具条改到右侧垂直居中后，正好会压在听力面板右侧的波形区和试题栏上 ——
+   进听力时先收起来，退出再放回来（原来的右下角位置在听力下也是这个待遇）。 */
+body.ls-open .pen-bar{display:none}
 /* ---------- 改答案：点了「✎ 改答案」之后选项才可点（防误触把答案点乱） ---------- */
 .qbtns .qb[data-ansedit]:not(.on){border-color:#c9d8ee;color:var(--primary);background:#f4f8ff}
 .qbtns .qb[data-ansedit]:not(.on):hover{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -955,7 +977,7 @@ body.focus #btnExitFs{display:inline-flex}
   <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi"></span>
   <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
   <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
-  <button class="tb-btn" id="btnPenShow" title="记号笔工具条（右下角那排：笔 / 荧光笔 / 橡皮 / 全屏 / 缩放）不见了？点这里把它拉回右下角">🖊 工具条</button>
+  <button class="tb-btn" id="btnPenShow" title="记号笔工具条（右侧竖着那一排：笔 / 荧光笔 / 橡皮 / 全屏 / 缩放）不见了？点这里把它拉回右侧中间">🖊 工具条</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
   <button class="tb-btn" id="btnFullTop" title="全屏讲解：地址栏消失，原文和题目占满整屏（ESC 或右下角按钮退出）">⛶ 全屏</button>
   <button class="tb-btn" id="btnFsMinus" title="减小字号" data-page-node-id="qQxjR0OcsA3MCsQs1oZsWx">A－</button>
@@ -1041,7 +1063,7 @@ body.focus #btnExitFs{display:inline-flex}
 <!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右下角浮动工具条 -->
 <canvas id="inkCanvas" aria-hidden="true"></canvas>
 <div class="pen-bar" id="penBar">
-  <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到右下角）">⋮⋮</span>
+  <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到右侧居中）">⋮⋮</span>
   <button class="pb" data-ink="pen" title="记号笔：红/蓝两色细笔">🖊<span class="lbl">笔</span></button>
   <button class="pb" data-ink="highlight" title="荧光笔：粗、半透明，划句子用">▨<span class="lbl">荧光</span></button>
   <button class="pb" data-ink="erase" title="橡皮擦：擦到哪擦哪，整笔擦净即消失">🧽<span class="lbl">橡皮</span></button>
@@ -7236,9 +7258,10 @@ syncZoomUI();
 paintUser();
 window.addEventListener('beforeunload', save);
 
-/* ===== 记号笔工具条：可拖动 =====
-   工具条固定在右下角，投屏时常常正好压住题目。给它一个手柄，
-   按住就能整条挪走；位置记在本机，下次打开还在原处；双击手柄回到右下角。 */
+/* ===== 记号笔工具条：竖排 + 可拖动 =====
+   2026-10-03 改版：原来是横排在右下角，投屏时正好压住题目正文和题目导航 ——
+   改成**竖排贴在最右侧中间**（右侧本来就是页边留白）。
+   手柄按住仍能整条挪走；位置记在本机，下次打开还在原处；双击手柄回到右侧居中。 */
 function initPenBarDrag() {
   var bar = document.getElementById('penBar');
   var grip = document.getElementById('penGrip');
@@ -7252,6 +7275,8 @@ function initPenBarDrag() {
      ★ 这是「工具条无故消失」的头号原因：位置记在本机，换台机器 / 教室投影分辨率变小后，
      上次存的 left/top 可能整条落在屏幕外 —— 而恢复时原来没做任何夹紧。 */
   function clampIntoView() {
+    /* 还在默认态（没拖过）：right + top:50% + translateY(-50%) 是纯 CSS 定位，
+       窗口尺寸变化自动跟随，不用管。 */
     if (!bar.style.left) return;
     var r = bar.getBoundingClientRect();
     if (r.right > window.innerWidth - 2 || r.bottom > window.innerHeight - 2
@@ -7262,10 +7287,12 @@ function initPenBarDrag() {
   }
   window.addEventListener('resize', clampIntoView);
 
-  /* 回到默认右下角（顺手清掉存的位置）；flash=true 时闪一圈，让人看到它在哪 */
+  /* 回到默认位置 = 右侧垂直居中（顺手清掉存的 left/top 和 transform）；
+     flash=true 时闪一圈，让人看到它在哪 */
   function resetPenBar(flash) {
     bar.style.left = ''; bar.style.top = '';
     bar.style.right = ''; bar.style.bottom = '';
+    bar.style.transform = '';           /* 清掉拖动期间可能写进去的 transform */
     try { window.localStorage.removeItem(LS); } catch (e) {}
     if (flash) {
       bar.classList.remove('flash');
@@ -7275,31 +7302,37 @@ function initPenBarDrag() {
     }
   }
 
-  /* 恢复上次位置 */
+  /* 恢复上次位置。
+     ★ 恢复的 left/top 是 getBoundingClientRect 量出来的真实坐标，
+     所以必须先把 transform 清掉再套上去，否则等于又往上偏半条。 */
   try {
     var saved = JSON.parse(window.localStorage.getItem(LS) || 'null');
     if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
       bar.style.right = 'auto'; bar.style.bottom = 'auto';
+      bar.style.transform = 'none';
       bar.style.left = saved.left + 'px'; bar.style.top = saved.top + 'px';
       clampIntoView();     /* ★ 恢复后立刻夹一次：老位置可能是在大屏上存的 */
     }
   } catch (e) {}
 
-  /* 顶栏「🖊 工具条」：跑出屏幕 / 找不着了，一键拉回右下角 */
+  /* 顶栏「🖊 工具条」：跑出屏幕 / 找不着了，一键拉回右侧居中 */
   var showBtn = document.getElementById('btnPenShow');
   if (showBtn) {
     showBtn.addEventListener('click', function () {
       resetPenBar(true);
-      toast('记号笔工具条已回到右下角', 'ok');
+      toast('记号笔工具条已回到右侧居中', 'ok');
     });
   }
 
   grip.addEventListener('pointerdown', function (ev) {
     ev.preventDefault(); ev.stopPropagation();
     var r = bar.getBoundingClientRect();
-    /* 第一次拖：把 right/bottom 换算成 left/top，之后统一用 left/top 定位 */
+    /* 第一次拖：把 right/top(50%) 换算成 left/top，之后统一用 left/top 定位。
+       ★ transform:translateY(-50%) 是默认居中态用的，一旦改用 top 定点就必须清掉 ——
+       留着的话实际位置会往上偏半条高度，拖起来「手和条对不上」（这是竖排改版最容易踩的坑）。 */
     if (!bar.style.left || bar.style.left === 'auto') {
       bar.style.right = 'auto'; bar.style.bottom = 'auto';
+      bar.style.transform = 'none';
       bar.style.left = r.left + 'px'; bar.style.top = r.top + 'px';
     }
     offX = ev.clientX - r.left;
@@ -7389,6 +7422,7 @@ function lsMsg(s) { const e = $('#lsHint'); if (e) e.textContent = s; }
 /* ---------- 打开 / 关闭 ---------- */
 function lsOpen() {
   $('#lsRoot').classList.add('on');
+  document.body.classList.add('ls-open');   /* 收起右侧工具条，别压住波形区 */
   document.body.style.overflow = 'hidden';
   /* 从课件库打开的：先把存好的切分和内容摆出来 */
   if (AUD.cloud && !AUD.segs.length) lsApplyCloud();
@@ -7444,6 +7478,7 @@ async function lsAutoAudio() {
 function lsClose() {
   lsStopAll();
   $('#lsRoot').classList.remove('on');
+  document.body.classList.remove('ls-open');   /* 放回右侧工具条 */
   lsHideTip();
   document.body.style.overflow = '';
 }
