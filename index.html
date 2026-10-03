@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '72abea4fe8';
+  var APP_VER = '6325009e59';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -768,12 +768,24 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
   background:#fff;border:1px solid var(--border);border-radius:16px;padding:8px 6px;
   box-shadow:0 10px 26px rgba(20,30,50,.16);
   max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;
-  /* 2026-10-01：原来 opacity 只有 .5，而且只靠 :hover 才变不透明 ——
-     触摸屏（希沃电子屏）根本没有 hover，整条一直半透明，白底上看着就像「无故消失」。
-     默认提到 .86；触摸设备直接给 1。 */
-  opacity:.86;transition:opacity .18s;
+  /* 2026-10-03 改：老师要的是「不点、鼠标不碰它的时候隐身，别挡着看题」。
+     平时淡到几乎看不见（.08），只留一个极淡的轮廓让人知道它在这儿；
+     鼠标靠近（外扩 90px 的命中区，见文件末尾 initPenBarDrag 里的 onMove）就整条显形，
+     移开 280ms 后自动淡回去。
+     ★ 触摸屏另说：希沃一体机根本没有 hover，鼠标一移开就淡掉的话手指会点不到 ——
+       所以 @media (hover:none) 下直接常显（opacity:1），这条不能删。
+     ★ 用 opacity 而不是 display/visibility：过渡能淡入淡出，而且隐身时元素仍在原位，
+       getBoundingClientRect() 量得到尺寸（命中检测要用），也不会引起布局跳动。
+     ★ 调试面板把 «工具条像无故消失» 列成过历史问题，所以隐身态**留一个极淡的轮廓**
+       （.12，约等于白底上的浅灰线）而不是彻底 opacity:0 —— 让人一眼知道它在这儿，
+       但白纸黑字上已经完全看不出遮挡。 */
+  opacity:.12;transition:opacity .22s ease;
 }
-.pen-bar:hover,.pen-bar.busy{opacity:1}
+/* 鼠标靠近（.hot）/ 正在用笔（.busy）/ 正在拖（.dragging）→ 完整显形。
+   .busy 是「笔、荧光、橡皮任一个开着」—— 这时条一直亮着，方便随手切工具或关掉；
+   用着笔时它不该淡掉，否则想切颜色还得先晃鼠标。 */
+.pen-bar:hover,.pen-bar.busy,.pen-bar.hot,.pen-bar.dragging{opacity:1}
+/* 触摸屏（一体机、平板）：没有 hover，必须常显，否则手指点不到 */
 @media (hover:none){.pen-bar{opacity:1}}
 /* 从顶栏「🖊 工具条」点回时闪一圈，让人一眼看到它在哪 */
 .pen-bar.flash{opacity:1;animation:penFlash 1.25s ease}
@@ -781,6 +793,12 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
   0%,100%{box-shadow:0 10px 26px rgba(20,30,50,.16)}
   35%{box-shadow:0 0 0 7px rgba(59,130,246,.4)}
 }
+/* ===== 隐身 / 显形（2026-10-03）的说明 =====
+   显形走的不是 CSS :hover，而是整页 mousemove 做命中检测（见 initPenBarDrag 末尾）。
+   原因：隐身态元素只有 8% 不透明度，要精确把鼠标停到那 40px 宽的条上才显形，
+   手感像碰运气；而另铺一个透明「感应带」div 又会挡住下面正文的点击。
+   mousemove 命中检测两全：外扩 90px 就能轻易唤出，且零遮挡、零额外 DOM。 */
+
 /* 拖动手柄：挡住内容时可以整条挪开；touch-action:none 让触摸屏拖动不会顺带滚页面。
    竖排后手柄在**顶上**（原来是左边），高度改成宽度、字距沿纵向排开。 */
 .pen-bar .grip{
@@ -1060,7 +1078,7 @@ body.ls-open .pen-bar{display:none}
 
 <div class="toast" id="toast" data-page-node-id="DCCst4Fyl2NNJonECUORnO"></div>
 
-<!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右下角浮动工具条 -->
+<!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右侧竖排浮动工具条 -->
 <canvas id="inkCanvas" aria-hidden="true"></canvas>
 <div class="pen-bar" id="penBar">
   <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到右侧居中）">⋮⋮</span>
@@ -7364,11 +7382,56 @@ function initPenBarDrag() {
 
   /* 拖出屏幕外（换小显示器、改投影分辨率…）自动拉回来 —— 统一走上面的 clampIntoView */
 
-  /* 双击手柄 = 复位到默认右下角 */
+  /* 双击手柄 = 复位到默认位置（右侧居中） */
   grip.addEventListener('dblclick', function (ev) {
     ev.stopPropagation();
     resetPenBar(false);
   });
+
+  /* ===== 隐身 / 显形（2026-10-03）=====
+   平时整条 opacity 只有 .08（见 .pen-bar 注释），鼠标扫到工具条附近就显形。
+   ★ 为什么不用一个透明的「感应带」div 去接 mouseenter：
+     感应带必须 pointer-events:auto 才收得到鼠标事件，而它铺在正文右侧上方 ——
+     那一带的文字会选不中、按钮也点不到（拿 pointer-events:none 又收不到事件）。
+     所以改成**整页 mousemove 命中检测**：鼠标坐标落进「工具条外扩一圈」的矩形里就显形。
+     零遮挡、零额外 DOM，也不受工具条被拖到哪一侧的影响。 */
+(function () {
+  var hideTimer = 0;
+  var PAD = 90;                 /* 外扩范围：鼠标靠近到 90px 内就显形 */
+
+  function reveal() {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
+    bar.classList.add('hot');
+  }
+  function conceal() {
+    if (hideTimer) clearTimeout(hideTimer);
+    /* 延迟一下再淡回去：从感应区挪到工具条上、或条本身 hover 时，
+       中间会有一瞬间两边都不在，不延迟会闪。 */
+    hideTimer = setTimeout(function () {
+      hideTimer = 0;
+      if (!bar.matches(':hover') && !bar.classList.contains('busy')
+          && !bar.classList.contains('dragging')) bar.classList.remove('hot');
+    }, 280);
+  }
+
+  /* 触摸设备：根本没有 hover，鼠标一移开就淡掉的话手指会点不到 —— 直接常显 */
+  var touchOnly = window.matchMedia && window.matchMedia('(hover:none)').matches;
+  if (touchOnly) { bar.classList.add('hot'); return; }
+
+  function onMove(ev) {
+    if (bar.classList.contains('dragging')) return;
+    var r = bar.getBoundingClientRect();
+    /* 工具条隐身时 width/height 仍在（opacity 不影响布局），可以直接用 */
+    if (!r.width || !r.height) return;
+    var inside = ev.clientX >= r.left - PAD && ev.clientX <= r.right + PAD
+              && ev.clientY >= r.top - PAD && ev.clientY <= r.bottom + PAD;
+    if (inside) reveal(); else conceal();
+  }
+  document.addEventListener('mousemove', onMove, { passive: true });
+  /* 鼠标移出窗口（切到别的应用）就别让它一直亮着 */
+  document.addEventListener('mouseleave', conceal);
+  window.addEventListener('blur', conceal);
+})();
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initPenBarDrag);

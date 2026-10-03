@@ -1,0 +1,424 @@
+/* ==========================================================================
+   方案 B · 清透璃光 Clear Glass
+   白顶栏 + 冷雾白底 + 亮蓝主色 + 圆角胶囊标签
+   ——————————————————————————————————————————————————————————————
+   本文件是「主题覆盖层」：不改原 index.html 的任何规则，
+   只在它后面加载，靠同名选择器 + 同权重后置 覆盖颜色、圆角、阴影、字号。
+   回滚方式：删掉 <link> 一行即可，原样式完全复原。
+   ========================================================================== */
+
+:root{
+  /* ---- 底色：冷雾白，干净通透 ---- */
+  --bg:#F1F5FB;
+  --panel:#FFFFFF;
+  --panel-2:#F6F9FD;
+
+  /* ---- 描边：极淡冷灰，靠阴影而不是描边立边界 ---- */
+  --border:#E3EAF4;
+  --border-2:#CBD8E8;
+
+  /* ---- 文字：深靛，对比度 14:1 ---- */
+  --text:#14213D;
+  --text-2:#56668A;
+  --text-3:#8A99B5;
+
+  /* ---- 主色：晴空蓝，比原色更亮更饱和 ---- */
+  --primary:#2E6BE6;
+  --primary-2:#1B4CB0;
+  --primary-soft:#EAF1FE;
+
+  /* ---- 点缀：暖橙（和冷蓝撞色，用于"当前题"标识） ---- */
+  --accent:#E08214;
+  --accent-soft:#FFF4E3;
+
+  /* ---- 荧光笔：冷底上用清透柠檬黄 ---- */
+  --hl:#FDE9A3;
+  --hl-line:#EAB308;
+
+  /* ---- 语义色 ---- */
+  --ok:#0E9E7E;
+  --ok-soft:#E2F7F1;
+  --err:#E14848;
+  --danger:#E14848;
+
+  /* ---- 造型：大圆角 + 柔和弥散阴影（本方案的核心特征） ---- */
+  --radius:14px;
+  --shadow:0 1px 2px rgba(20,33,61,.04), 0 6px 18px rgba(20,33,61,.05);
+  --shadow-lg:0 2px 8px rgba(20,33,61,.08), 0 18px 44px rgba(20,33,61,.12);
+}
+
+/* ====================== 顶栏：改纯白玻璃面 ====================== */
+/* 这是本方案最大的视觉变化 —— 从深色顶栏改成白色，整页变成"一块白玻璃"，
+   和投屏软件的现代界面同一语言。用底部细阴影代替边框，边界更柔和。 */
+.topbar{
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(12px) saturate(180%);
+  -webkit-backdrop-filter:blur(12px) saturate(180%);
+  color:var(--text);
+  box-shadow:0 1px 0 rgba(20,33,61,.05), 0 2px 14px rgba(20,33,61,.05);
+  padding:10px 16px;
+}
+.tb-btn{
+  background:#F6F9FD;border-color:var(--border);color:var(--text-2);
+  border-radius:20px;padding:7px 14px;
+}
+.tb-btn:hover{background:var(--primary-soft);border-color:#C7D8F5;color:var(--primary)}
+.tb-btn.solid{
+  background:var(--primary);color:#fff;border-color:var(--primary);font-weight:700;
+  box-shadow:0 3px 10px rgba(46,107,230,.28);
+}
+.tb-btn.solid:hover{background:var(--primary-2);border-color:var(--primary-2)}
+.tb-sel{
+  background:#F6F9FD;border-color:var(--border);color:var(--text);
+  border-radius:20px;padding:7px 10px;
+}
+.tb-sel:hover{background:var(--primary-soft);border-color:#C7D8F5}
+.tb-sel option{color:var(--text);background:#fff}
+.doc-title{
+  background:#F6F9FD;border-color:var(--border);color:var(--text);
+  border-radius:20px;padding:7px 16px;font-size:.98rem;
+}
+.doc-title:hover{background:#EDF3FC}
+.doc-title:focus{background:#fff;border-color:var(--primary);box-shadow:0 0 0 3px rgba(46,107,230,.12)}
+.doc-title::placeholder{color:var(--text-3)}
+.top-hint{color:var(--text-3);font-size:.8rem}
+.top-hint b{color:var(--text)}
+.brand{font-size:1.05rem;letter-spacing:.3px;color:var(--text)}
+.logo{font-size:1.2rem}
+.gate-me{background:var(--ok-soft);border-color:#B8ECDF;color:#0A7A61;border-radius:20px}
+.gate-me:hover{background:#D3F2E9}
+
+/* ====================== 次级栏：胶囊标签 ====================== */
+/* 题型 / 视图标签全部改成胶囊（border-radius:20px），这是本方案的第二特征。 */
+.subbar{background:#fff;border-bottom:1px solid var(--border);padding:10px 16px}
+.ptab{
+  border-radius:20px;font-size:.9rem;padding:6px 17px;
+  background:#fff;border-color:var(--border);color:var(--text-2);
+}
+.ptab:hover{background:var(--primary-soft)}
+.ptab.on{box-shadow:0 3px 10px rgba(46,107,230,.26);border-color:transparent}
+.ptab .tk{border-radius:20px;background:rgba(255,255,255,.28)}
+.vtabs{background:#F6F9FD;border-color:var(--border);border-radius:20px;padding:4px}
+.vtab{font-size:.88rem;padding:6px 16px;border-radius:20px;background:transparent}
+.vtab:hover{background:#fff;box-shadow:0 1px 3px rgba(20,33,61,.06)}
+.vtab.on{background:var(--primary);box-shadow:0 2px 8px rgba(46,107,230,.28)}
+.navline .lb{font-size:.78rem}
+/* 题型色：明亮高饱和，配白底很跳，一眼分得清 */
+.ptab.tk-read.on{background:#2E6BE6}
+.ptab.tk-cloze.on{background:#7A55C7}
+.ptab.tk-seven.on{background:#0E9E7E}
+.ptab.tk-gram.on{background:#D3810F}
+.ptab.tk-appwrite.on{background:#C0417A}
+.ptab.tk-cont.on{background:#0E8FA8}
+.ptab.tk-read:hover{color:#2E6BE6;border-color:#C7D8F5}
+.ptab.tk-cloze:hover{color:#7A55C7;border-color:#DCCFF5}
+.ptab.tk-seven:hover{color:#0E9E7E;border-color:#BFE9DC}
+.ptab.tk-gram:hover{color:#D3810F;border-color:#F5DDB4}
+.ptab.tk-appwrite:hover{color:#C0417A;border-color:#F2CCE0}
+.ptab.tk-cont:hover{color:#0E8FA8;border-color:#BEE4EC}
+
+.chip.tk-read,.qtype.tk-read{background:#EAF1FE;color:#2E6BE6}
+.chip.tk-cloze,.qtype.tk-cloze{background:#F1ECFC;color:#7A55C7}
+.chip.tk-seven,.qtype.tk-seven{background:#E2F7F1;color:#0E9E7E}
+.chip.tk-gram,.qtype.tk-gram{background:#FFF3E0;color:#D3810F}
+.chip.tk-appwrite,.qtype.tk-appwrite{background:#FCEDF4;color:#C0417A}
+.chip.tk-cont,.qtype.tk-cont{background:#E4F5F9;color:#0E8FA8}
+
+/* ====================== 主体分栏 ====================== */
+/* 左右两栏都改白底，靠中间的浅灰分隔线+背景色差区分，比原来"白/灰硬切"更通透 */
+.pane{padding:22px 26px 80px}
+.pane-left{background:#fff}
+.pane-right{background:#FBFCFE;border-left:1px solid var(--border)}
+.pane::-webkit-scrollbar-thumb{background:#D5DFEC}
+.pane::-webkit-scrollbar-thumb:hover{background:#BCCBDE}
+.divider::after{background:var(--border)}
+
+/* ====================== 原文段落 ====================== */
+.pane-head{border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px}
+.pane-head .t{font-size:.92rem}
+.chip{font-size:.78rem;padding:3px 12px;border-radius:20px}
+.chip.gray{background:#F1F4F9;color:var(--text-2)}
+.chip.orange{background:var(--accent-soft);color:var(--accent)}
+.toggle{font-size:.82rem;border-radius:20px;background:#fff}
+
+/* 正文：字号放大约一档，行距略收 */
+.para-en{
+  font-size:calc(1.10rem * var(--fs));
+  line-height:1.9;
+  letter-spacing:.15px;
+  padding:12px 16px;
+  border-radius:12px;
+}
+.para-zh{
+  font-size:calc(.92rem * var(--fs));
+  line-height:1.82;
+  border-left:3px solid #C7D8F5;
+  padding-left:15px;
+  margin-top:8px;
+}
+.para-tag{font-size:.78rem;padding:3px 13px;background:var(--primary);border-radius:20px}
+
+/* 荧光高亮：柠檬黄，冷底上很清透 */
+.s.hl{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
+@keyframes flashhl{
+  0%,100%{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
+  35%{background:#FCE07A;box-shadow:inset 0 -2px 0 var(--hl-line),0 0 0 5px rgba(234,179,8,.28)}
+}
+
+/* ====================== 题目卡片 ====================== */
+/* 核心改动：去掉可见边框，改用「大圆角 + 弥散阴影」浮起来 —— 玻璃感的来源。 */
+.qcard{
+  border:1px solid transparent;
+  border-radius:16px;
+  margin-bottom:16px;
+  box-shadow:0 1px 2px rgba(20,33,61,.04), 0 4px 16px rgba(20,33,61,.06);
+}
+.qcard:hover{box-shadow:0 3px 8px rgba(20,33,61,.06), 0 10px 28px rgba(20,33,61,.09)}
+.qcard.act{
+  border-color:#C7D8F5;
+  box-shadow:0 0 0 3px rgba(46,107,230,.10), 0 10px 28px rgba(46,107,230,.13);
+}
+.qhead{gap:12px;padding:16px 18px 10px}
+.qno{width:32px;height:32px;font-size:.88rem;background:var(--primary);box-shadow:0 3px 8px rgba(46,107,230,.3)}
+.qcard.act .qno{background:var(--accent);box-shadow:0 3px 8px rgba(224,130,20,.32)}
+.qstem{font-size:calc(1.01rem * var(--fs));line-height:1.72}
+.qtype{font-size:.74rem;padding:2px 11px;border-radius:20px;background:#F1F4F9}
+
+.opts{padding:0 18px 5px 62px}
+.opt{
+  font-size:calc(.97rem * var(--fs));
+  line-height:1.72;
+  padding:6px 11px;
+  border-radius:10px;
+}
+.opt:hover{background:var(--primary-soft)}
+.opt .k{width:22px;height:22px;font-size:.78rem;border-radius:50%;border-color:var(--border-2)}
+.opt.correct{background:var(--ok-soft)}
+.opt.correct .k{background:var(--ok);border-color:var(--ok)}
+.opt.correct .v{color:#0A7A61;font-weight:700}
+.opts.two{column-gap:12px;padding-right:24px}
+
+.qbtns{padding:7px 18px 16px 62px;gap:8px}
+.qb{font-size:.81rem;padding:6px 14px;border-radius:20px}
+.qb:hover{background:var(--primary-soft)}
+.qb.on{box-shadow:0 2px 8px rgba(46,107,230,.26)}
+.qb.warn{border-color:#F5DDB4;color:#B36A0C;background:#FFFAF2}
+.qb.warn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* 解析框：改成大圆角浅色卡（去掉左侧竖线，用整块淡色区分） */
+.evbox{
+  margin:0 18px 12px 62px;padding:12px 16px;
+  background:#FFFAF0;border:1px solid #F7E3C0;border-radius:12px;
+}
+.evbox .lb{font-size:.76rem;color:#B36A0C}
+.evbox .tx{font-size:calc(.94rem * var(--fs));line-height:1.84;color:#5A4A22}
+.anbox{
+  margin:0 18px 16px 62px;padding:12px 16px;
+  background:#F2F7FF;border:1px solid #D8E6FB;border-radius:12px;
+}
+.anbox .lb{font-size:.76rem;color:var(--primary)}
+.anbox .tx{font-size:calc(.93rem * var(--fs));line-height:1.86;color:#2A3D5C}
+.qmini{font-size:.74rem;padding:3px 11px;border-radius:20px;border-color:#C7D8F5}
+
+/* ====================== 单段 / 文化背景 / 积累表达 ====================== */
+.single-wrap,.full-wrap{padding:26px 30px 90px}
+.sec{
+  max-width:1040px;border:1px solid transparent;border-radius:18px;
+  padding:20px 24px 16px;
+  box-shadow:0 1px 2px rgba(20,33,61,.04), 0 4px 16px rgba(20,33,61,.06);
+}
+.card{
+  max-width:920px;border:1px solid transparent;border-radius:18px;
+  padding:24px 28px;
+  box-shadow:0 1px 2px rgba(20,33,61,.04), 0 4px 16px rgba(20,33,61,.06);
+}
+.card h2{font-size:1.08rem;margin-bottom:16px}
+.card h2::before{width:4px;height:19px;border-radius:20px}
+.card p{font-size:calc(.99rem * var(--fs));line-height:1.95}
+.mini-q{border-radius:12px;padding:13px 16px;background:#F6F9FD;border-color:var(--border)}
+.mini-q .no{width:24px;height:24px;font-size:.78rem;background:var(--primary)}
+.mini-q .st{font-size:calc(.96rem * var(--fs))}
+.mini-q .ans{font-size:calc(.91rem * var(--fs));color:#0A7A61}
+.mini-q .ans b{background:var(--ok-soft);border-radius:20px}
+.mini-q .ex{font-size:calc(.9rem * var(--fs))}
+
+.exp-row{padding:13px 6px;border-bottom:1px solid var(--border)}
+.exp-term{font-size:calc(1.02rem * var(--fs));color:var(--primary-2)}
+.exp-cn{font-size:calc(.95rem * var(--fs))}
+.exp-tip{font-size:calc(.86rem * var(--fs))}
+.exp-ex{
+  border-left:3px solid var(--primary);background:rgba(46,107,230,.06);
+  border-radius:0 12px 12px 0;padding:9px 14px;
+}
+.exp-ex .en{font-size:calc(.93rem * var(--fs));color:#22374D}
+.exp-ex .zh{font-size:calc(.86rem * var(--fs))}
+.exp-sum{font-size:calc(.9rem * var(--fs))}
+.exp-grp>h3{font-size:calc(.97rem * var(--fs))}
+.exp-grp>h3 .k{font-size:calc(.82rem * var(--fs))}
+.exp-badge{font-size:calc(.76rem * var(--fs));border-radius:20px}
+
+/* ====================== 语法填空答案块 ====================== */
+.ghint{font-size:.84rem}
+.ghint b{font-size:calc(.92rem * var(--fs))}
+.gans{border-radius:12px;padding:8px 17px}
+.gans:hover{border-color:var(--accent);background:#FFFBF4}
+.gans .val{font-size:calc(.93rem * var(--fs))}
+.gans.on .val{font-size:1.85rem;color:var(--ok)}
+.gans.on{border-color:var(--ok);background:var(--ok-soft)}
+
+/* ====================== 写作题区块 ====================== */
+.wbox{border-radius:16px;padding:15px 18px;border-color:var(--border)}
+.wbox>h4{font-size:.88rem}
+.wbox>h4 .k{border-radius:20px}
+.wtask{font-size:calc(.97rem * var(--fs))}
+.wlist li{font-size:calc(.93rem * var(--fs))}
+.wlist li:before{color:var(--accent)}
+.wkv{font-size:calc(.93rem * var(--fs))}
+.wten-row{border-radius:14px;padding:9px 13px;background:#F6F9FD;border-color:var(--border)}
+.wten-c{font-size:calc(.94rem * var(--fs))}
+
+/* ====================== 上传首页 / 空态 ====================== */
+.empty{padding:40px 26px 64px}
+.drop{
+  border:2.5px dashed #BFD2ED;
+  border-radius:26px;
+  background:rgba(255,255,255,.7);
+  padding:54px 34px;
+}
+.drop:hover,.drop.over{
+  border-color:var(--primary);background:#F7FAFF;
+  box-shadow:0 14px 40px rgba(46,107,230,.14);
+}
+.drop h3{font-size:1.24rem}
+.drop p{font-size:.93rem;line-height:1.9}
+.drop .ic{font-size:2.9rem}
+.drop .kbd{background:#F6F9FD;border-color:var(--border-2);border-radius:7px}
+
+.big-btn{
+  padding:14px 42px;font-size:1.04rem;border-radius:20px;
+  background:var(--primary);
+  box-shadow:0 6px 20px rgba(46,107,230,.32);
+}
+.big-btn:hover{background:var(--primary-2);box-shadow:0 11px 30px rgba(46,107,230,.38)}
+.big-btn.ghost{border:1.5px solid var(--primary);border-radius:20px}
+.linkbtn{font-size:.9rem;border-color:var(--border-2);border-radius:20px}
+.thumbs,.drop,.reup-bar{width:min(700px,100%)}
+.thumbs .thumb{border-radius:14px;border-color:var(--border)}
+.bar{background:#E5EBF5;height:8px}
+.bar i{background:linear-gradient(90deg,var(--primary),#6BA5F5);height:8px}
+.step{font-size:.9rem}
+.reup-bar{
+  border-radius:16px;padding:13px 18px;font-size:.91rem;
+  background:#FFF8EC;border-color:#F7DDAE;color:#A8630A;
+}
+.reup-back{border-radius:20px;font-size:.86rem}
+
+/* ====================== 提示条 / 弹窗 ====================== */
+.toast{border-radius:14px;padding:13px 26px;font-size:.92rem}
+.notice{border-radius:16px;padding:15px 18px}
+.notice .ntx{font-size:.91rem}
+.notice .nbtn{border-radius:20px;font-size:.85rem;padding:7px 16px}
+.modal{background:rgba(14,26,48,.42);backdrop-filter:blur(3px)}
+.modal-box{border-radius:22px;box-shadow:var(--shadow-lg)}
+.modal-head{padding:17px 22px;font-size:1.02rem}
+.modal-body{padding:20px 22px}
+.modal-body textarea{font-size:.86rem;border-radius:12px;border-color:var(--border-2)}
+.modal-foot{padding:15px 22px}
+.modal-foot .tb-btn{border-radius:20px}
+.lsbar input{border-radius:20px}
+.lssave{border-radius:20px}
+.lslist{border-radius:14px}
+.lsacts .tb-btn{border-radius:20px}
+
+/* ====================== 悬浮题目导航 ====================== */
+.qnav{
+  border-radius:20px;padding:8px 11px;background:rgba(255,255,255,.97);
+  border-color:var(--border);box-shadow:var(--shadow-lg);
+  backdrop-filter:blur(10px);
+}
+.qnav button{width:36px;height:36px;border-radius:50%;font-size:1.2rem}
+.qnav button:hover{box-shadow:0 3px 10px rgba(46,107,230,.3)}
+.qnav .cnt{font-size:.91rem}
+.qnav .cnt small{font-size:.68rem}
+
+/* ====================== 登录闸门 ====================== */
+/* 玻璃卡片：半透明白 + 大模糊，是本方案最"璃光"的一处 */
+.gate{background:rgba(241,245,251,.72);backdrop-filter:blur(10px)}
+.gate-card{
+  max-width:416px;border-radius:24px;padding:38px 36px 28px;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(20px) saturate(180%);
+  border-color:rgba(255,255,255,.9);
+  box-shadow:0 2px 8px rgba(20,33,61,.06), 0 24px 60px rgba(20,33,61,.16);
+}
+.gate-logo{font-size:2.4rem}
+.gate-card h1{font-size:1.34rem;margin:13px 0 5px;letter-spacing:.5px}
+.gate-sub{font-size:.82rem;margin-bottom:26px;letter-spacing:1.6px}
+.gate-field label{font-size:.81rem}
+.gate-field input{
+  font-size:1.02rem;padding:12px 16px;border-radius:14px;
+  background:#F6F9FD;border-color:var(--border);
+}
+.gate-field input:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 4px rgba(46,107,230,.12)}
+.gate-btn{
+  margin-top:12px;padding:13px;font-size:1.02rem;border-radius:14px;
+  background:var(--primary);letter-spacing:3px;
+  box-shadow:0 6px 18px rgba(46,107,230,.3);
+}
+.gate-btn:hover{background:var(--primary-2);filter:none}
+.gate-foot{font-size:.75rem;padding-top:15px;margin-top:18px}
+
+/* ====================== 记号笔工具条 ====================== */
+.pen-bar{border-radius:20px;box-shadow:var(--shadow-lg);padding:9px 7px;border-color:var(--border)}
+/* 2026-10-03 修：原样式给 .pb 设了 width:100% 且 flex-direction:row-reverse，
+   在 76px 宽的竖排工具条里，「图标」会被 row-reverse 推到按钮可见区域之外 ——
+   表现就是整条工具条只剩空胶囊、图标全不见。
+   改成「图标与文字都居中、不反向、宽度自适应」，并放开 overflow 裁切。 */
+.pen-bar .pb{
+  font-size:.84rem;border-radius:12px;padding:7px 11px;background:#F6F9FD;
+  flex-direction:row;justify-content:center;
+  width:auto;min-width:100%;box-sizing:border-box;
+  overflow:visible;
+}
+.pen-bar .lbl{margin-left:0;margin-right:0}
+.pen-bar .pb:hover{background:var(--primary-soft)}
+.pen-bar .pb.on{box-shadow:0 2px 8px rgba(46,107,230,.28)}
+.pen-bar .zoom-pct{font-size:.84rem;border-radius:12px;background:#F6F9FD;min-width:100%;width:auto;box-sizing:border-box}
+
+/* ====================== 听力工作台 ====================== */
+.ls-top{background:#fff;border-bottom:1px solid var(--border);padding:10px 14px;box-shadow:0 1px 6px rgba(20,33,61,.04)}
+.ls-brand{font-size:16px}
+.ls-hint{font-size:14px}
+.ls-b{border-radius:20px;padding:8px 16px;font-size:15px}
+.ls-b:hover{background:var(--primary-soft)}
+.ls-b.solid{background:var(--primary);border-color:var(--primary);box-shadow:0 3px 10px rgba(46,107,230,.28)}
+.ls-tab{
+  border-radius:20px;padding:10px 24px;font-size:17px;
+  background:#fff;border-color:var(--border);
+}
+.ls-tab:hover{background:var(--primary-soft);box-shadow:0 3px 10px rgba(46,107,230,.1)}
+.ls-tab.on{background:var(--primary);box-shadow:0 4px 14px rgba(46,107,230,.32)}
+.ls-tab.on.play{background:linear-gradient(135deg,#0E9E7E,#0B7A61);animation:lsPulse2 1.6s ease-in-out infinite}
+@keyframes lsPulse2{0%,100%{box-shadow:0 0 0 4px rgba(14,158,126,.16)}50%{box-shadow:0 0 0 9px rgba(14,158,126,.08)}}
+.ls-pane{border-radius:16px;border-color:transparent;box-shadow:0 1px 2px rgba(20,33,61,.04),0 4px 16px rgba(20,33,61,.06)}
+.ls-ph{padding:13px 18px;font-size:16.5px;background:#F6F9FD}
+.ls-ph .tag{font-size:15px;color:var(--primary)}
+.ls-pb{padding:18px 24px}
+.ls-pb p{font-size:20px;line-height:2.2}
+.ls-q .stem{font-size:20px}
+.ls-q .opt{font-size:19px}
+.ls-t{height:37px;min-width:41px;border-radius:20px;font-size:16px;border-color:var(--border)}
+.ls-t.play{min-width:56px;background:var(--primary);border-color:var(--primary);box-shadow:0 3px 10px rgba(46,107,230,.3)}
+.ls-t:hover{border-color:var(--primary);background:var(--primary-soft)}
+.ls-clock{font-size:15.5px}
+.ls-chk{font-size:15px}
+.ls-sel{border-radius:20px;font-size:15px;padding:6px 10px;border-color:var(--border)}
+.ls-adv{border-radius:14px;font-size:14.5px;background:#F6F9FD;border-color:var(--border)}
+.ls-drop{border-radius:18px;padding:12px 16px;font-size:15px;background:#F6F9FD;border-color:#BFD2ED}
+.ls-drop b{font-size:16px}
+.ls-tip2{font-size:16px}
+
+/* ====================== 无障碍：尊重减少动效偏好 ====================== */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
