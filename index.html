@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '0bceb85790';
+  var APP_VER = '3a3813771a';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -384,6 +384,30 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
 }
 .exp-cn{font-size:calc(.88rem * var(--fs));color:#33465a;line-height:1.75;flex:1}
 .exp-tip{font-size:calc(.79rem * var(--fs));color:var(--text-3);margin-top:3px;line-height:1.7}
+/* 2026-10-03：例句区 + 熟词生义分组（教研员反馈「短语和熟词生义给例句会更好」） */
+.exp-ex{
+  margin-top:7px;padding:7px 11px;border-left:3px solid var(--primary);
+  background:rgba(43,95,168,.05);border-radius:0 7px 7px 0;line-height:1.7;
+  display:flex;flex-direction:column;gap:2px;
+}
+.exp-ex .en{font-family:Georgia,"Times New Roman",serif;font-size:calc(.86rem * var(--fs));color:#22374d}
+.exp-ex .zh{font-size:calc(.79rem * var(--fs));color:var(--text-3)}
+.exp-sum{font-size:calc(.83rem * var(--fs));color:var(--text-2);margin-bottom:12px;line-height:1.8}
+.exp-sum b{color:var(--primary-2)}
+.exp-sum .k{margin-left:6px}
+.exp-grp{margin-top:16px}
+.exp-grp>h3{
+  font-size:calc(.9rem * var(--fs));color:var(--primary);margin:0 0 4px;
+  display:flex;align-items:baseline;gap:9px;font-weight:700;
+  padding-bottom:6px;border-bottom:1px solid var(--border-2);
+}
+.exp-grp>h3 .k{font-size:calc(.76rem * var(--fs));color:var(--text-3);font-weight:400}
+.exp-grp .exp-row{padding:10px 4px}
+.exp-badge{
+  display:inline-block;margin-left:7px;padding:1px 7px;border-radius:9px;
+  font-size:calc(.7rem * var(--fs));background:#fdeed8;color:#a9611a;
+  vertical-align:middle;font-weight:600;
+}
 
 /* ---------------- 空态 / 上传 ---------------- */
 .empty{
@@ -1513,7 +1537,7 @@ const PARSE_PROMPT = [
 '      ],',
 '      "background": "该材料的文化背景或话题背景介绍，中文，150字以内",',
 '      "expressions": [',
-'        {"term": "英文词/短语/句型", "cn": "中文释义", "tip": "用法提示或搭配"}',
+'        {"term": "英文词/短语/句型", "cn": "中文释义", "tip": "用法提示或搭配", "kind": "phrase 或 newmeaning", "ex": "英文例句", "exZh": "例句中文翻译"}',
 '      ],',
 '      "task": "【写作题专用】卷面上的写作要求/情境，中文原样转录；读后续写则把「原文之后的两段续写开头句」也原样写进来，用换行分隔",',
 '      "points": ["【写作题专用】审题要点，每条一句，如「人称：第一人称 I；时态：一般现在时 + 一般将来时」"],',
@@ -1544,7 +1568,11 @@ const PARSE_PROMPT = [
 '5. answer 字段：若转录文本中已包含答案或答案解析就用它；若没有，请你作为资深教师判断最可能的答案。语法填空的答案必须是完整的单词或词形，不要只写首字母。',
 '6. evidence 必须能从 paragraphs 的 en 字段里逐字找到，用于前端高亮定位，务必完全一致；实在找不到就填空串，不要编造。',
 '7. explain 用中文，点明解题依据，**每题严格控制在 60 字以内**——直接给「句意/依据 + 结论」，绝不要逐项复述四个选项的含义（输出超长会被截断，整题作废）。阅读题要说明如何排除干扰项；完形和语法填空要说清语法、搭配或上下文逻辑依据。',
-'8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。',
+'8. expressions 挑选 8-12 个真正值得高中生积累的词组或句型，不要选太简单的词。**每一条都必须带例句**（这是硬要求，缺例句的条目不合格），并标清 kind：',
+'   · kind = "phrase"（短语/搭配，**至少 5 条**）：term 写词块本身、cn 写中文、tip 写用法或易错点，**ex 写一个完整英文例句**（8～20 词，用得上该短语，难度参照高考阅读），exZh 写整句中文翻译。',
+'   · kind = "newmeaning"（熟词生义，**至少 2 条，本篇确实没有可给 0 条但要在 tip 里说明**）：挑文章里**学生熟悉但在此处取生僻义**的词 —— 如 address 作「处理/应对」、figure 作「认为/估计」、last 作「持续」、capital 作「资本」、observe 作「遵守」、desert 作「抛弃」、practice 作「惯例」。',
+'     cn 必须写成「熟义 → 文中义」的形式（例：address 常见义「地址」→ 文中义「处理，应对」），ex 写一句体现**文中这个生僻义**的例句（可以就摘自原文那一句），exZh 配中文。',
+'   · **不许拿普通生词冒充熟词生义** —— 判据是「这个词学生大概率认识，只是这里的意思不是他背的那个」；也不许把同一条重复成 phrase 和 newmeaning 两条。',
 '9. 若某篇没有配题，questions 给空数组。',
 '10. 听力、口语的内容不要放进 passages（转录里若有，直接忽略）。**应用文写作和读后续写要照常输出**，它们是第 5、6 种题型。',
 '11. 写作题的 sample（参考范文）：**卷面上印了范文或参考答案，就用卷面的原文，sampleSource 写 "paper"**；若卷面没给范文，你要以高三阅卷教师的水平替学生写一篇，都要分段写进 sample，每段配中文翻译，sampleSource 写 "ai"。写作类没有标准答案，范文只是给学生看的示范。',
@@ -1739,9 +1767,23 @@ function groupByKind(passages) {
       questions: uniqQuestions(arr.flatMap(function (p) { return p.questions; })
         .sort(function (a, b) { return (Number(a.no) || 0) - (Number(b.no) || 0); })),
       background: arr.map(function (p) { return p.background; }).filter(Boolean).join(' '),
-      expressions: uniqParas(arr.flatMap(function (p) {
-        return (p.expressions || []).map(function (e) { return { en: String(e.term || ''), zh: e.cn, tip: e.tip }; });
-      })).map(function (x) { return { term: x.en, cn: x.zh, tip: x.tip }; }),
+      /* 2026-10-03：例句 ex/exZh 也一起合并 —— 以前只搬 term/cn/tip，
+         合并后例句整块蒸发（同正常阅读被吐成两条时触发） */
+      expressions: (function () {
+        const seen = {}, out = [];
+        arr.forEach(function (p) {
+          (p.expressions || []).forEach(function (e) {
+            const k = String(e.term || '').trim().toLowerCase();
+            if (!k || seen[k]) return;
+            seen[k] = 1;
+            out.push({
+              term: String(e.term || '').trim(), cn: e.cn || '', tip: e.tip || '',
+              ex: e.ex || '', exZh: e.exZh || '', kind: expKindOf(e)
+            });
+          });
+        });
+        return out;
+      })(),
       /* 2026-09-27 补：写作字段以前合并时整个蒸发 —— 同类写作出现 2 篇（模型把应用文拆成
          碎片 / 空壳 + 正篇）触发合并后，points/outline/sample 全变 undefined，
          渲染裸读 p.points.length 直接崩（表现：「这一篇渲染时出错了」，作文整页消失）。
@@ -2260,7 +2302,7 @@ function rescuePrompt(kind, seg) {
             + '内容按上面「写作类」的字段要求填：task（写作要求原样）/ points（要点）/ '
             + '**outline（固定三段式：①问候+写信目的 ②主体分点覆盖要点 ③期待回复/祝福）**/ '
             + '**analysis（内容 / 结构 / 语言 三维度分析）**/ '
-            + 'sample（参考范文，**同样按三段式写**，英文配中文翻译，**正文 95～110 词，写不足 90 词会被扣分**）/ expressions（高分句式与短语）；'
+            + 'sample（参考范文，**同样按三段式写**，英文配中文翻译，**正文 95～110 词，写不足 90 词会被扣分**）/ expressions（高分句式与短语，**每条都要带 kind（phrase / newmeaning）和 ex 例句 + exZh 翻译**）；'
             + 'paragraphs 放卷面给的英文材料，若卷面全是中文要求就给空数组 []。'
           : (kind === 'continuation'
             ? '这段内容**只有读后续写**（一段没写完的故事原文 + 两段续写开头句）。'
@@ -2268,7 +2310,7 @@ function rescuePrompt(kind, seg) {
               + '内容按上面「写作类」的字段要求填：task（写作要求）/ plotLine（情节脉络：summary / conflict / arc / openers / plan 三条规划）/ '
               + '**tenSents（十句五定：句 1/5/6/9/10 定句 —— 衔接写情感 / 过渡 / 衔接写心理 / 紧贴原文交代结局 / 点睛升华；'
               + '句 2/3/4/7/8 不定句 —— 做啥遇坎 / 障碍1 / 行动1 / 障碍2 / 行动2；句式按位置分配）** / '
-              + 'outline / sample（续写范例**两段合计 165～185 词，写不足 160 词会被扣分**，英文配中文翻译）/ expressions；'
+              + 'outline / sample（续写范例**两段合计 165～185 词，写不足 160 词会被扣分**，英文配中文翻译）/ expressions（高分句式与短语，**每条都要带 kind（phrase / newmeaning）和 ex 例句 + exZh 翻译**）；'
               + 'paragraphs 放故事原文（逐段，配中文翻译）。'
             : '这段内容**只有「' + name + '」这一种题型**，kind 必须是 "' + kind + '"。'))));
   return PARSE_PROMPT.replace('{{TEXT}}', seg) + '\n\n【本次特别要求】' + force
@@ -2302,7 +2344,9 @@ const WRITE_STEP_A = '\n\n【本次特别要求 · 只做第一步】这一段�
 const WRITE_STEP_B = '\n\n【本次特别要求 · 只做第二步】这一段是写作题。这一次**只写范文和好词好句**：'
   + 'sample（参考范文，**应用文必须三段式**——问候+目的 / 主体分点 / 期待回复，'
   + '读后续写按十句骨架写足两段共约 10 句，英文正文 + 逐段中文翻译）、'
-  + 'expressions（高分句式与短语，3～6 条）。'
+  + 'expressions（高分句式与短语，3～6 条）。**expressions 每条都要带例句**：'
+  + 'kind（"phrase" 短语搭配 或 "newmeaning" 熟词生义，至少 2 条 newmeaning —— 挑学生认识但此处取生僻义的词，'
+  + 'cn 写成「常见义 → 文中义」）、ex（完整英文例句）、exZh（例句中文翻译）。'
   + '**字数硬指标（宁多不少，写少了要扣分）**：应用文范文正文 **95～110 词**（<90 词不合格）；'
   + '读后续写范文两段合计 **165～185 词**（<160 词不合格）。'
   + '加长靠补细节、加衔接、加主题收尾，不许灌水凑数。写完自查词数，不够就加长再输出。'
@@ -2717,14 +2761,14 @@ const CHUNK_KIND_HINT = {
     + '**outline（段落框架，固定三段式：①问候+写信目的 ②主体分点覆盖全部要点 ③期待回复/祝福）**、'
     + 'analysis（**内容 / 结构 / 语言 三维度试题分析，每维 2～4 条**）、'
     + 'sample（参考范文，**也按三段式写**，英文正文逐段 + 中文翻译，**正文必须 95～110 词 —— 写 80 词左右或更少算不合格，会被扣分，必须写足**）、'
-    + 'expressions（高分句式与短语，3～6 条）。**task、sample、analysis 一个都不能少。**',
+    + 'expressions（高分句式与短语，3～6 条，**每条必须带 kind（phrase / newmeaning）+ ex 例句 + exZh 翻译**）。**task、sample、analysis 一个都不能少。**',
   continuation: '本段是**读后续写**：一段没写完的英文故事 + 两段续写开头句，要求续写 150 词左右。'
     + '**kind 必须是 "continuation"，label 用「读后续写」，questions 必须是空数组 []**。'
     + '内容必须填满这几个字段：paragraphs（故事原文，逐段，配中文翻译）、task（写作要求，卷面原样）、'
     + 'plotLine（情节脉络：summary 原文脉络逐条 / conflict 矛盾点 / arc 情节线 / openers 两段段首句 / plan 30 秒规划 3 条）、'
     + '**tenSents（十句五定：句 1/5/6/9/10 是定句，功能由位置写死 —— 句 1 衔接写情感、句 5 过渡、句 6 衔接写心理、'
     + '句 9 紧贴原文交代结局、句 10 点睛升华；句 2/3/4/7/8 不定句负责做啥遇坎 / 障碍 / 行动；句式按位置分配）**、'
-    + 'outline（两段各写什么）、sample（续写范例，两段共约 10 句，**两段合计必须 165～185 词 —— 写 150 词左右或更少算不合格，会被扣分，必须写足**，英文 + 中文翻译）、expressions（高分句式，3～6 条）。'
+    + 'outline（两段各写什么）、sample（续写范例，两段共约 10 句，**两段合计必须 165～185 词 —— 写 150 词左右或更少算不合格，会被扣分，必须写足**，英文 + 中文翻译）、expressions（高分句式，3～6 条，**每条必须带 kind（phrase / newmeaning）+ ex 例句 + exZh 翻译**）。'
     + '**task、sample、tenSents 一个都不能少。**'
 };
 /* 写作两类的排版判据（分块解析 / 完整性校验都用它） */
@@ -3948,6 +3992,7 @@ function commitResult(data) {
   save();
   /* 落地后顺手做一次「完形答案／解析自洽」自检 —— 后台跑，不挡着老师看讲解 */
   selfCheckCloze();
+  expFillMissing();   /* 表达例句缺失时后台补齐（2026-10-03） */
 }
 
 /* ---------- 「并入当前讲解」（2026-09-26 新增） ----------
@@ -4005,6 +4050,7 @@ function mergeIntoCurrent(data) {
   render();
   save();
   selfCheckCloze();   /* 并入的完形也过一遍自检 */
+  expFillMissing();   /* 并入的表达也补齐例句（2026-10-03） */
 }
 
 /* 2026-09-29 剥掉段首的印刷段落序号（「1 Winter doesn't…」→「Winter doesn't…」）：
@@ -4066,8 +4112,12 @@ function normalizePassage(p) {
     expressions: (p.expressions || []).map((e) => ({
       term: String(e.term || '').trim(),
       cn: String(e.cn || '').trim(),
-      tip: String(e.tip || '').trim()
-    })),
+      tip: String(e.tip || '').trim(),
+      /* 2026-10-03 新增：例句 + 熟词生义分类（教研员反馈） */
+      ex: String(e.ex || e.eg || e.example || '').trim(),
+      exZh: String(e.exZh || e.ex_zh || e.exampleZh || '').trim(),
+      kind: expKindOf(e)
+    })).filter((e) => e.term),
     /* ---- 写作题（应用文 / 读后续写）专用字段，其它题型留空即可 ---- */
     task: String(p.task || '').trim(),                              /* 写作要求/情境（中文原样，续写则含两段开头句） */
     points: (p.points || []).map((x) => String(x || '').trim()).filter(Boolean),      /* 审题要点 */
@@ -4086,6 +4136,10 @@ function normalizePassage(p) {
       structure: (p.analysis.structure || []).map((x) => String(x || '').trim()).filter(Boolean),
       language: (p.analysis.language || []).map((x) => String(x || '').trim()).filter(Boolean)
     } : null,
+    /* 表达例句（2026-10-03 新增，教研员反馈「短语和熟词生义给例句会更好」）：
+       ex/exZh = 例句 + 中文；kind = 'phrase' 短语搭配 / 'newmeaning' 熟词生义。
+       老数据没有 ex/kind，这里一律补成 ''，checkExpressionsSelfCheck 会重新补例句。 */
+    expCheck: expCheckNeeded(p.expressions),                /* 缺例句 / 缺熟词生义标记 → 待补 */
     tenSents: (Array.isArray(p.tenSents) ? p.tenSents : []).map((s) => ({        /* 十句骨架（续写） */
       no: s && s.no, fixed: !!(s && s.fixed),
       role: String((s && s.role) || '').trim(), content: String((s && s.content) || '').trim(),
@@ -4128,6 +4182,24 @@ function normalizePassage(p) {
     q.answer = a.length > 1 ? a : a.toUpperCase();
   });
   return raw;
+}
+
+/* 表达例句（2026-10-03 新增，教研员反馈「短语和熟词生义给例句会更好」）：
+   ex / exZh = 例句英文 + 中文翻译；kind = 'phrase'（短语搭配）/ 'newmeaning'（熟词生义）。
+   expFlag 是自动补例句的「问过一轮」标记，避免反复请求同一个模型。
+   老数据（云端存的是上一版）没有这些字段，读回来一律补 '' / 0。 */
+function expKindOf(e) {
+  const k = String((e && e.kind) || '').toLowerCase().trim();
+  if (k === 'newmeaning' || k === 'new' || k === '熟词生义') return 'newmeaning';
+  if (k === 'phrase' || k === '短语' || k === '搭配') return 'phrase';
+  return '';
+}
+function expCheckNeeded(list) {
+  const a = Array.isArray(list) ? list : [];
+  if (!a.length) return 0;
+  return a.some(function (e) {
+    return !String((e && e.ex) || '').trim() || !expKindOf(e);
+  }) ? 1 : 0;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -4617,8 +4689,17 @@ function writeRightHtml(p) {
           + p.outline.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
   }
   if (p.expressions && p.expressions.length) {
-    html += '<div class="wbox"><h4>好词好句<span class="k">共 ' + p.expressions.length + ' 条 · 点上方「积累表达」看全部</span></h4><ul class="wlist">'
-          + p.expressions.slice(0, 6).map((e) => '<li><b>' + esc(e.term) + '</b> ' + esc(e.cn) + '</li>').join('')
+    const nmN = p.expressions.filter(function (e) { return e.kind === 'newmeaning'; }).length;
+    html += '<div class="wbox"><h4>好词好句'
+          + '<span class="k">共 ' + p.expressions.length + ' 条'
+          + (nmN ? '（含熟词生义 ' + nmN + ' 条）' : '') + ' · 点上方「积累表达」看全部</span></h4><ul class="wlist">'
+          + p.expressions.slice(0, 6).map(function (e) {
+              return '<li><b>' + esc(e.term) + '</b> ' + esc(e.cn)
+                + (e.kind === 'newmeaning' ? '<span class="exp-badge">熟词生义</span>' : '')
+                + (e.ex ? '<div class="exp-ex"><span class="en">' + esc(e.ex) + '</span>'
+                    + (e.exZh ? '<span class="zh">' + esc(e.exZh) + '</span>' : '') + '</div>' : '')
+                + '</li>';
+            }).join('')
           + '</ul></div>';
   }
   if (!p.task && !p.points.length && !p.outline.length) html += emptyWrite();
@@ -4724,18 +4805,45 @@ function viewBackground(p) {
 }
 
 /* ---------- 视图：积累表达 ---------- */
+/* 2026-10-03 改版（教研员：短语和熟词生义的例句会更好）：
+   ① 每条表达下面补一句完整例句（英文 + 中文），讲评时可以直接念；
+   ② 按 kind 分两组 —— 上「熟词生义」下「短语与搭配」，熟词生义是这套材料最缺、最该单拎出来的；
+   ③ 老数据（没 kind / 没例句）落进「其他积累」组，不丢内容；
+   ④ 顶上给「熟词生义 N 条 · 短语 M 条」的小结。 */
+function expRow(e) {
+  return '<div class="exp-row">'
+    + '<div class="exp-term">' + esc(e.term) + '</div>'
+    + '<div class="exp-cn">' + esc(e.cn)
+    + (e.tip ? '<div class="exp-tip">' + esc(e.tip) + '</div>' : '')
+    + (e.ex ? '<div class="exp-ex"><span class="en">' + esc(e.ex) + '</span>'
+        + (e.exZh ? '<span class="zh">' + esc(e.exZh) + '</span>' : '') + '</div>' : '')
+    + '</div></div>';
+}
 function viewExpressions(p) {
   const list = p.expressions || [];
-  return '<div class="full-wrap"><div class="card">'
-    + '<div class="ov-head" style="margin-bottom:14px"><h2 style="margin:0">积累表达</h2>' + kindChip(p) + '</div>'
-    + (list.length
-        ? list.map((e) => '<div class="exp-row">'
-            + '<div class="exp-term">' + esc(e.term) + '</div>'
-            + '<div class="exp-cn">' + esc(e.cn)
-            + (e.tip ? '<div class="exp-tip">' + esc(e.tip) + '</div>' : '')
-            + '</div></div>').join('')
-        : '<p style="color:var(--text-3)">这份材料暂无积累表达。</p>')
-    + '</div></div>';
+  if (!list.length) {
+    return '<div class="full-wrap"><div class="card">'
+      + '<div class="ov-head" style="margin-bottom:14px"><h2 style="margin:0">积累表达</h2>' + kindChip(p) + '</div>'
+      + '<p style="color:var(--text-3)">这份材料暂无积累表达。</p></div></div>';
+  }
+  const nm = list.filter(function (e) { return e.kind === 'newmeaning'; });
+  const ph = list.filter(function (e) { return e.kind === 'phrase'; });
+  const rest = list.filter(function (e) { return e.kind !== 'newmeaning' && e.kind !== 'phrase'; });
+  let html = '<div class="full-wrap"><div class="card">'
+    + '<div class="ov-head" style="margin-bottom:6px"><h2 style="margin:0">积累表达</h2>' + kindChip(p) + '</div>'
+    + '<div class="exp-sum">共 <b>' + list.length + '</b> 条：熟词生义 <b>' + nm.length + '</b> 条 · 短语搭配 <b>' + ph.length + '</b> 条'
+    + (rest.length ? ' · 其他 ' + rest.length + ' 条' : '')
+    + '　<span class="k">每条都配了例句</span></div>';
+  const group = function (title, sub, arr) {
+    if (!arr.length) return '';
+    return '<div class="exp-grp"><h3>' + title + '<span class="k">' + sub + '</span></h3>'
+      + arr.map(expRow).join('') + '</div>';
+  };
+  html += group('熟词生义', '学生认识这个词，但这里不是他背的那个意思', nm);
+  html += group('短语与搭配', '值得整块记下来的词块', ph);
+  html += group('其他积累', '句型与表达', rest);
+  html += '</div></div>';
+  return html;
 }
 
 /* ---------- 题目卡片 ---------- */
@@ -4930,6 +5038,86 @@ async function selfCheckCloze() {
   if (flagged) {
     toast('自检：完形填空有 ' + flagged + ' 题的答案／解析疑似对不上，已在题号上挂黄签', 'warn', 5200);
     renderView();
+  }
+}
+
+/* ---------- 表达例句自动补全（2026-10-03） ----------
+   教研员反馈：短语和熟词生义配上例句会更好用。新解析的卷子提示词里已经强制带例句，
+   但**老课件存在云端 / 本地缓存的还是上一版数据**（只有 term/cn/tip），
+   重新解析整卷太贵，这里只补缺的那一小块：把这篇原有的 term 列表送回模型，
+   要回 kind + 例句，按 term 拼回去。每篇只补一次（expFlag 记在跑过的篇目上），
+   失败就当没发生，绝不打断老师正在讲的课。 */
+function expFillPrompt(p) {
+  const rows = (p.expressions || []).map(function (e) {
+    return '- ' + e.term + (e.cn ? '（' + e.cn + '）' : '') + (e.tip ? '　用法：' + e.tip : '');
+  });
+  const ctx = (p.paragraphs || []).map(function (x) { return x.en; }).join('\n').slice(0, 1200);
+  const L = [
+    '下面是一份高考英语材料里已经挑好的「积累表达」清单。请为每一条补上：'
+    + '① kind（"phrase" = 短语/搭配，或 "newmeaning" = 熟词生义）；'
+    + '② ex（一个完整、自然的英文例句，8～20 词，必须真的用上这条表达）；'
+    + '③ exZh（该例句的中文翻译）。',
+    '',
+    '【熟词生义的判据】只有当「学生大概率认识这个词，但它在文中取的是生僻义」时才算 newmeaning，'
+    + '例如 address 作「处理/应对」、figure 作「认为/估计」、last 作「持续」、capital 作「资本」、'
+    + 'observe 作「遵守」、practice 作「惯例」。cn 请写成「常见义 → 文中义」的形式。'
+    + '普通生词（学生根本不认识的高级词）一律归 phrase，不要冒充熟词生义。',
+    ''
+  ];
+  if (ctx) L.push('【文章片段（判断熟词生义要看它）】' + ctx, '');
+  L.push('【已有表达清单】');
+  L.push.apply(L, rows);
+  L.push('',
+    '只输出如下 JSON，不要任何别的文字。**term 必须与我给的清单逐字一致**，一条不多一条不少：',
+    '{"expressions":[{"term":"原样照抄","kind":"phrase","ex":"英文例句","exZh":"中文翻译"}]}');
+  return L.join('\n');
+}
+
+let expFilling = false;
+async function expFillMissing() {
+  if (expFilling) return;                        /* 上一次还在跑，不重复发 */
+  const list = S.passages.filter(function (p) {
+    return !p.expFlag && expCheckNeeded(p.expressions);
+  });
+  if (!list.length) return;
+  expFilling = true;
+  let filled = 0;
+  try {
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      if (S.passages.indexOf(p) < 0) continue;   /* 老师换了课件，这篇已经不在讲解里了 */
+      try {
+        const raw = await aiCallSmart('parse', [{ role: 'user', content: expFillPrompt(p) }], 2048);
+        const d = jsonFromText(raw);
+        const back = (d && d.expressions) || [];
+        if (back.length) {
+          /* 按 term 拼回去（小写比对，容忍大小写/空格差异） */
+          const byTerm = {};
+          back.forEach(function (x) {
+            const k = String((x && x.term) || '').trim().toLowerCase();
+            if (k) byTerm[k] = x;
+          });
+          (p.expressions || []).forEach(function (e) {
+            const g = byTerm[String(e.term || '').trim().toLowerCase()];
+            if (!g) return;
+            if (!e.ex && g.ex) e.ex = String(g.ex).trim();
+            if (!e.exZh && (g.exZh || g.ex_zh)) e.exZh = String(g.exZh || g.ex_zh).trim();
+            if (!expKindOf(e) && g.kind) e.kind = expKindOf(g);
+          });
+          filled += (p.expressions || []).filter(function (e) { return e.ex; }).length;
+          p.expCheck = expCheckNeeded(p.expressions);
+        }
+        p.expFlag = 1;                            /* 跑过一轮就记一笔，不重复请求 */
+      } catch (e) {
+        /* 补例句是锦上添花，失败静默，绝不打扰上课 */
+      }
+    }
+  } finally {
+    expFilling = false;
+  }
+  if (filled) {
+    renderView();
+    console.log('[表达例句] 已补齐 ' + filled + ' 条例句');
   }
 }
 
@@ -6047,7 +6235,12 @@ function cleanPassages() {
         explainFor: q.explainFor, suspect: q.suspect   /* 2026-10-01：解析对应的答案、自检黄签 */
       })),
       background: p.background,
-      expressions: p.expressions
+      expressions: (p.expressions || []).map((e) => ({
+        term: e.term, cn: e.cn, tip: e.tip,
+        ex: e.ex || '', exZh: e.exZh || '', kind: e.kind || ''
+      })),
+      /* 自动补例句的问过一轮标记：不存下来，换台电脑会反复请求同一个模型 */
+      expFlag: p.expFlag || 0
     };
     /* 写作题（应用文 / 读后续写）专用字段：不带上就会在存云端 / 导出 JSON 时丢掉 */
     if (isWriteKind(kindOf(p))) {
