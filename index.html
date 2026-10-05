@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '3781728159';
+  var APP_VER = 'e718037d84';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1455,6 +1455,28 @@ body.ls-open .pen-bar{display:none}
   .para-en,.para-zh,.qcard,.sec,.card,.pane-head,
   .pane-right > div[style*="font-size:.76rem"]{max-width:none}
 }
+
+/* ---------- 2026-10-05：单栏视图「同宽度居中」 ----------
+   定宽左靠在「整篇」左右分栏里是对的：正文左缘与栏内边距对齐，留白全堆在右侧。
+   但原文 / 单段 / 文化背景 / 积累表达是整屏宽度的单栏 —— 同一套左靠会让内容全贴左边、
+   右边空掉一大块（教室屏上尤其明显）。这里把单栏视图改成「同样 61 字符宽、左右居中」，
+   每行字符数完全不变，只是左右留白对称。
+   标记 onecol 由 renderView() 打在 #content 上。 */
+#content.onecol .pane,
+#content.onecol .single-wrap,
+#content.onecol .full-wrap{padding-left:24px;padding-right:24px}
+#content.onecol .qcard,
+#content.onecol .card,
+#content.onecol .pane-head,
+#content.onecol .pane-right > div[style*="font-size:.76rem"]{margin-left:auto;margin-right:auto}
+/* 单段精读的段落卡：宽度按「列宽 + 左右内边距」给，卡里正文正好铺满一列 */
+#content.onecol .sec{
+  max-width:calc(29.5em + 48px);
+  margin-left:auto;margin-right:auto;
+}
+/* 正文列 = 段标签 + 原文 + 译文 一起包进 .para-col，整列定宽居中：
+   标签自然贴在这一列的左缘（不再钉在屏幕最左边），译文也和原文左缘对齐。 */
+#content.onecol .para-col{max-width:29.5em;margin-left:auto;margin-right:auto}
 
 </style>
 </head>
@@ -4936,6 +4958,10 @@ function resumePoint() {
 
 function renderView() {
   const c = $('#content');
+  /* 2026-10-05：给单栏视图打一个标记 —— 定宽「左靠」只适合「整篇」左右分栏，
+     单栏时改用同宽度居中（见样式区 #content.onecol 那组规则）。 */
+  c.classList.toggle('onecol',
+    S.view === 'original' || S.view === 'single' || S.view === 'background' || S.view === 'expressions');
   clearInk();   /* 换题 / 换视图 / 重渲染后内容位置变了，旧标注对不上，直接清掉 */
   document.body.classList.toggle('show-zh', S.showZh);
   document.body.classList.toggle('picking', !!S.picking);
@@ -5013,9 +5039,11 @@ function parasHtml(p, evPartsForPara, indent) {
     }).join('');
     return ''
       + '<div class="para' + (indent ? ' indent2' : '') + '" data-para="' + pi + '">'
-      + '  <span class="para-tag">第 ' + (pi + 1) + ' 段</span>'
-      + '  <div class="para-en" data-para="' + pi + '" title="双击可编辑">' + html + '</div>'
+      + '  <div class="para-col">'
+      + '    <span class="para-tag">第 ' + (pi + 1) + ' 段</span>'
+      + '    <div class="para-en" data-para="' + pi + '" title="双击可编辑">' + html + '</div>'
       + (para.zh ? '<div class="para-zh">' + esc(para.zh) + '</div>' : '')
+      + '  </div>'
       + '</div>';
   }).join('');
 }
@@ -5287,6 +5315,7 @@ function viewSingle(p) {
       if (q) qs.push(q);
     });
     html += '<div class="sec">'
+      + '<div class="para-col">'
       + '<span class="para-tag">第 ' + (pi + 1) + ' 段</span>'
       + '<div class="para-en" data-para="' + pi + '" title="双击可编辑">'
       + splitSentences(para.en).map((s) => {
@@ -5295,6 +5324,7 @@ function viewSingle(p) {
         }).join('')
       + '</div>'
       + (para.zh ? '<div class="para-zh" style="display:block">' + esc(para.zh) + '</div>' : '')
+      + '</div>'
       + (qs.length ? '<div class="sec-q"><span class="qlb">本段对应题目</span>'
           + qs.map((q) => miniQ(q)).join('') + '</div>' : '')
       + '</div>';
