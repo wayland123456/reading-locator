@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'a68eac9e6c';
+  var APP_VER = 'a18c42295e';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1884,9 +1884,11 @@ const TRANSCRIBE_PROMPT = [
 '   · 绝不臆造题目：只有卷面上真正印着「题号 + 选项」的才算一道题。如果某个数字只是段首缩进的编号、后面根本没有配套的 A/B/C/D 选项，那它就不是题，不要输出成题目、也不要给它补选项。',
 '   —— 七选五的 A～G 七个选项也要逐条列出，并保留题号区间（如 36～40 题）；',
 '3) 语法填空、完形填空、七选五的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
-'   ① 无提示词的空写成连续的六个下划线：______',
+'   ① 无提示词的空写成连续的六个下划线：______（**空号千万别丢**，写法见第 ③ 条）；',
 '   ② 有提示词的空写成：______ (提示词)，括号里的原形词必须一字不改地保留，如 ______ (finish)；',
-'   ③ 空号（如 56、57、58）写在紧跟空格的括号里，如 ______ (56) 或 ______ (56) (finish)；',
+'   ③ **空号（题号）必须写出来**：紧跟空格写在括号里，如 ______ (41)、______ (56)，带提示词时写 ______ (56) (finish)。',
+'      ★ 完形填空的 41～55、语法填空的 56～65，**每一个空都要带上自己的号** —— 老师上课要指着「第 41 空」讲，短文里只有光秃秃的横线就对不上题。号印在横线里（___41___）还是横线旁，都要照抄下来；',
+'      ★ 只有卷面上确实没有题号的横线（如七选五短文里的空、不编号的练习材料）才只写 ______。',
 '   ④ 卷面上常有学生用另一种笔迹手写的答案：这些手写字【不是】印刷正文，绝不能直接嵌进句子里。空格仍按上面写成 ______ (题号) (提示词原形)；手写答案看得清就附在该空后面（如 ______ (3) (start) [手写: started]），看不清就只留空格。',
 '   ★ 最重要的一条（凭空多出下划线算严重错误）：**只有卷面上确实印着一条横线／下划线的地方，你才写 ______。卷面上没有横线的地方，一律不许加下划线。** 下面几种情况特别容易错觉成"空"，但它们都不是空，原样照抄、不要加 ______：',
 '     · 一段话开头的缩进空格、或一整行前面空出的格子 —— 这只是排版缩进，不是挖空；',
@@ -2110,7 +2112,7 @@ const PARSE_PROMPT = [
 '',
 '【硬性规则】',
 '1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar / appwrite / continuation 之一。这是最重要的一条，请先判断题型再动笔。',
-'2. paragraphs 按自然段切分。**段数必须和转写文本的空行分段完全一致**：转写文本里用空行分开了几段，paragraphs 就写几项，不许自己重新切、更不许把一段拆成几项。**挖空的横线（______ 1 ______）不是段落分界**：空是句子的一部分，一个自然段里可以连着出现好几个空（七选五的一段里常有空 2、空 3 两个空），千万不要见到空就另起一段、也不要把空单独写成一项。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
+'2. paragraphs 按自然段切分。**段数必须和转写文本的空行分段完全一致**：转写文本里用空行分开了几段，paragraphs 就写几项，不许自己重新切、更不许把一段拆成几项。**挖空的横线（______ 1 ______）不是段落分界**：空是句子的一部分，一个自然段里可以连着出现好几个空（七选五的一段里常有空 2、空 3 两个空），千万不要见到空就另起一段、也不要把空单独写成一项。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；**完形填空 / 语法填空的短文里，空号（如 ______ (41)）必须原样保留，一个都不许丢** —— 短文里只剩光秃秃的横线，老师上课就点不出「第 41 空」了。七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
 '3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。',
 '4. 六种题型的字段差异照下面填：',
 '   · reading：options 四个选项齐全；type 从「细节理解 / 推理判断 / 主旨大意 / 词义猜测 / 观点态度 / 篇章结构」里选。',
@@ -5092,15 +5094,61 @@ function restorePaneTops(tops) {
   }
 }
 
+/* ---------- 短文里给「空」补上题号（2026-10-05）----------
+   浪浪反馈：「完形填空题目上没有题号」—— 短文里只剩一条横线，
+   上课点着讲「第 41 空」时对不上号。两种来源：
+   ① 转写时模型漏写空号（照片上数字被横线压住，或讲义本来就只印横线）；
+   ② 讲义/校本材料只印横线，号只出现在选项列表里。
+   这里在**渲染时**补号，绝不改 para.en —— 改了会破坏 q.evidence
+   「逐字摘自原文」的匹配，左侧原句高亮会整片失效。
+   规则：短文里的空一定是按题号从小到大排的，所以**第 k 个空 = 第 k 道题**；
+   空数和题数对不上时**不猜**（宁可不标，也不错标）。
+   短文里已经写了空号的（______ (41) / ___41___ / ______ 41 ______）整篇原样不动。 */
+function blankNumState(p) {
+  const k = kindOf(p);
+  if (k !== 'cloze' && k !== 'grammar' && k !== 'seven') return null;
+  const qs = (p.questions || []).map(function (q) { return Number(q.no); })
+    .filter(function (n) { return n > 0; })
+    .sort(function (a, b) { return a - b; });
+  if (!qs.length) return null;
+  let total = 0;
+  const re = /_{2,}/g;
+  (p.paragraphs || []).forEach(function (x) {
+    const t = String((x && x.en) || '');
+    let m; re.lastIndex = 0;
+    while ((m = re.exec(t))) {
+      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 8);
+      const before = t.slice(Math.max(0, m.index - 8), m.index);
+      /* 后面紧跟数字/括号数字（______ 41 / ______ (41) / 41___），
+         或前面紧跟数字（41 ______）→ 说明卷面本来就有号，整篇不动 */
+      if (/^\s*[（(]?\s*\d{1,2}\s*(?:[)）]|\s|_|$)/.test(after)) return;
+      if (/(?:^|[\s(])\d{1,2}\s*[)）]?\s*$/.test(before)) return;
+      total++;
+    }
+  });
+  if (!total || total !== qs.length) return null;
+  return { nums: qs, i: 0 };
+}
+/* 按顺序把每个「空」渲染成「______ 41 ______」；同一篇必须共用一个 state（跨段连号） */
+function numBlanks(text, st) {
+  const t = String(text || '');
+  if (!st || t.indexOf('__') < 0) return t;
+  return t.replace(/_{2,}/g, function (m) {
+    const no = st.nums[st.i++];
+    return (no == null) ? m : '______ ' + no + ' ______';
+  });
+}
+
 /* 段落块（句子级 span）；indent=true 时段首空两格（写作题的范文/卷面材料用） */
 function parasHtml(p, evPartsForPara, indent) {
+  const bnSt = blankNumState(p);   /* 短文里的空补题号（同一篇共用一个连号状态） */
   return p.paragraphs.map((para, pi) => {
     const sents = splitSentences(para.en);
     const html = sents.map((s, si) => {
       const sc = (evPartsForPara && evPartsForPara[pi]) ? sentHitScore(s, evPartsForPara[pi]) : 0;
       return '<span class="s' + (sc ? ' hl' : '') + (S.picking ? ' pk' : '')
         + '" data-pi="' + pi + '" data-si="' + si + '"' + (sc ? ' data-sc="' + sc + '"' : '') + '>'
-        + esc(s) + '</span> ';
+        + esc(numBlanks(s, bnSt)) + '</span> ';
     }).join('');
     return ''
       + '<div class="para' + (indent ? ' indent2' : '') + '" data-para="' + pi + '">'
@@ -5370,6 +5418,7 @@ function viewSingle(p) {
     + '<button class="toggle' + (S.showZh ? ' on' : '') + '" id="zhToggle"><span class="dot"></span>显示译文</button>'
     + '</div>';
   const used = {};
+  const bnSt = blankNumState(p);   /* 短文里的空补题号（跨段连号，和整篇视图一致） */
   p.paragraphs.forEach((para, pi) => {
     const hits = map[pi] || [];
     const qs = [];
@@ -5385,7 +5434,7 @@ function viewSingle(p) {
       + '<div class="para-en" data-para="' + pi + '" title="双击可编辑">'
       + splitSentences(para.en).map((s) => {
           const sc = qs.length ? sentHitScore(s, (map[pi] || []).reduce((a, h) => a.concat(h.parts), [])) : 0;
-          return '<span class="s' + (sc ? ' hl' : '') + '" data-pi="' + pi + '"' + (sc ? ' data-sc="' + sc + '"' : '') + '>' + esc(s) + '</span> ';
+          return '<span class="s' + (sc ? ' hl' : '') + '" data-pi="' + pi + '"' + (sc ? ' data-sc="' + sc + '"' : '') + '>' + esc(numBlanks(s, bnSt)) + '</span> ';
         }).join('')
       + '</div>'
       + (para.zh ? '<div class="para-zh" style="display:block">' + esc(para.zh) + '</div>' : '')
