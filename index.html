@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '92c30d7997';
+  var APP_VER = 'a68eac9e6c';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1873,6 +1873,9 @@ const TRANSCRIBE_PROMPT = [
 '',
 '要求：',
 '1) 保留文章自然段落，每个段落单独成段（段与段之间空一行）；',
+'   ★ 段落只由【卷面的首行缩进 / 版面空行】决定，这是判断自然段的唯一依据。**挖空的横线（______ 1 ______）绝不是分段依据**：空是它所在句子的一部分，',
+'      必须和它前后的文字写在同一个段落里（同一行），不许把「______ 1」「1 ______」单独写成一行、更不许让空的前后多出空行。',
+'      （七选五尤其容易错：卷面上 5 个空分散在 2～3 个自然段里，很多空在句子中间，不是每空一段 —— 卷面有几个自然段就转出几段。）',
 '   · 试卷常是双栏排版：先把左栏从上到下逐段读完，再接着读右栏，逐段照抄，任何一段都不能跳过或省略；',
 '   · **跨页续写（实战高发坑）**：一道大题的短文/文章常被分在两页上。本页若从句子中间开始（页首是上一页文章的续写），或本页末尾的段落到下一页才写完，**都要照抄** —— 不许因为「没头没尾、看着像上一页的重复」就跳过。页首那几行续写的正文、页尾那半句都是正文的一部分，一个字都不能少；',
 '   · 段落前的印刷/手写序号（1、2、3…）按原样保留在段首（它们标着段落顺序，缺号就说明漏抄了）；',
@@ -1880,7 +1883,7 @@ const TRANSCRIBE_PROMPT = [
 '2) 题目保留题号和选项（A. B. C. D.），每项单独一行；题号数字必须照抄卷面原样（卷面是 1. 就写 1.，是 21. 就写 21.，绝不要改号、补号或顺延）；',
 '   · 绝不臆造题目：只有卷面上真正印着「题号 + 选项」的才算一道题。如果某个数字只是段首缩进的编号、后面根本没有配套的 A/B/C/D 选项，那它就不是题，不要输出成题目、也不要给它补选项。',
 '   —— 七选五的 A～G 七个选项也要逐条列出，并保留题号区间（如 36～40 题）；',
-'3) 语法填空、完形填空的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
+'3) 语法填空、完形填空、七选五的【空格】必须原样保留，这是题目的关键信息，绝不能省略、合并或改写成完整单词：',
 '   ① 无提示词的空写成连续的六个下划线：______',
 '   ② 有提示词的空写成：______ (提示词)，括号里的原形词必须一字不改地保留，如 ______ (finish)；',
 '   ③ 空号（如 56、57、58）写在紧跟空格的括号里，如 ______ (56) 或 ______ (56) (finish)；',
@@ -2107,7 +2110,7 @@ const PARSE_PROMPT = [
 '',
 '【硬性规则】',
 '1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar / appwrite / continuation 之一。这是最重要的一条，请先判断题型再动笔。',
-'2. paragraphs 按自然段切分。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
+'2. paragraphs 按自然段切分。**段数必须和转写文本的空行分段完全一致**：转写文本里用空行分开了几段，paragraphs 就写几项，不许自己重新切、更不许把一段拆成几项。**挖空的横线（______ 1 ______）不是段落分界**：空是句子的一部分，一个自然段里可以连着出现好几个空（七选五的一段里常有空 2、空 3 两个空），千万不要见到空就另起一段、也不要把空单独写成一项。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
 '3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。',
 '4. 六种题型的字段差异照下面填：',
 '   · reading：options 四个选项齐全；type 从「细节理解 / 推理判断 / 主旨大意 / 词义猜测 / 观点态度 / 篇章结构」里选。',
@@ -4614,20 +4617,37 @@ function stripParaNo(t) {
   return String(t).replace(/^\s*\d{1,2}\s+(?=[A-Za-z"'\u2018\u201c])/, '').trim();
 }
 
-/* 2026-09-29 应用文范文常被 AI 塞成一项（标题+三段之间用换行分隔），
-   HTML 不认 \n，页面上就连成一大片，「三段看不出来是三段」。
-   这里把段内换行拆成独立段落；zh 同步按行拆，
-   两边行数对不上时（少见），zh 整条挂到第一段。 */
-function splitInlineParas(list) {
+/* 把 AI 塞在一个字段里的多段拆成独立段落。**两种口径**：
+   · aggressive = true（写作题的应用文/读后续写范文）：
+     单个换行也拆 —— AI 常把「标题 + 三段范文」连在一个字段里（只差一个 \n），
+     不拆就看不出来是几段。2026-09-29 加，见下。
+   · aggressive = false（阅读 / 完形 / 七选五 / 语法填空）：
+     **只有空行（\n\n）才是真段落分界**；单个换行是卷面的折行，不能拆。
+     而且「整行只有一个空」的行（______ 1 ______）是句子的一部分 ——
+     它前后的文字仍属同一段，既不能让它自己成段，也不能把后面那句挤到新段里去。
+   （2026-10-05 浪浪七选五课件：模型把每个空都写成单独一行，
+    切完之后页面出现「第2段：Ken Roberts… ______ 2」「第3段：He had realized…」——
+    比原卷多出好几段。原卷那一段里空 2、空 3 都在句子中间，根本不是段落分界。）
+   zh 同步处理；两边段数对不上时（少见），zh 整条挂到第一段。
+   空占位译文（"(第1空)"）直接丢掉，别混进译文列。 */
+function splitInlineParas(list, aggressive) {
   const out = [];
+  const cut = aggressive ? /\n+/ : /\n{2,}/;
   (list || []).forEach((x) => {
-    const enLines = String(x.en || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
-    if (enLines.length <= 1) { out.push({ en: enLines[0] || '', zh: String(x.zh || '').trim() }); return; }
-    const zhLines = String(x.zh || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
-    enLines.forEach((en, i) => {
+    const enParas = String(x.en || '').trim().split(cut)
+      .map((b) => b.split(/\n/).map((s) => s.trim()).filter(Boolean).join(' '))
+      .filter(Boolean);
+    const zhParas = String(x.zh || '').trim().split(cut)
+      .map((b) => b.split(/\n/).map((s) => s.trim())
+        .filter((s) => s && !isBlankPlaceholderZh(s)).join(' '));
+    if (enParas.length <= 1) {
+      out.push({ en: enParas[0] || '', zh: zhParas.filter(Boolean).join(' ') });
+      return;
+    }
+    enParas.forEach((en, i) => {
       out.push({
         en: en,
-        zh: (zhLines.length === enLines.length) ? zhLines[i] : (i === 0 ? String(x.zh || '').trim() : '')
+        zh: (zhParas.length === enParas.length) ? (zhParas[i] || '') : (i === 0 ? zhParas.filter(Boolean).join(' ') : '')
       });
     });
   });
@@ -4684,12 +4704,13 @@ function normalizePassage(p) {
     label: p.label || 'A',
     genre: p.genre || '',
     topic: p.topic || '',
-    /* 先把段内换行拆成独立段落，再逐段剥段首序号（AI 可能把多段连在一个字段里），
+    /* 先把段内换行拆成独立段落（写作题范文用宽松口径，其余只认空行），
+       再逐段剥段首序号（AI 可能把多段连在一个字段里），
        最后把「只有空」的空壳段并回上一段（七选五 / 完形段末空被吐成独立一段） */
     paragraphs: mergeLoneBlankParas(splitInlineParas((p.paragraphs || []).map((x) => ({
       en: String(x.en || '').trim(),
       zh: String(x.zh || '').trim()
-    }))).map((x) => ({ en: stripParaNo(x.en), zh: x.zh })).filter((x) => x.en)),
+    })), isWriteKind(kindOf(p))).map((x) => ({ en: stripParaNo(x.en), zh: x.zh })).filter((x) => x.en)),
     questions: (p.questions || []).map((q) => ({
       no: q.no,
       stem: String(q.stem || '').trim(),
