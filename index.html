@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '4f4f3e6fd7';
+  var APP_VER = '92c30d7997';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1458,10 +1458,10 @@ body.ls-open .pen-bar{display:none}
 
 /* ---------- 2026-10-05：单栏视图「铺满整页」 ----------
    定宽 61 字符/行是给「整篇」左右分栏设计的：那一栏只有半屏宽，限宽正好。
-   原文 / 单段 / 文化背景 / 积累表达是整屏宽的单栏 —— 这里要的是铺满整个页面，
-   所以把版式覆盖层加在它们身上的 max-width 全部放开，正文按栏宽铺满；
-   嫌行太长就用工具栏的 A＋/A－ 调字号，或用右下角缩放。
-   标记 onecol 由 renderView() 打在 #content 上。 */
+   题型速览首页 + 原文 / 单段 / 文化背景 / 积累表达都是整屏宽的单栏 ——
+   这里要的是铺满整个页面，所以把版式覆盖层加在它们身上的 max-width 全部放开，
+   正文按栏宽铺满；嫌行太长就用工具栏的 A＋/A－ 调字号，或用右下角缩放。
+   标记 onecol 由 renderView() 打在 #content 上（overview 也在里面）。 */
 #content.onecol .pane,
 #content.onecol .single-wrap,
 #content.onecol .full-wrap{padding-left:24px;padding-right:24px}
@@ -5000,9 +5000,12 @@ function resumePoint() {
 function renderView() {
   const c = $('#content');
   /* 2026-10-05：给单栏视图打一个标记 —— 定宽「左靠」只适合「整篇」左右分栏，
-     单栏时改用同宽度居中（见样式区 #content.onecol 那组规则）。 */
+     单栏视图（含题型速览首页）一律铺满整页（见样式区 #content.onecol 那组规则）。
+     题型速览漏在外面时：卡片被卡在 556px 里左靠、右边大半页空着，
+     三张题卡也只能竖着排 —— 浪浪截图指出「这个地方还是（要）平铺」。 */
   c.classList.toggle('onecol',
-    S.view === 'original' || S.view === 'single' || S.view === 'background' || S.view === 'expressions');
+    S.view === 'overview' || S.view === 'original' || S.view === 'single'
+    || S.view === 'background' || S.view === 'expressions');
   clearInk();   /* 换题 / 换视图 / 重渲染后内容位置变了，旧标注对不上，直接清掉 */
   document.body.classList.toggle('show-zh', S.showZh);
   document.body.classList.toggle('picking', !!S.picking);
