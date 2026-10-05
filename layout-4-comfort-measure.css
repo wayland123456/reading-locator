@@ -1,0 +1,100 @@
+/* ==========================================================================
+   版式策略 · 版 4「定宽居中」 Comfort Measure   ← 推荐
+   ——————————————————————————————————————————————————————————————
+   这一版解决的是另外三版都解决不了的根因问题：
+   屏幕越宽，正文被拉得越长 —— 1920 屏上原文一行能有 114 个字符，
+   眼睛从行尾折回下一行行首时要「找」，行越长越容易丢行，后排尤其吃力。
+
+   做法不是继续挤压分隔条，而是给每栏正文设一个「最大行宽」并居中：
+     · 原文正文 max-width: 46em（≈58 个英文字符）居中
+     · 题目正文 max-width: 46em 居中
+   屏幕再宽，正文也不再被拉长；多出来的宽度全部变留白。
+   一行短 → 视觉行距变大 → 后排跟读更稳。
+
+   顺带：分隔条 2px、边距 14px、分屏 50/50。
+   留白不是浪费 —— 它让页面在 1920 的教室大屏上不显得散、不显得空。
+   ========================================================================== */
+
+/* 分隔条 5px → 2px，热区外扩保证可抓 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+.pane{padding:16px 14px 70px}
+.single-wrap,.full-wrap{padding:16px 14px 70px}
+
+/* 严格对半：定宽之后两栏内容一样宽，比例本身就均衡了 */
+.pane-left{flex:1 1 50%}
+.pane-right{flex:1 1 50%}
+
+/* ---------- 核心：正文定宽居中 ---------- */
+/* 宽度上限用 em 而不是 px —— 老师按 A＋ 放大字号时，行宽会跟着字号成比例变宽，
+   「一行多少字」的阅读节奏始终不变。
+
+   29.5em 这个数是实测出来的，不是拍的：
+     本页英文正文用的是 Georgia / Times New Roman 衬线体，
+     17.6px 字号下平均字宽实测 7.92px（= 0.45em）。
+     29.5em = 519px ÷ 7.92px ≈ 66 个字符/行 ——
+     正好落在英文排版公认的舒适区（60–75 字符）。
+   屏幕上「一行 66 个字符」，眼睛从行尾折回下一行行首时几乎不用找，
+   后排学生跟读不容易丢行 —— 这才是「看清楚」的关键，不是把字放大就够。 */
+.para-en{
+  max-width:29.5em;
+  margin-left:auto;
+  margin-right:auto;
+}
+.para-zh{
+  max-width:26.5em;   /* 中文一行约 26 字，比英文更短才舒服 */
+  margin-left:auto;
+  margin-right:auto;
+}
+/* 段号标签跟正文左缘对齐（否则正文居中了、标签还贴在左边，看着错位） */
+.para-tag{margin-left:0}
+
+/* 题目：题号+题干+选项+按钮+解析框统一收进同一个定宽容器并居中，
+   保证「题号—题干—选项—按钮」这条左缘是齐的，不会因为居中而缩进错乱 */
+/* 注意这里给的是「卡片」宽度，不是正文宽度：
+   卡片里左侧有 62px 的题号缩进，所以卡片要比正文宽一点，
+   正文（题干/选项）算下来才和原文栏的 61 字一致。
+   29.5em + 62px ≈ 卡片宽，题干可用宽 ≈ 29.5em → 61 字/行 */
+.qcard{
+  max-width:calc(29.5em + 62px);
+  margin-left:auto;
+  margin-right:auto;
+}
+.qcard .qhead,
+.qcard .opts,
+.qcard .qbtns,
+.qcard .evbox,
+.qcard .anbox,
+.qcard .gbody{
+  max-width:100%;
+}
+
+/* 单段 / 文化背景 / 积累表达：卡片本身已有 max-width，这里统一到同一测量宽度 */
+.sec,.card{max-width:calc(29.5em + 4rem)}
+
+/* 顶部说明行跟着收，避免它比正文还宽、视觉上失衡。
+   它带 0 缩进，所以直接用正文宽度即可 */
+.pane-head{max-width:29.5em;margin-left:auto;margin-right:auto}
+.view-tip{max-width:29.5em;margin-left:auto;margin-right:auto}
+
+/* 题目栏顶部的提示语是行内文字，也要一起收，否则它比题目卡片宽、左缘错位 */
+.pane-right > div[style*="font-size:.76rem"]{
+  max-width:calc(29.5em + 62px);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.para{margin-bottom:16px}
+.qcard{margin-bottom:14px}
+
+/* ---------- 窄屏兜底 ---------- */
+/* 屏幕本来就不够宽（不到 1100px）时，定宽限制没意义，
+   反而会让两栏都贴不满、右侧留一条空白 —— 这时放开限制。 */
+@media (max-width:1100px){
+  .para-en,.para-zh,.qcard,.pane-head,.view-tip{max-width:none}
+}

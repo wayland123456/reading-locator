@@ -1,0 +1,33 @@
+/* ==========================================================================
+   版式策略 · 版 1「原文优先」 Original First
+   ——————————————————————————————————————————————————————————————
+   场景：老师大部分时间在读原文、划句子，题目只是对照着看。
+   做法：原文栏给到 54%，题目栏 46%；分隔条从 5px 收到 2px；栏内边距从 26px 收到 14px。
+   代价：题目栏略窄，长选项（完形）会多折一行。
+   ========================================================================== */
+
+/* 分隔条：5px → 2px。热区靠 ::before 撑开，鼠标仍然好抓 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+/* 抓取热区：视觉上 2px，实际可点 11px 宽（两侧各外扩 4.5px），不至于点不中 */
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+/* 栏内边距：26px → 14px 左右，把省下的宽度全给正文 */
+.pane{padding:16px 14px 70px}
+.single-wrap,.full-wrap{padding:16px 14px 70px}
+
+/* 分屏比例：原文 54 / 题目 46 */
+.pane-left{flex:1 1 54%}
+.pane-right{flex:1 1 46%}
+
+/* 题目左侧缩进跟着收一点（原来 60px，占掉题目栏不少宽度） */
+.opts{padding:0 14px 5px 50px}
+.qbtns{padding:7px 14px 15px 50px}
+.evbox,.anbox{margin-left:50px;margin-right:14px}
+
+/* 段落下边距收一点，一屏能多放两行 */
+.para{margin-bottom:16px}
+.qcard{margin-bottom:13px}

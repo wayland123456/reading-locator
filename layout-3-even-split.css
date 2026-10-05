@@ -1,0 +1,31 @@
+/* ==========================================================================
+   版式策略 · 版 3「平均分栏」 Even Split
+   ——————————————————————————————————————————————————————————————
+   场景：原文和题目同等重要，边读边对答案，来回切换频繁。
+   做法：严格 50 / 50；分隔条 2px；边距 14px。
+         不偏向任何一边，把「分隔条 + 边距」省下来的宽度两边平均分掉。
+   代价：两栏仍略偏宽（1366 屏上约 76 字符），但没有明显短板。
+   ========================================================================== */
+
+/* 分隔条 5px → 2px，热区外扩 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+.pane{padding:16px 15px 70px}
+.single-wrap,.full-wrap{padding:16px 15px 70px}
+
+/* 严格对半 */
+.pane-left{flex:1 1 50%}
+.pane-right{flex:1 1 50%}
+
+/* 题目缩进收到 48px —— 两边都不偏，折中值 */
+.opts{padding:0 15px 5px 48px}
+.qbtns{padding:7px 15px 15px 48px}
+.evbox,.anbox{margin-left:48px;margin-right:15px}
+
+.para{margin-bottom:16px}
+.qcard{margin-bottom:14px}

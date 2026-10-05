@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '6325009e59';
+  var APP_VER = '3781728159';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -408,6 +408,28 @@ body.picking .s:hover{background:#cfe4ff;box-shadow:inset 0 -2px 0 var(--primary
   font-size:calc(.7rem * var(--fs));background:#fdeed8;color:#a9611a;
   vertical-align:middle;font-weight:600;
 }
+/* 2026-10-05：表达位置标签（老师上课要能一眼报出「第几段第几句」，点一下跳到原文那一段） */
+.exp-loc{
+  display:inline-block;margin-left:6px;padding:1px 8px;border-radius:9px;border:1px solid rgba(43,95,168,.3);
+  font-size:calc(.7rem * var(--fs));background:rgba(43,95,168,.08);color:var(--primary-2);
+  vertical-align:middle;font-weight:600;cursor:pointer;font-family:inherit;line-height:1.6;
+}
+.exp-loc:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+/* 挂在词条下面时占一行，不和长词条挤在一起 */
+.exp-term-loc{margin-top:6px}
+.exp-term-loc .exp-loc{margin-left:0;font-weight:500}
+/* 文中原句：位置标签的「落地版」—— 上课不翻回原文也能指着念 */
+.exp-src{
+  margin-top:7px;padding:7px 11px;border-left:3px solid #d99a2b;
+  background:rgba(217,154,43,.08);border-radius:0 7px 7px 0;line-height:1.7;
+  font-family:Georgia,"Times New Roman",serif;font-size:calc(.85rem * var(--fs));color:#22374d;
+}
+.exp-src .lb{font-family:inherit;font-size:calc(.7rem * var(--fs));color:#a9611a;font-weight:600;margin-right:6px}
+/* 跳过去闪一下那一段 / 那一句，投影上看得见 */
+@keyframes expLocFlash{0%,100%{background:transparent}20%,62%{background:rgba(255,177,0,.32)}}
+.para.locflash,.s.locflash{animation:expLocFlash 1.6s ease}
+.s.locflash{border-radius:3px}
+
 
 /* ---------------- 空态 / 上传 ---------------- */
 .empty{
@@ -963,8 +985,480 @@ body.ls-open .pen-bar{display:none}
 /* 拖动切点时的提示气泡 */
 .ls-tip{position:fixed;z-index:99;background:rgba(28,39,51,.92);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;pointer-events:none;display:none;font-variant-numeric:tabular-nums}
 </style>
+<style id="theme-overlay">
+/* ==========================================================================
+   方案 A · 静谧书房 Quiet Study
+   米白纸感底 + 墨蓝主色 + 暖琥珀点缀
+   ——————————————————————————————————————————————————————————————
+   本文件是「主题覆盖层」：不改原 index.html 的任何规则，
+   只在它后面加载，靠同名选择器 + 同权重后置 覆盖颜色、圆角、阴影、字号。
+   回滚方式：删掉 <link> 一行即可，原样式完全复原。
+   ========================================================================== */
+
+:root{
+  /* ---- 底色：纸感米白，投影不反光 ---- */
+  --bg:#F2EFE8;
+  --panel:#FFFDF9;
+  --panel-2:#F8F5EF;
+
+  /* ---- 描边：暖灰，不用冷蓝灰 ---- */
+  --border:#E5DFD3;
+  --border-2:#CFC6B4;
+
+  /* ---- 文字：墨色，正文对比度提到 12:1 ---- */
+  --text:#252E3B;
+  --text-2:#5A6472;
+  --text-3:#8B8579;
+
+  /* ---- 主色：墨蓝（参考拉夫劳伦/牛津出版物的沉稳蓝） ---- */
+  --primary:#1F5C99;
+  --primary-2:#164A7E;
+  --primary-soft:#E4EDF6;
+
+  /* ---- 点缀：暖琥珀（原来偏橙，调成更稳的金石黄） ---- */
+  --accent:#B8791B;
+  --accent-soft:#FBF0DC;
+
+  /* ---- 荧光笔：保留黄色但降低饱和，配米白底不刺眼 ---- */
+  --hl:#FBEDB8;
+  --hl-line:#D9A441;
+
+  /* ---- 语义色 ---- */
+  --ok:#15724B;
+  --ok-soft:#E4F1E9;
+  --err:#B93B3B;
+  --danger:#B93B3B;
+
+  /* ---- 造型：更克制的圆角 + 双层柔和阴影 ---- */
+  --radius:12px;
+  --shadow:0 1px 2px rgba(38,32,20,.05), 0 4px 14px rgba(38,32,20,.05);
+  --shadow-lg:0 2px 6px rgba(38,32,20,.07), 0 14px 34px rgba(38,32,20,.09);
+}
+
+/* ====================== 顶栏：改浅色纸质 ====================== */
+/* 原来是深蓝渐变 —— 投影时偏暗显脏，且和下方的白面板「两张皮」。
+   这里改成深墨色，压得住又不脏，和暖米白底是同一套材质语言。 */
+.topbar{
+  background:#26313F;
+  box-shadow:0 1px 0 rgba(0,0,0,.06), 0 2px 10px rgba(38,32,20,.10);
+  border-bottom:1px solid #1B242F;
+}
+.tb-btn{
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.16);
+  border-radius:9px;
+}
+.tb-btn:hover{background:rgba(255,255,255,.17)}
+/* 主行动按钮改琥珀实心 —— 深墨底上比纯白更抓眼，且和点缀色呼应 */
+.tb-btn.solid{background:#D9A441;color:#26313F;border-color:#D9A441;font-weight:700}
+.tb-btn.solid:hover{background:#E4B459}
+.tb-sel{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);border-radius:9px}
+.tb-sel:hover{background:rgba(255,255,255,.17)}
+.tb-sel option{color:#252E3B;background:#FFFDF9}
+.doc-title{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18);border-radius:9px;font-size:.98rem}
+.doc-title:hover{background:rgba(255,255,255,.16)}
+.doc-title:focus{background:rgba(255,255,255,.20);border-color:#D9A441}
+.top-hint{color:rgba(255,255,255,.66);font-size:.8rem}
+.brand{font-size:1.05rem;letter-spacing:.5px}
+.logo{font-size:1.2rem}
+/* 用户名胶囊：深底上要够亮才看得清 */
+.gate-me{background:rgba(217,164,65,.16);border-color:rgba(217,164,65,.42);color:#F0C878}
+.gate-me:hover{background:rgba(217,164,65,.26)}
+
+/* ====================== 次级栏：题型 / 视图 ====================== */
+.subbar{background:#FFFDF9;border-bottom:1px solid var(--border);padding:9px 16px}
+.ptab{
+  border-radius:8px;font-size:.9rem;padding:6px 16px;
+  background:#F8F5EF;border-color:var(--border);color:var(--text-2);
+}
+.ptab.on{box-shadow:0 2px 7px rgba(31,92,153,.26)}
+.vtabs{background:#F4F1EA;border-color:var(--border);border-radius:10px;padding:4px}
+.vtab{font-size:.88rem;padding:6px 15px;border-radius:7px}
+.vtab:hover{background:#FFFDF9}
+.navline .lb{font-size:.78rem}
+/* 题型分类色：从鲜艳撞色调成「同一支笔、不同浓淡」的低饱和版本 */
+.ptab.tk-read.on{background:#1F5C99;border-color:#1F5C99}
+.ptab.tk-cloze.on{background:#6B4FA0;border-color:#6B4FA0}
+.ptab.tk-seven.on{background:#17735A;border-color:#17735A}
+.ptab.tk-gram.on{background:#A76A16;border-color:#A76A16}
+.ptab.tk-appwrite.on{background:#A24463;border-color:#A24463}
+.ptab.tk-cont.on{background:#0F6C7E;border-color:#0F6C7E}
+.ptab.tk-read:hover{color:#1F5C99;border-color:#1F5C99}
+.ptab.tk-cloze:hover{color:#6B4FA0;border-color:#6B4FA0}
+.ptab.tk-seven:hover{color:#17735A;border-color:#17735A}
+.ptab.tk-gram:hover{color:#A76A16;border-color:#A76A16}
+.ptab.tk-appwrite:hover{color:#A24463;border-color:#A24463}
+.ptab.tk-cont:hover{color:#0F6C7E;border-color:#0F6C7E}
+
+.chip.tk-read,.qtype.tk-read{background:#E3EDF7;color:#1F5C99}
+.chip.tk-cloze,.qtype.tk-cloze{background:#EFEAF7;color:#6B4FA0}
+.chip.tk-seven,.qtype.tk-seven{background:#E2F1EC;color:#17735A}
+.chip.tk-gram,.qtype.tk-gram{background:#F8EEDC;color:#A76A16}
+.chip.tk-appwrite,.qtype.tk-appwrite{background:#F7E9EE;color:#A24463}
+.chip.tk-cont,.qtype.tk-cont{background:#E2F0F2;color:#0F6C7E}
+
+/* ====================== 主体分栏 ====================== */
+.pane{padding:22px 26px 80px}
+.pane-left{background:#FFFDF9}
+.pane-right{background:#F8F5EF;border-left:1px solid var(--border)}
+.pane::-webkit-scrollbar-thumb{background:#D5CCBC}
+.pane::-webkit-scrollbar-thumb:hover{background:#BFB4A0}
+.divider::after{background:var(--border)}
+
+/* ====================== 原文段落 ====================== */
+.pane-head{border-bottom:1px dashed var(--border);padding-bottom:12px;margin-bottom:16px}
+.pane-head .t{font-size:.92rem}
+.chip{font-size:.78rem;padding:3px 11px;border-radius:20px}
+.chip.gray{background:#F0EDE6;color:var(--text-2)}
+.chip.orange{background:var(--accent-soft);color:var(--accent)}
+.toggle{font-size:.82rem;border-radius:20px;background:#FFFDF9}
+
+/* 正文：字号放大约一档（1.02→1.10rem），行距略收（1.92→1.88）——
+   放大的同时收行距，否则一屏能看的字反而变少。 */
+.para-en{
+  font-size:calc(1.10rem * var(--fs));
+  line-height:1.88;
+  letter-spacing:.15px;
+  padding:12px 16px;
+}
+.para-zh{
+  font-size:calc(.92rem * var(--fs));
+  line-height:1.82;
+  border-left:3px solid #D9CBB4;
+  padding-left:15px;
+  margin-top:8px;
+}
+.para-tag{font-size:.78rem;padding:3px 12px;background:var(--primary)}
+
+/* 荧光高亮：改成暖琥珀下划线风格，不像「马克笔涂上去」 */
+.s.hl{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
+@keyframes flashhl{
+  0%,100%{background:var(--hl);box-shadow:inset 0 -2px 0 var(--hl-line)}
+  35%{background:#F7DF8E;box-shadow:inset 0 -2px 0 var(--hl-line),0 0 0 5px rgba(217,164,65,.3)}
+}
+
+/* ====================== 题目卡片 ====================== */
+/* 关键改动：把「1px 淡边 + 大扩散阴影」换成「实边 + 极小阴影」——
+   投影仪对淡阴影几乎不显，实边框才能让卡片边界立住。 */
+.qcard{
+  border:1px solid var(--border);
+  border-radius:14px;
+  margin-bottom:16px;
+  box-shadow:0 1px 2px rgba(38,32,20,.045);
+}
+.qcard:hover{border-color:var(--border-2);box-shadow:0 3px 12px rgba(38,32,20,.07)}
+.qcard.act{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(31,92,153,.11), 0 3px 12px rgba(38,32,20,.07);
+}
+.qhead{gap:12px;padding:15px 17px 9px}
+.qno{width:31px;height:31px;font-size:.88rem;background:var(--primary)}
+.qcard.act .qno{background:var(--accent)}
+.qstem{font-size:calc(1.01rem * var(--fs));line-height:1.72}
+.qtype{font-size:.74rem;padding:2px 10px;border-radius:20px;background:#F1EEE7}
+
+.opts{padding:0 17px 5px 60px}
+.opt{
+  font-size:calc(.97rem * var(--fs));
+  line-height:1.72;
+  padding:6px 10px;
+  border-radius:8px;
+}
+.opt .k{width:22px;height:22px;font-size:.78rem;border-radius:50%}
+.opt.correct{background:var(--ok-soft)}
+.opt.correct .v{color:#0F5C3A;font-weight:700}
+.opts.two{column-gap:12px;padding-right:24px}
+
+.qbtns{padding:7px 17px 15px 60px;gap:8px}
+.qb{font-size:.81rem;padding:6px 13px;border-radius:8px}
+.qb.warn{border-color:#E2CDA3;color:#8A6116;background:#FDF7EA}
+.qb.warn:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* 解析框：改成「引用块」语言 —— 左侧实色竖线 + 浅底，比整块方框更轻、更像讲义 */
+.evbox{
+  margin:0 17px 12px 60px;padding:11px 15px;
+  background:#FDF9EF;border:1px solid #EFE2C4;border-left:3px solid #D9A441;
+  border-radius:0 10px 10px 0;
+}
+.evbox .lb{font-size:.76rem;color:#8A6116}
+.evbox .tx{font-size:calc(.94rem * var(--fs));line-height:1.82;color:#4E4526}
+.anbox{
+  margin:0 17px 15px 60px;padding:11px 15px;
+  background:#F4F8FC;border:1px solid #D9E6F2;border-left:3px solid var(--primary);
+  border-radius:0 10px 10px 0;
+}
+.anbox .lb{font-size:.76rem;color:var(--primary)}
+.anbox .tx{font-size:calc(.93rem * var(--fs));line-height:1.84;color:#2C3E52}
+.qmini{font-size:.74rem;padding:3px 10px;border-radius:7px}
+
+/* ====================== 单段 / 文化背景 / 积累表达 ====================== */
+.single-wrap,.full-wrap{padding:26px 30px 90px}
+.sec{
+  max-width:1040px;border:1px solid var(--border);border-radius:16px;
+  padding:20px 24px 16px;box-shadow:0 1px 2px rgba(38,32,20,.045);
+}
+.card{
+  max-width:920px;border:1px solid var(--border);border-radius:16px;
+  padding:24px 28px;box-shadow:0 1px 2px rgba(38,32,20,.045);
+}
+.card h2{font-size:1.08rem;margin-bottom:16px}
+.card h2::before{width:4px;height:19px}
+.card p{font-size:calc(.99rem * var(--fs));line-height:1.95}
+.mini-q{border-radius:11px;padding:13px 16px}
+.mini-q .no{width:24px;height:24px;font-size:.78rem;background:var(--primary)}
+.mini-q .st{font-size:calc(.96rem * var(--fs))}
+.mini-q .ans{font-size:calc(.91rem * var(--fs))}
+.mini-q .ex{font-size:calc(.9rem * var(--fs))}
+
+.exp-row{padding:13px 6px}
+.exp-term{font-size:calc(1.02rem * var(--fs));color:var(--primary-2)}
+.exp-cn{font-size:calc(.95rem * var(--fs))}
+.exp-tip{font-size:calc(.86rem * var(--fs))}
+.exp-ex{border-left-color:#D9A441;background:rgba(217,164,65,.09);border-radius:0 8px 8px 0;padding:8px 13px}
+.exp-ex .en{font-size:calc(.93rem * var(--fs));color:#22374D}
+.exp-ex .zh{font-size:calc(.86rem * var(--fs))}
+.exp-sum{font-size:calc(.9rem * var(--fs))}
+.exp-grp>h3{font-size:calc(.97rem * var(--fs))}
+.exp-grp>h3 .k{font-size:calc(.82rem * var(--fs))}
+.exp-badge{font-size:calc(.76rem * var(--fs))}
+
+/* ====================== 语法填空答案块 ====================== */
+.ghint{font-size:.84rem}
+.ghint b{font-size:calc(.92rem * var(--fs))}
+.gans{border-radius:10px;padding:8px 16px}
+.gans .val{font-size:calc(.93rem * var(--fs))}
+.gans.on .val{font-size:1.85rem;color:var(--ok)}
+.gans.on{border-color:var(--ok);background:var(--ok-soft)}
+
+/* ====================== 写作题区块 ====================== */
+.wbox{border-radius:14px;padding:15px 18px}
+.wbox>h4{font-size:.88rem}
+.wtask{font-size:calc(.97rem * var(--fs))}
+.wlist li{font-size:calc(.93rem * var(--fs))}
+.wlist li:before{color:var(--accent)}
+.wkv{font-size:calc(.93rem * var(--fs))}
+.wten-row{border-radius:12px;padding:9px 12px}
+.wten-c{font-size:calc(.94rem * var(--fs))}
+
+/* ====================== 上传首页 / 空态 ====================== */
+.empty{padding:40px 26px 64px}
+.drop{
+  border:2.5px dashed var(--border-2);
+  border-radius:22px;
+  background:#FFFDF9;
+  padding:52px 34px;
+}
+.drop:hover,.drop.over{
+  border-color:var(--primary);background:#F5F9FD;
+  box-shadow:0 12px 34px rgba(31,92,153,.12);
+}
+.drop h3{font-size:1.24rem}
+.drop p{font-size:.93rem;line-height:1.9}
+.drop .ic{font-size:2.9rem}
+.drop .kbd{background:#F4F1EA;border-color:var(--border-2)}
+
+.big-btn{
+  padding:14px 40px;font-size:1.04rem;border-radius:13px;
+  background:var(--primary);
+  box-shadow:0 5px 16px rgba(31,92,153,.28);
+}
+.big-btn:hover{background:var(--primary-2);box-shadow:0 9px 24px rgba(31,92,153,.34)}
+.big-btn.ghost{border:1.5px solid var(--primary)}
+.linkbtn{font-size:.9rem;border-color:var(--border-2)}
+.thumbs,.drop,.reup-bar{width:min(700px,100%)}
+.bar{background:#E6E1D6;height:8px}
+.bar i{background:linear-gradient(90deg,var(--primary),#5B9BD8);height:8px}
+.step{font-size:.9rem}
+.reup-bar{
+  border-radius:12px;padding:13px 18px;font-size:.91rem;
+  background:#FDF6E8;border-color:#E5C88E;color:#7E5610;
+}
+.reup-back{border-radius:9px;font-size:.86rem}
+
+/* ====================== 提示条 / 弹窗 ====================== */
+.toast{border-radius:12px;padding:13px 26px;font-size:.92rem}
+.notice{border-radius:13px;padding:15px 18px}
+.notice .ntx{font-size:.91rem}
+.notice .nbtn{border-radius:8px;font-size:.85rem;padding:7px 15px}
+.modal-box{border-radius:18px;box-shadow:var(--shadow-lg)}
+.modal-head{padding:17px 22px;font-size:1.02rem}
+.modal-body{padding:20px 22px}
+.modal-body textarea{font-size:.86rem;border-radius:11px}
+.modal-foot{padding:15px 22px}
+
+/* ====================== 悬浮题目导航 ====================== */
+.qnav{
+  border-radius:15px;padding:8px 10px;background:rgba(255,253,249,.98);
+  border-color:var(--border-2);box-shadow:var(--shadow-lg);
+}
+.qnav button{width:35px;height:35px;border-radius:10px;font-size:1.2rem}
+.qnav .cnt{font-size:.91rem}
+.qnav .cnt small{font-size:.68rem}
+
+/* ====================== 登录闸门 ====================== */
+/* 纸张上的一枚卡片：加大留白、把主按钮换成琥珀实心，和顶栏呼应 */
+.gate{background:rgba(242,239,232,.80)}
+.gate-card{
+  max-width:412px;border-radius:20px;padding:38px 36px 28px;
+  background:#FFFDF9;border-color:var(--border);
+  box-shadow:var(--shadow-lg);
+}
+.gate-logo{font-size:2.3rem}
+.gate-card h1{font-size:1.32rem;margin:13px 0 5px;letter-spacing:.6px}
+.gate-sub{font-size:.82rem;margin-bottom:26px;letter-spacing:1.6px}
+.gate-field label{font-size:.81rem}
+.gate-field input{
+  font-size:1.02rem;padding:12px 15px;border-radius:11px;
+  background:#F8F5EF;border-color:var(--border);
+}
+.gate-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(184,121,27,.12)}
+.gate-btn{
+  margin-top:12px;padding:13px;font-size:1.02rem;border-radius:11px;
+  background:var(--accent);letter-spacing:3px;
+}
+.gate-foot{font-size:.75rem;padding-top:15px;margin-top:18px}
+
+/* ====================== 记号笔工具条 ====================== */
+.pen-bar{border-radius:18px;box-shadow:var(--shadow-lg);padding:9px 7px}
+/* 2026-10-03 修：原样式给 .pb 设了 width:100% 且 flex-direction:row-reverse，
+   在 76px 宽的竖排工具条里，「图标」会被 row-reverse 推到按钮可见区域之外 ——
+   表现就是整条工具条只剩空胶囊、图标全不见。
+   改成「图标与文字都居中、不反向、宽度自适应」，并放开 overflow 裁切。 */
+.pen-bar .pb{
+  font-size:.84rem;border-radius:10px;padding:7px 11px;
+  /* 关键三行：不再反向排、按钮宽度包住内容、允许子元素撑开 */
+  flex-direction:row;justify-content:center;
+  width:auto;min-width:100%;box-sizing:border-box;
+  overflow:visible;
+}
+.pen-bar .lbl{margin-left:0;margin-right:0}
+.pen-bar .zoom-pct{font-size:.84rem;border-radius:10px;min-width:100%;width:auto;box-sizing:border-box}
+
+/* ====================== 听力工作台 ====================== */
+.ls-top{background:#FFFDF9;border-bottom:1px solid var(--border);padding:10px 14px}
+.ls-brand{font-size:16px}
+.ls-hint{font-size:14px}
+.ls-b{border-radius:9px;padding:8px 15px;font-size:15px}
+.ls-b.solid{background:var(--primary);border-color:var(--primary)}
+.ls-tab{
+  border-radius:12px;padding:10px 22px;font-size:17px;
+  background:#FFFDF9;border-color:var(--border-2);
+}
+.ls-tab.on{background:var(--primary);box-shadow:0 3px 10px rgba(31,92,153,.28)}
+.ls-tab.on.play{background:linear-gradient(135deg,#15724B,#136140)}
+.ls-pane{border-radius:12px;border-color:var(--border)}
+.ls-ph{padding:13px 18px;font-size:16.5px;background:#F8F5EF}
+.ls-ph .tag{font-size:15px;color:var(--primary)}
+.ls-pb{padding:18px 24px}
+.ls-pb p{font-size:20px;line-height:2.2}
+.ls-q .stem{font-size:20px}
+.ls-q .opt{font-size:19px}
+.ls-t{height:37px;min-width:41px;border-radius:9px;font-size:16px}
+.ls-t.play{min-width:56px;background:var(--primary);border-color:var(--primary)}
+.ls-t:hover{border-color:var(--primary);background:var(--primary-soft)}
+.ls-clock{font-size:15.5px}
+.ls-chk{font-size:15px}
+.ls-sel{border-radius:8px;font-size:15px;padding:6px 9px}
+.ls-adv{border-radius:10px;font-size:14.5px;background:#F8F5EF}
+.ls-drop{border-radius:12px;padding:12px 16px;font-size:15px;background:#F8F5EF}
+.ls-drop b{font-size:16px}
+.ls-tip2{font-size:16px}
+
+/* ====================== 无障碍：尊重减少动效偏好 ====================== */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+
+</style>
+<style id="layout-overlay">
+/* ==========================================================================
+   版式策略 · 版 5「定宽左靠」 Fixed Width, Left Aligned   ← 推荐
+   ——————————————————————————————————————————————————————————————
+   这一版是「版 4 定宽居中」的改进：同样把每行限制在 61 个字符，
+   但内容**靠左对齐**，不再居中。
+
+   为什么要改：
+     版 4 居中后，卡片比栏宽窄，两侧各留一条空白 —— 在题目栏尤其明显，
+     因为题目卡片带 62px 题号缩进，实际比原文栏窄，看着像整体偏左、右边空一截。
+     左靠之后，正文左缘和栏内边距对齐，空白全部集中到右侧一侧，
+     视觉上就变成「正文区 + 右侧留白」的正常版式，不再是「居中失误」。
+
+   行宽策略和版 4 完全一致（29.5em ≈ 61 字符），阅读舒适度不变。
+   ========================================================================== */
+
+/* 分隔条 5px → 2px，热区外扩保证可抓 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+/* 左内边距给足，让正文有一条干净的左基线；右内边距小，留白都堆在右边 */
+.pane{padding:16px 12px 70px 26px}
+.single-wrap,.full-wrap{padding:16px 12px 70px 26px}
+
+/* 50 / 50 */
+.pane-left{flex:1 1 50%}
+.pane-right{flex:1 1 50%}
+
+/* ---------- 核心：正文定宽 + 左靠 ---------- */
+/* 29.5em ≈ 61 个英文字符/行（实测 17.6px 字号下平均字宽 7.92px）。
+   用 em 保证老师用 A＋ 放大字号时，每行字符数不变。 */
+.para-en{
+  max-width:29.5em;
+  margin-left:0;
+  margin-right:auto;
+}
+.para-zh{
+  max-width:26.5em;
+  margin-left:0;
+  margin-right:auto;
+}
+
+/* 题目卡片：宽度要加上题号缩进 62px，正文算下来才和原文栏同宽 */
+.qcard{
+  max-width:calc(29.5em + 62px);
+  margin-left:0;
+  margin-right:auto;
+}
+.qcard .qhead,
+.qcard .opts,
+.qcard .qbtns,
+.qcard .evbox,
+.qcard .anbox,
+.qcard .gbody{max-width:100%}
+
+/* 单段 / 文化背景：卡片靠左，右侧留白 */
+.sec,.card{
+  max-width:calc(29.5em + 4rem);
+  margin-left:0;
+  margin-right:auto;
+}
+
+/* 栏头与提示语同宽，保证整栏左缘是一条线 */
+.pane-head{max-width:calc(29.5em + 62px);margin-left:0;margin-right:auto}
+.pane-right > div[style*="font-size:.76rem"]{
+  max-width:calc(29.5em + 62px);
+  margin-left:0;
+  margin-right:auto;
+}
+/* 原文栏头部没有题号缩进，用正文宽度 */
+.pane-left .pane-head{max-width:29.5em}
+
+.para{margin-bottom:16px}
+.qcard{margin-bottom:14px}
+
+/* ---------- 窄屏兜底 ---------- */
+/* 栏本身就比定宽窄时，限制没意义 —— 放开，让它铺满 */
+@media (max-width:1150px){
+  .para-en,.para-zh,.qcard,.sec,.card,.pane-head,
+  .pane-right > div[style*="font-size:.76rem"]{max-width:none}
+}
+
+</style>
 </head>
-<body class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
+<body data-layout-preview class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
 
 <div class="gate" id="gate" data-page-node-id="G0TdvysSAdjGmeZDWfWhmY">
   <div class="gate-card" data-page-node-id="zfKn4yqbrXoGr3fpCOwLtP">
@@ -4734,7 +5228,7 @@ function writeRightHtml(p) {
           + '<span class="k">共 ' + p.expressions.length + ' 条'
           + (nmN ? '（含熟词生义 ' + nmN + ' 条）' : '') + ' · 点上方「积累表达」看全部</span></h4><ul class="wlist">'
           + p.expressions.slice(0, 6).map(function (e) {
-              return '<li><b>' + esc(e.term) + '</b> ' + esc(e.cn)
+              return '<li><b>' + esc(e.term) + '</b>' + locChip(p, e) + ' ' + esc(e.cn)
                 + (e.kind === 'newmeaning' ? '<span class="exp-badge">熟词生义</span>' : '')
                 + (e.ex ? '<div class="exp-ex"><span class="en">' + esc(e.ex) + '</span>'
                     + (e.exZh ? '<span class="zh">' + esc(e.exZh) + '</span>' : '') + '</div>' : '')
@@ -4844,17 +5338,99 @@ function viewBackground(p) {
     + '</div></div>';
 }
 
+/* =========================================================
+   表达定位（2026-10-05）
+   老师反馈：积累表达只给词和例句，上课时不知道该翻到原文哪里讲。
+   这里在本篇原文里就地反查位置，**不花一分钱 AI 额度、老课件立刻见效**：
+     ① 先拿 term 去每段每句逐字找；
+     ② 同一个 term 在文中出现多处时，用例句 ex 挑准那一处；
+     ③ term 找不到就整句找 ex（熟词生义的例句常常就是从原文摘的那一句）；
+     ④ 再不行挑 term 里最长的实词、去掉 -ed/-ing/-s 之类后缀模糊找一次。
+   全都没找到就返回 null —— **宁可不显示，也绝不猜一个错位置**（讲错段比不讲更糟）。
+   ========================================================= */
+function normExpr(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201C\u201D]/g, "'")
+    .replace(/[^a-z0-9']+/g, ' ')      /* 标点一律当空格：原文里的破折号、引号不影响匹配 */
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+/* 从词条里挑一个「最不容易变形的实词」：最长、且不是虚词的那个 */
+const EXP_STOP = /^(?:the|a|an|of|to|in|on|at|for|with|and|or|but|be|is|are|was|were|being|been|me|my|his|her|its|it|that|this|as|by|from|into|out|up|so|not|no|do|does|did|have|has|had|will|would|can|could|may|might|must|than|then|there|their|they|we|our|you|your|he|she|them)$/;
+function expStem(e) {
+  const ws = normExpr(e.term).split(' ').filter(function (w) { return w.length >= 5 && !EXP_STOP.test(w); });
+  if (!ws.length) return '';
+  ws.sort(function (a, b) { return b.length - a.length; });
+  const w = ws[0];
+  const base = w.replace(/(?:ations|ation|ings|ing|edly|ed|es|s|ly|ness|ment)$/, '');
+  return base.length >= 5 ? base : w;      /* 削得太狠（ties → t 这种）就保留原词 */
+}
+/* 在整篇里找 needle（两边都已归一化），返回 [{pi, si}] */
+function expFindAll(p, needle) {
+  const hits = [];
+  if (!needle || needle.length < 4) return hits;
+  (p.paragraphs || []).forEach(function (para, pi) {
+    splitSentences(para.en).forEach(function (s, si) {
+      if (normExpr(s).indexOf(needle) >= 0) hits.push({ pi: pi, si: si });
+    });
+  });
+  return hits;
+}
+function locateExpr(p, e) {
+  if (!p || !(p.paragraphs || []).length) return null;
+  const term = normExpr(e.term);
+  const ex = normExpr(e.ex);
+  const byTerm = expFindAll(p, term);
+  if (byTerm.length === 1) return byTerm[0];
+  if (byTerm.length > 1) {
+    /* 出现多处 → 用例句 ex 挑准那一处 */
+    const exHits = expFindAll(p, ex);
+    for (let i = 0; i < exHits.length; i++) {
+      const hit = byTerm.filter(function (h) { return h.pi === exHits[i].pi && h.si === exHits[i].si; })[0];
+      if (hit) return hit;
+    }
+    return byTerm[0];   /* 例句对不上（多半是 AI 自己写的）→ 退回第一次出现的位置 */
+  }
+  const byEx = expFindAll(p, ex);
+  if (byEx.length) return byEx[0];
+  const byStem = expFindAll(p, expStem(e));
+  return byStem.length ? byStem[0] : null;
+}
+/* 位置小标签：第 N 段 · 第 K 句 —— 点一下直接跳到原文那一段那一句 */
+function locChip(p, e) {
+  const loc = locateExpr(p, e);
+  if (!loc) return '';
+  return '<button class="exp-loc" data-expjump="' + loc.pi + '" data-expsi="' + loc.si + '"'
+    + ' title="点一下：跳到原文第 ' + (loc.pi + 1) + ' 段的这一句，投影上直接指给学生看"'
+    + '>第 ' + (loc.pi + 1) + ' 段 · 第 ' + (loc.si + 1) + ' 句</button>';
+}
+/* 文中原句（已经和例句一模一样就不重复显示） */
+function srcLine(p, e) {
+  const loc = locateExpr(p, e);
+  if (!loc) return '';
+  const para = (p.paragraphs || [])[loc.pi];
+  if (!para) return '';
+  const s = splitSentences(para.en)[loc.si] || '';
+  if (!s || normExpr(s) === normExpr(e.ex)) return '';
+  return '<div class="exp-src"><span class="lb">文中原句</span>' + esc(s) + '</div>';
+}
+
 /* ---------- 视图：积累表达 ---------- */
 /* 2026-10-03 改版（教研员：短语和熟词生义的例句会更好）：
    ① 每条表达下面补一句完整例句（英文 + 中文），讲评时可以直接念；
    ② 按 kind 分两组 —— 上「熟词生义」下「短语与搭配」，熟词生义是这套材料最缺、最该单拎出来的；
    ③ 老数据（没 kind / 没例句）落进「其他积累」组，不丢内容；
    ④ 顶上给「熟词生义 N 条 · 短语 M 条」的小结。 */
-function expRow(e) {
+function expRow(e, p) {
+  const chip = locChip(p, e);
   return '<div class="exp-row">'
-    + '<div class="exp-term">' + esc(e.term) + '</div>'
+    + '<div class="exp-term">' + esc(e.term)
+    + (chip ? '<div class="exp-term-loc">' + chip + '</div>' : '')
+    + '</div>'
     + '<div class="exp-cn">' + esc(e.cn)
     + (e.tip ? '<div class="exp-tip">' + esc(e.tip) + '</div>' : '')
+    + srcLine(p, e)
     + (e.ex ? '<div class="exp-ex"><span class="en">' + esc(e.ex) + '</span>'
         + (e.exZh ? '<span class="zh">' + esc(e.exZh) + '</span>' : '') + '</div>' : '')
     + '</div></div>';
@@ -4877,7 +5453,7 @@ function viewExpressions(p) {
   const group = function (title, sub, arr) {
     if (!arr.length) return '';
     return '<div class="exp-grp"><h3>' + title + '<span class="k">' + sub + '</span></h3>'
-      + arr.map(expRow).join('') + '</div>';
+      + arr.map(function (e) { return expRow(e, p); }).join('') + '</div>';
   };
   html += group('熟词生义', '学生认识这个词，但这里不是他背的那个意思', nm);
   html += group('短语与搭配', '值得整块记下来的词块', ph);
@@ -5322,6 +5898,32 @@ $('#content').addEventListener('click', (e) => {
     S.activeQ = (String(S.activeQ) === String(no)) ? null : no;
     renderView();
     if (S.activeQ != null) focusEvidence(true, no);
+    return;
+  }
+
+  /* 点表达上的「第 N 段 · 第 K 句」→ 切到原文视图，把那一段（那一句）闪一下 */
+  const locj = t.closest('[data-expjump]');
+  if (locj) {
+    const pi = +locj.dataset.expjump;
+    const si = locj.dataset.expsi === '' ? -1 : +locj.dataset.expsi;
+    S.activeQ = null;
+    S.picking = null;
+    S.view = 'original';
+    render();
+    setTimeout(function () {
+      const para = document.querySelector('.para[data-para="' + pi + '"]');
+      if (!para) return;
+      safeScroll(para, { block: 'center' });
+      para.classList.add('locflash');
+      setTimeout(function () { para.classList.remove('locflash'); }, 1800);
+      if (si >= 0) {
+        const sp = para.querySelector('.s[data-si="' + si + '"]');
+        if (sp) {
+          sp.classList.add('locflash');
+          setTimeout(function () { sp.classList.remove('locflash'); }, 1800);
+        }
+      }
+    }, 70);
     return;
   }
 

@@ -1,0 +1,35 @@
+/* ==========================================================================
+   版式策略 · 版 2「题目优先」 Question First
+   ——————————————————————————————————————————————————————————————
+   场景：老师习惯先给题目、让学生带着问题读，或者讲评时盯着选项逐条分析。
+   做法：题目栏给到 52%，原文栏 48%；分隔条 2px；边距收紧到 14px。
+         题目栏内部再收掉左侧缩进（60px→44px），选项排得更宽松。
+   代价：原文栏变窄，长段落折行变多，但原文通常可以靠滚动看。
+   ========================================================================== */
+
+/* 分隔条 5px → 2px，热区外扩保证可抓 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+/* 栏内边距收紧，省下的宽度给内容 */
+.pane{padding:16px 14px 70px}
+.single-wrap,.full-wrap{padding:16px 14px 70px}
+
+/* 分屏比例：题目 52 / 原文 48 —— 这是本版和「原文优先」最大的区别 */
+.pane-left{flex:1 1 48%}
+.pane-right{flex:1 1 52%}
+
+/* 题目栏内部再挖宽度：左侧缩进 60px → 44px，选项行更长、少折行 */
+.opts{padding:0 16px 5px 44px}
+.qbtns{padding:7px 16px 15px 44px}
+.evbox,.anbox{margin-left:44px;margin-right:16px}
+
+/* 选项整体排松一点，讲评时指着念不容易串行 */
+.opt{line-height:1.8;padding:7px 11px}
+
+.para{margin-bottom:16px}
+.qcard{margin-bottom:14px}

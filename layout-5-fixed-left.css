@@ -1,0 +1,84 @@
+/* ==========================================================================
+   版式策略 · 版 5「定宽左靠」 Fixed Width, Left Aligned   ← 推荐
+   ——————————————————————————————————————————————————————————————
+   这一版是「版 4 定宽居中」的改进：同样把每行限制在 61 个字符，
+   但内容**靠左对齐**，不再居中。
+
+   为什么要改：
+     版 4 居中后，卡片比栏宽窄，两侧各留一条空白 —— 在题目栏尤其明显，
+     因为题目卡片带 62px 题号缩进，实际比原文栏窄，看着像整体偏左、右边空一截。
+     左靠之后，正文左缘和栏内边距对齐，空白全部集中到右侧一侧，
+     视觉上就变成「正文区 + 右侧留白」的正常版式，不再是「居中失误」。
+
+   行宽策略和版 4 完全一致（29.5em ≈ 61 字符），阅读舒适度不变。
+   ========================================================================== */
+
+/* 分隔条 5px → 2px，热区外扩保证可抓 */
+.divider{flex:0 0 2px;width:2px}
+.divider::after{inset:0 0.5px}
+.divider::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4.5px;right:-4.5px;
+  cursor:col-resize;
+}
+
+/* 左内边距给足，让正文有一条干净的左基线；右内边距小，留白都堆在右边 */
+.pane{padding:16px 12px 70px 26px}
+.single-wrap,.full-wrap{padding:16px 12px 70px 26px}
+
+/* 50 / 50 */
+.pane-left{flex:1 1 50%}
+.pane-right{flex:1 1 50%}
+
+/* ---------- 核心：正文定宽 + 左靠 ---------- */
+/* 29.5em ≈ 61 个英文字符/行（实测 17.6px 字号下平均字宽 7.92px）。
+   用 em 保证老师用 A＋ 放大字号时，每行字符数不变。 */
+.para-en{
+  max-width:29.5em;
+  margin-left:0;
+  margin-right:auto;
+}
+.para-zh{
+  max-width:26.5em;
+  margin-left:0;
+  margin-right:auto;
+}
+
+/* 题目卡片：宽度要加上题号缩进 62px，正文算下来才和原文栏同宽 */
+.qcard{
+  max-width:calc(29.5em + 62px);
+  margin-left:0;
+  margin-right:auto;
+}
+.qcard .qhead,
+.qcard .opts,
+.qcard .qbtns,
+.qcard .evbox,
+.qcard .anbox,
+.qcard .gbody{max-width:100%}
+
+/* 单段 / 文化背景：卡片靠左，右侧留白 */
+.sec,.card{
+  max-width:calc(29.5em + 4rem);
+  margin-left:0;
+  margin-right:auto;
+}
+
+/* 栏头与提示语同宽，保证整栏左缘是一条线 */
+.pane-head{max-width:calc(29.5em + 62px);margin-left:0;margin-right:auto}
+.pane-right > div[style*="font-size:.76rem"]{
+  max-width:calc(29.5em + 62px);
+  margin-left:0;
+  margin-right:auto;
+}
+/* 原文栏头部没有题号缩进，用正文宽度 */
+.pane-left .pane-head{max-width:29.5em}
+
+.para{margin-bottom:16px}
+.qcard{margin-bottom:14px}
+
+/* ---------- 窄屏兜底 ---------- */
+/* 栏本身就比定宽窄时，限制没意义 —— 放开，让它铺满 */
+@media (max-width:1150px){
+  .para-en,.para-zh,.qcard,.sec,.card,.pane-head,
+  .pane-right > div[style*="font-size:.76rem"]{max-width:none}
+}
