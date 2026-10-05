@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '383568964d';
+  var APP_VER = '4f4f3e6fd7';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -4634,17 +4634,62 @@ function splitInlineParas(list) {
   return out.filter((x) => x.en);
 }
 
+/* ---------- 2026-10-05：只由一个「空」构成的段落不是真段落 ----------
+   案例（浪浪七选五课件）：卷面上第 1 空的横线排在段末，转写/模型把它吐成
+   独立的一项（en = "______ 1 ______"，zh 还写了 "(第1空)"），
+   页面上于是出现「第 2 段：______ 1 ______」这种空壳段，
+   后面每个空都一样，段号整体往后错一位、明显不对 ——
+   老师原话：「这里的第一空是第一段的结尾，但是不是第二段，不能单独当成一段，后面也是一样」。
+   判据（从严，宁可不动）：整段去掉下划线 / 数字 / 空格 / 括号标点后什么都不剩。
+   带提示词的（______ (start)）剩字母 → 不算；带选项文字的（… A. xxx）同理不算。 */
+function isBlankOnlyPara(t) {
+  const s = String(t || '').trim();
+  if (!/_{2,}/.test(s)) return false;                 /* 必须真有下划线空 */
+  return s.replace(/_{2,}/g, '')
+    .replace(/[\d\s]/g, '')
+    .replace(/[()[\]{}<>（）【】「」『』《》.,;:!?'"`~\-–—、，。；：！？]/g, '') === '';
+}
+/* zh 里的空占位说明（"(第1空)"「第 2 空」），并入上一段时丢掉，别污染译文 */
+function isBlankPlaceholderZh(t) {
+  const s = String(t || '').trim();
+  if (!s) return true;
+  return /^[（(\[【]?\s*(第\s*)?\d{0,2}\s*空(\s*题)?\s*[)）\]】]?$/.test(s);
+}
+/* 把空壳段并回上一段（卷面上它就是上一段的结尾）。
+   万一第一个就是空壳段（罕见），挂到下一段开头，不让它单独占一个段号。 */
+function mergeLoneBlankParas(list) {
+  const out = [];
+  (list || []).forEach(function (x) {
+    const en = String((x && x.en) || '').trim();
+    const zh = String((x && x.zh) || '').trim();
+    if (isBlankOnlyPara(en) && out.length) {
+      const prev = out[out.length - 1];
+      prev.en = (prev.en + ' ' + en).trim();
+      if (zh && !isBlankPlaceholderZh(zh)) prev.zh = (prev.zh + ' ' + zh).trim();
+      return;
+    }
+    out.push({ en: en, zh: zh });
+  });
+  if (out.length > 1 && isBlankOnlyPara(out[0].en)) {
+    const head = out.shift();
+    out[0].en = (head.en + ' ' + out[0].en).trim();
+    if (head.zh && !isBlankPlaceholderZh(head.zh)) out[0].zh = (head.zh + ' ' + out[0].zh).trim();
+  }
+  return out;
+}
+
 function normalizePassage(p) {
   const raw = {
     kind: p.kind || '',
     label: p.label || 'A',
     genre: p.genre || '',
     topic: p.topic || '',
-    /* 先把段内换行拆成独立段落，再逐段剥段首序号（AI 可能把多段连在一个字段里） */
-    paragraphs: splitInlineParas((p.paragraphs || []).map((x) => ({
+    /* 先把段内换行拆成独立段落，再逐段剥段首序号（AI 可能把多段连在一个字段里），
+       最后把「只有空」的空壳段并回上一段（七选五 / 完形段末空被吐成独立一段） */
+    paragraphs: mergeLoneBlankParas(splitInlineParas((p.paragraphs || []).map((x) => ({
       en: String(x.en || '').trim(),
       zh: String(x.zh || '').trim()
-    }))).map((x) => ({ en: stripParaNo(x.en), zh: x.zh })).filter((x) => x.en),
+    }))).map((x) => ({ en: stripParaNo(x.en), zh: x.zh })).filter((x) => x.en)),
     questions: (p.questions || []).map((q) => ({
       no: q.no,
       stem: String(q.stem || '').trim(),
