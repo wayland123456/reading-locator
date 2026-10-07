@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'a18c42295e';
+  var APP_VER = 'e2d3a93b05';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -2528,6 +2528,11 @@ function proxyExtra(model) {
 /* 代理通路同样要退避重试 */
 /* 纯限流（模型被挤爆）—— 跟网关抖动分开处理 */
 const RATE_RE = /429|1305|访问量过大|rate.?limit|too many/i;
+/* 2026-10-07 补回：本行在 9/24 之后的某次改动中被误删，三处引用还在 ——
+   结果请求一旦失败走进 catch，就抛「BUSY_RE is not defined」把原始错误盖掉，
+   连自动退避重试都进不去（网络一抖就直接判死）。凡「限流 / 网关抖动 / 超时 /
+   网络」类错误都算"繁忙"，走退避重试。 */
+const BUSY_RE = /1305|访问量过大|稍后再试|请稍后|429|too many|rate.?limit|overload|繁忙|50[234]|52[24]|546|529|gateway|timed?\s*out|timeout|超时|无响应|网络|负载/i;
 
 async function proxyCallRetry(model, messages, maxTokens, extra) {
   /* 视觉模型（认图）没有靠谱的替补：glm-4v-flash 的 max_tokens 只有 1024，装不下一页卷子，
