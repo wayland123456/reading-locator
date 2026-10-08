@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '4363da66ab';
+  var APP_VER = 'e00d9e89a9';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1474,44 +1474,6 @@ body.ls-open .pen-bar{display:none}
 #content.onecol .pane-head,
 #content.onecol .pane-right > div[style*="font-size:.76rem"]{max-width:none;margin-left:0;margin-right:0}
 
-/* ===================== 语音讲解（2026-10-08 新增）=====================
-   左上角一个胶囊按钮：点了就朗读这一篇的中文讲解。
-   讲解稿由本页已有的解析数据拼成（不额外烧模型），语音走通义 TTS（经 ai-proxy 代理）。
-   平时半透明隐身（同右侧记号笔工具条的做法），鼠标靠近才显形 —— 投影时不挡原文。 */
-.tts-wrap{
-  position:absolute;left:14px;top:12px;z-index:45;
-  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
-  opacity:.32;transition:opacity .22s;
-}
-.tts-wrap:hover,.tts-wrap.on{opacity:1}
-@media (hover:none){ .tts-wrap{opacity:1} }   /* 触摸屏没有 hover，必须常显，否则手指点不到 */
-.tts-wrap[hidden]{display:none}
-
-.tts-btn{
-  display:flex;align-items:center;gap:7px;
-  background:var(--panel);border:1px solid var(--border-2);border-radius:999px;
-  padding:7px 15px 7px 13px;font-size:.86rem;font-weight:700;color:var(--text);
-  box-shadow:0 3px 12px rgba(38,32,20,.14);transition:.18s;white-space:nowrap;
-}
-.tts-btn:hover{border-color:var(--accent);color:var(--accent)}
-.tts-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(184,121,27,.32)}
-.tts-btn.on:hover{color:#fff}
-.tts-ico{font-size:.95rem;line-height:1;display:inline-block}
-.tts-btn.busy .tts-ico{animation:ttsSpin 1.1s linear infinite}
-@keyframes ttsSpin{to{transform:rotate(360deg)}}
-
-.tts-panel{
-  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-  padding:9px 11px;box-shadow:var(--shadow-lg);min-width:190px;max-width:330px;
-}
-.tts-panel[hidden]{display:none}
-.tts-prog{height:4px;background:var(--panel-2);border-radius:99px;overflow:hidden}
-.tts-prog>i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .3s}
-.tts-meta{display:flex;align-items:center;gap:8px;margin-top:7px}
-.tts-meta>span{flex:1;font-size:.76rem;color:var(--text-3);line-height:1.5}
-.tts-x{border:1px solid var(--border);border-radius:7px;padding:3px 9px;font-size:.76rem;color:var(--text-2);flex:0 0 auto}
-.tts-x:hover{border-color:var(--err);color:var(--err)}
-
 </style>
 </head>
 <body data-layout-preview class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
@@ -1575,21 +1537,6 @@ body.ls-open .pen-bar{display:none}
 </div>
 
 <main class="main" id="main" data-page-node-id="yvWafthIJKbYHO96QM8kGo">
-  <!-- 语音讲解（2026-10-08）：浮在内容区左上角。讲解稿用本页已有解析数据拼装，
-       语音走通义 TTS；播放控制见文件末尾 tts* 函数群。 -->
-  <div class="tts-wrap" id="ttsWrap" hidden>
-    <button class="tts-btn" id="ttsBtn" title="朗读这一篇的中文语音讲解（AI 合成，可直接放给学生听）">
-      <span class="tts-ico" id="ttsIco">🔊</span>
-      <span class="tts-label" id="ttsLabel">语音讲解</span>
-    </button>
-    <div class="tts-panel" id="ttsPanel" hidden>
-      <div class="tts-prog"><i id="ttsProg"></i></div>
-      <div class="tts-meta">
-        <span id="ttsMeta">准备中…</span>
-        <button class="tts-x" id="ttsStop" title="停止并从头开始">✕ 停止</button>
-      </div>
-    </div>
-  </div>
   <div id="content" data-page-node-id="Mv290dg4p5TtBY2gbTc4Yc"></div>
 
   <div class="empty" id="emptyState" data-page-node-id="1EXewiK6zWk2vGtFOnpdcO">
@@ -1908,49 +1855,17 @@ const AI_PROXY = 'https://gqlwspxcyhjtzhikcexj.supabase.co/functions/v1/ai-proxy
 const PUB_KEY  = 'sb_publishable_PqN5m9yOrWZzBazFjO7Y_w_pfIMO1PI';
 
 /* ---------- 解析引擎（仅保留标准档） ----------
-   pro ：通义 qwen3.7-plus（识图）+ qwen-plus（解析）。
+   pro ：通义 qwen3.7-plus + qwen-plus，实测识别最准，为唯一可用档位。
    2026-09-29 移除 free（智谱 GLM-Flash）与 eco（通义 Flash）两档：
    实测另两档识别质量不稳定，已下线。
-   2026-10-08：识图从 qwen-vl-max 迁到 qwen3.7-plus（vl-max 10-10 下线）。
-   迁移当时漏了三处「跟着模型名走」的判断，当天补齐 —— 见下方注释。
 ----------------------------------- */
 const ENGINES = {
   pro: {
     transcribe: 'qwen3.7-plus',
-    /* ⚠️ 2026-10-08 补：本字段以前**根本不存在**（全文件只在 4288 行被引用一次），
-       于是 4288 行的兜底一直落到字面量 'qwen3.7-plus' 上。
-       迁移前主/vl-max、兜底 3.7-plus 恰好是两个不同模型 → 兜底是真的"换双眼睛再看一遍"；
-       迁移后两边都是 qwen3.7-plus → **触发时白发一次请求、几乎必然拿到同样的跳读结果**，
-       这条对付「双栏试卷左栏中段整段跳读」的质量兜底就此名存实亡。
-       这里显式给一个**另一个真模型**，且用官方点名为「文档/表格/试卷/手写，OCR 首选」的
-       qwen3.5-ocr —— 它对双栏跳读的失败模式与 3.7-plus 不同，兜底才有意义。 */
-    fbTranscribe: 'qwen3.5-ocr',
-    /* 2026-10-08：解析由 qwen-plus（均衡档）升到 qwen3.7-plus —— 完形填空答案错的
-       主因之一是解析档位偏低：均衡档 15 空里错 1~2 空属于它的正常水平。
-       转写本来就用 3.7-plus，解析跟上后全链路同档。代理白名单已含该模型，不必改代理。 */
-    parse: 'qwen3.7-plus',
-    /* 标签不再手写（以前写"VL-Max"，而 vl-max 早在 10-08 就不用了，界面一直报错名）。
-       改成按实际模型名自动生成 —— 以后换模型，界面不可能再和实际不符。 */
-    label: ''
+    parse: 'qwen-plus',
+    label: '标准 · 通义 VL-Max + Plus'
   }
 };
-/* 模型名 → 界面短名。换模型时只改这里，label 自动跟着变。 */
-const MODEL_LABEL = {
-  'qwen-plus':        '通义 Plus',
-  'qwen-flash':       '通义 Flash',
-  'qwen3.7-plus':     '通义 3.7-Plus',
-  'qwen3.8-flash':    '通义 3.8-Flash',
-  'qwen3.5-ocr':      '通义 3.5-OCR',
-  'qwen-vl-max':      '通义 VL-Max'
-};
-(function buildEngineLabels() {
-  Object.keys(ENGINES).forEach(function (k) {
-    const e = ENGINES[k];
-    const nm = function (m) { return MODEL_LABEL[m] || m; };
-    e.label = '标准档 · ' + nm(e.transcribe) + ' + ' + nm(e.parse)
-      + (e.fbTranscribe ? '（兜底 ' + nm(e.fbTranscribe) + '）' : '');
-  });
-})();
 
 /* ---------- 提示词 ---------- */
 const TRANSCRIBE_PROMPT = [
@@ -2583,20 +2498,15 @@ async function proxyCall(model, messages, maxTokens, extra) {
     temperature: 0.2
   };
   if (extra) Object.assign(body, extra);
-  /* 认图给 100 秒、普通纯文本 90 秒 —— 都比上游网关的掐断线略宽一点。
-     2026-10-08：开了思考链的解析块（extra.enable_thinking）明显更慢 —— 思考 token
-     也是一个一个生成的（实测同一道题：不开思考 2.3 秒，开思考 7.0 秒），
-     所以这类调用单独给到 140 秒，仍卡在 Supabase Edge Function 150 秒 idle 限制之内：
-     宁可前端先超时、给一句能看懂的提示，也不要被平台直接 504 掐断（那样连原因都看不到）。 */
+  /* 认图（带 image_url）给 150 秒，纯文本 110 秒 —— 都比服务端网关的掐断线略宽一点 */
   const isVision = (messages || []).some(function (m) {
     return Array.isArray(m.content) && m.content.some(function (c) { return c.type === 'image_url'; });
   });
-  const isSolve = !!(extra && extra.enable_thinking);
   const resp = await fetchWithTimeout(AI_PROXY, {
     method: 'POST',
     headers: { 'apikey': PUB_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
-  }, isVision ? 100000 : (isSolve ? 140000 : 90000));
+  }, isVision ? 100000 : 90000);
   let j = null;
   try { j = await resp.json(); }
   catch (e) { throw new Error('接口返回异常（HTTP ' + resp.status + '）'); }
@@ -2649,30 +2559,20 @@ async function proxyCallRetry(model, messages, maxTokens, extra) {
 }
 
 /* ---------- 统一入口（仅标准档 pro，经 Supabase 代理） ---------- */
-/* 2026-10-08：解析换成 qwen3.7-plus 后把「思考链」打开 —— 完形/语法考的就是上下文
-   推理，qwen3 开思考后判断明显更稳。思考 token 与正文共用 max_tokens，所以
-   parseBudget 每一档都同步上调（见该函数注释）。
-   只给 kind = 'solve'（真正在做题：整块解析 / 补解析 / 整卷兜底 / 完形独立复核）
-   开思考；'parse' 这类小活（重写单题解析、补例句、听力命题）不开 ——
-   它们额度只有几百 token，思考一开正文就被挤没了。
-   认图（transcribe）更不开：转写要的是照抄，思考只会拖时间、还挤占额度导致过早截断。 */
-const THINK_ON_PARSE = true;
-async function aiCallRaw(kind, messages, maxTokens, modelOverride) {
+async function aiCallRaw(kind, messages, maxTokens) {
   const eng = ENGINES[S.engine] || ENGINES.pro;
-  const primary = modelOverride || (kind === 'transcribe' ? eng.transcribe : eng.parse);
-  const extra = (THINK_ON_PARSE && kind === 'solve' && /^qwen3/.test(primary))
-    ? { enable_thinking: true } : null;
-  return await proxyCallRetry(primary, messages, maxTokens, extra);
+  const primary = kind === 'transcribe' ? eng.transcribe : eng.parse;
+  return await proxyCallRetry(primary, messages, maxTokens);
 }
 
 /* 对外：拿纯文本。被 max_tokens 截断时自动放大额度再试一次 */
-async function aiCallSmart(kind, messages, maxTokens, modelOverride) {
+async function aiCallSmart(kind, messages, maxTokens) {
   const mt0 = maxTokens || 4096;
-  let r = await aiCallRaw(kind, messages, mt0, modelOverride);
+  let r = await aiCallRaw(kind, messages, mt0);
   if (r.finish === 'length' && mt0 < 16384) {
     toast('内容较长被截断，正在用更大额度重试…');
     await sleep(300);
-    const r2 = await aiCallRaw(kind, messages, Math.min(16384, mt0 * 2), modelOverride);
+    const r2 = await aiCallRaw(kind, messages, Math.min(16384, mt0 * 2));
     if ((r2.text || '').length >= (r.text || '').length) r = r2;
   }
   return r.text;
@@ -2982,7 +2882,7 @@ function rescuePrompt(kind, seg) {
 /* 补解析一次。额度用 parseBudget 按段长度给 —— 原来写死 8192，
    而完形这种大题输出要两万字符，必然被截断，补解析自然次次失败。 */
 async function rescueOne(kind, seg, extraNote) {
-  const raw = await aiCallSmart('solve', [{ role: 'user', content: rescuePrompt(kind, seg) + (extraNote || '') }], parseBudget(seg));
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: rescuePrompt(kind, seg) + (extraNote || '') }], parseBudget(seg));
   const d = jsonFromText(raw);
   return (d && d.passages) || [];
 }
@@ -3772,7 +3672,7 @@ async function rescueMissingParas(kind, seg, passages) {
     + '④ 每段配中文翻译。只输出 JSON，不要输出其他文字。\n\n【转录文本】\n' + body;
   let paras = [];
   try {
-    const raw = await aiCallSmart('solve', [{ role: 'user', content: prompt }], parseBudget(body));
+    const raw = await aiCallSmart('parse', [{ role: 'user', content: prompt }], parseBudget(body));
     const d = jsonFromText(raw);
     paras = (d && d.paragraphs) || (d && d.passages && d.passages[0] && d.passages[0].paragraphs) || [];
   } catch (e) { console.warn('[段落盘点] 补转录失败：' + e.message); return 0; }
@@ -3866,12 +3766,10 @@ function parseBudget(text) {
      补出来的质量明显差一档（这就是「作文效果不如昨晚」的另一半原因）。
      认出是写作题就直接给足。 */
   if (KIND_EVIDENCE.appwrite.some(function (re) { return re.test(t); })
-    || KIND_EVIDENCE.continuation.some(function (re) { return re.test(t); })) return 16384;
-  /* 2026-10-08：解析开了思考链，思考 token 与正文共用 max_tokens，每一档往上抬一档
-     （代理硬上限 16384，前端放大重试上限也是 16384，所以顶格就是 16384）。 */
-  if (n > 2200) return 16384;
-  if (n > 1200) return 14000;
-  return 11000;
+    || KIND_EVIDENCE.continuation.some(function (re) { return re.test(t); })) return 16000;
+  if (n > 2200) return 14000;
+  if (n > 1200) return 11000;
+  return 8192;
 }
 /* ---------- 写作题「空壳」判定（2026-09-25） ----------
    空壳 = 既没有写作要求(task)、又没有范文(sample)、也没有段落框架和要点，
@@ -3972,7 +3870,7 @@ const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上�
 
 /* 解析一块，返回 { d, got }。extraNote 用于「写作题重做」时追加更硬的要求 */
 async function parseOneChunk(text, extraNote) {
-  const raw = await aiCallSmart('solve', [{ role: 'user', content: chunkPromptOf(text) + (extraNote || '') }], parseBudget(text));
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text) + (extraNote || '') }], parseBudget(text));
   const d = jsonFromText(raw);
   return { d: d, got: (d && d.passages) || [] };
 }
@@ -4172,9 +4070,7 @@ async function retryLostChunks() {
   const b = $('#btnLost');
   if (b) { b.disabled = true; b.textContent = '补解析中…'; }
   try {
-    /* 2026-10-08：额度 8192 → 14000。这是整卷兜底重解析，输出最重的一块，
-       开了思考链后 8192 更不够（整卷 JSON 连带完形 15 空）。 */
-    const raw2 = await aiCallSmart('solve', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', raw) }], 14000);
+    const raw2 = await aiCallSmart('parse', [{ role: 'user', content: PARSE_PROMPT.replace('{{TEXT}}', raw) }], 8192);
     const d = jsonFromText(raw2);
     const got = (d && d.passages) || [];
     if (!got.length) throw new Error('还是没解析出内容，可把这段单独截图重传');
@@ -4835,10 +4731,7 @@ function normalizePassage(p) {
          改了答案后它停留在旧答案上，界面据此标「解析过期」，并让 AI 按新答案重写。 */
       explainFor: String(q.explainFor || '').trim(),
       /* 自检标出的「答案/解析疑似不一致」说明；空 = 没问题 */
-      suspect: String(q.suspect || '').trim(),
-      /* 2026-10-08：独立复核盲测作答得出的选项（仅在与现有答案不一致时才有值），
-         渲染成「⚠ 待复核：模型选 B」，老师一眼定夺；手改答案后一并清空 */
-      suspectAns: String(q.suspectAns || '').trim()
+      suspect: String(q.suspect || '').trim()
     })),
     background: String(p.background || '').trim(),
     expressions: (p.expressions || []).map((e) => ({
@@ -5003,8 +4896,6 @@ function render() {
   if (p0 && isWriteKind(kindOf(p0)) && S.view !== 'overview' && S.view !== 'split') S.view = 'split';
   renderTabs();
   renderView();
-  /* 语音讲解按钮跟着一起刷新：没结果就收起来，换篇就把上一份播放停掉（2026-10-08） */
-  ttsSyncBar();
 }
 
 function renderTabs() {
@@ -5733,8 +5624,7 @@ function qHtml(q, kind) {
     +   '<span class="qstem">' + esc(q.stem) + '</span>'
     +   (q.type ? '<span class="qtype">' + esc(q.type) + '</span>' : '')
     /* 自检标出来的「答案/解析疑似不一致」——只在题号上挂个小黄签，不改答案 */
-    +   (q.suspect ? '<span class="qtype warn" title="' + esc(q.suspect) + '">⚠ 待复核'
-          + (q.suspectAns ? '：模型选 ' + esc(q.suspectAns) : '') + '</span>' : '')
+    +   (q.suspect ? '<span class="qtype warn" title="' + esc(q.suspect) + '">⚠ 待复核</span>' : '')
     + '</div>'
     + (kind === 'grammar' ? grammarBody(q) : '<div class="opts' + (kind === 'cloze' ? ' two' : '') + '">' + optsHtml(q) + '</div>')
     + '<div class="qbtns">'
@@ -5836,7 +5726,7 @@ async function rewriteExplain(q) {
     if (!s) throw new Error('模型没返回内容');
     q.explain = s;
     q.explainFor = q.answer;      /* 重写完，解析就和新答案对上了 */
-    q.suspect = ''; q.suspectAns = '';   /* 自检挂的「待复核」一并清掉 */
+    q.suspect = '';               /* 自检挂的「待复核」一并清掉 */
     q.__explainBusy = false;
     q.__explainEdit = false;
     renderView(); save();
@@ -5848,36 +5738,32 @@ async function rewriteExplain(q) {
   }
 }
 
-/* ---------- 完形填空「独立复核」自检（2026-10-01 建 · 2026-10-08 重做） ----------
-   老师反馈：完形填空出错率最高。第一版是「把现有答案和解析一起送给模型，让它判断
-   两者是否自洽」—— 实测几乎查不出东西：**看着答案做判断，它只会顺着现有答案把话
-   圆回来**（同一模型 + 锚定，两个盲区叠在一起，等于没查）。
-   现在改成**盲测独立作答**：完全不给它看现有答案，让它自己做一遍，再把结果和现有
-   答案逐题比对，只有不一致的才挂黄签，并把「模型独立作答的选项 + 依据」一起写出来。
-   为什么不换一个模型来复核：白名单里其余模型都比解析模型弱，弱模型复核强模型
-   只会制造一堆误报（狼来了反而让黄签没人信）。同模型*盲测*的信噪比最高 ——
-   它抓的是「模型自己再想一遍也拿不准」的题，那恰恰是最可能错的。
-   想改成异模型交叉：把下面的 REVIEW_MODEL 填成 'qwen-plus' 即可。
-   ★ 依然只标记、不自动改答案 —— 卷面上印的答案由老师定夺。 */
-const REVIEW_MODEL = '';
+/* ---------- 完形填空「答案 / 解析是否自洽」自检（2026-10-01） ----------
+   老师反馈：完形填空出错率最高。查样本发现一种典型错法 —— 模型把卷面答案照抄了下来，
+   而下面那段解析其实在替另一个选项说话（例：解析写「后文拓展至扶树」＝ went beyond 的意思，
+   答案栏却填了 led to）。这种错光看静音结构、看语法都查不出来，只能让模型自己复读一遍。
+   ★ 只标记、不改答案 —— 卷面上印的答案由老师定夺。 */
 function clozeCheckPrompt(p) {
   const ctx = (p.paragraphs || []).map(function (x) { return x.en; }).join('\n').slice(0, 1500);
   const L = [
-    '下面是一篇高考英语完形填空。请你**独立做一遍**，逐空选出最恰当的选项。',
-    '注意：本任务不给任何"标准答案"，你只能靠上下文逻辑、词汇搭配与语法来判断，',
-    '所以每一空都要先想清楚「为什么是它、另外三个为什么不行」。',
+    '下面是一篇高考英语完形填空。请逐题核对两件事：',
+    '  ① 现有答案和现有解析，是不是在说同一个选项？',
+    '  ② 现有答案放到上下文里，讲得通吗？',
+    '特别留意这种错：解析其实在为另一个选项辩护，答案栏却填了别的字母。',
     ''
   ];
   if (ctx) L.push('【短文】' + ctx, '');
   (p.questions || []).forEach(function (q) {
-    L.push('第 ' + q.no + ' 空　' + q.stem);
+    L.push('第 ' + q.no + ' 题　' + q.stem);
     if (q.options && q.options.length) {
       L.push('　选项：' + q.options.map(function (o) { return o.key + '. ' + o.text; }).join('　'));
     }
+    L.push('　现有答案：' + (q.answer || '—'));
+    L.push('　现有解析：' + (q.explain || '（无）'));
   });
   L.push('',
-    '只输出如下 JSON，不要任何别的文字。每一空都要给出，why 一句话（20 字内）说明依据：',
-    '{"answers":[{"no":41,"pick":"B","why":"后文表明动作是被动完成的"}]}');
+    '只输出如下 JSON，不要任何别的文字；核对下来没问题的题不要列出来（全对就给空数组）：',
+    '{"suspects":[{"no":50,"because":"解析在讲 lead to，答案却是 went beyond，两者对不上"}]}');
   return L.join('\n');
 }
 
@@ -5896,30 +5782,14 @@ async function selfCheckCloze() {
       const p = list[i];
       /* 自检期间老师换了课件 → 这篇已经不在当前讲解里了，别再动它 */
       if (S.passages.indexOf(p) < 0) continue;
-      /* 短文没转出来（空壳）就没法盲测 —— 只给 15 个孤立句子，模型必瞎猜，
-         挂出来的黄签全是误报。这种情况直接跳过，别打扰老师。 */
-      const ctxLen = (p.paragraphs || []).map(function (x) { return String(x.en || ''); }).join('\n').length;
-      if (ctxLen < 200) { p.__checked = true; continue; }
       try {
-        /* 2026-10-08：额度 1024 → 4000。15 空逐个作答 + 说明依据，还要装下思考链，
-           1024 连思考都装不完，必被截断成空结果（原来"查了等于没查"也有这一半原因）。 */
-        const raw = await aiCallSmart('solve', [{ role: 'user', content: clozeCheckPrompt(p) }],
-          4000, REVIEW_MODEL || null);
+        const raw = await aiCallSmart('parse', [{ role: 'user', content: clozeCheckPrompt(p) }], 1024);
         const d = jsonFromText(raw);
-        const got = (d && d.answers) || [];
-        /* 拿模型独立作答的结果和现有答案逐题比对，**一致就不动**，只标不一致的 */
-        got.forEach(function (a) {
-          const pick = String((a && a.pick) || '').trim().toUpperCase().charAt(0);
-          if (!pick) return;
-          const q = (p.questions || []).filter(function (x) { return String(x.no) === String(a && a.no); })[0];
+        const bad = (d && d.suspects) || [];
+        bad.forEach(function (s) {
+          const q = (p.questions || []).filter(function (x) { return String(x.no) === String(s && s.no); })[0];
           if (!q) return;
-          const cur = String(q.answer || '').trim().toUpperCase().charAt(0);
-          if (!cur || cur === pick) return;      /* 一致（或本题本来没答案）→ 不打扰 */
-          const why = String((a && a.why) || '').trim();
-          q.suspect = '独立复核：模型自己作答为 ' + pick + '，与现有答案 ' + cur
-            + ' 不一致' + (why ? '（依据：' + why + '）' : '')
-            + '　请核对卷面答案后点「✎ 更改答案」定夺';
-          q.suspectAns = pick;
+          q.suspect = String((s && s.because) || '').trim() || '答案与解析疑似不一致';
           flagged++;
         });
         p.__checked = true;   /* 查过就记一笔，下次解析不再重复查 */
@@ -5931,7 +5801,7 @@ async function selfCheckCloze() {
     selfChecking = false;
   }
   if (flagged) {
-    toast('独立复核：完形填空有 ' + flagged + ' 题与模型自己的作答不一致，已在题号上挂黄签', 'warn', 6200);
+    toast('自检：完形填空有 ' + flagged + ' 题的答案／解析疑似对不上，已在题号上挂黄签', 'warn', 5200);
     renderView();
   }
 }
@@ -6146,7 +6016,7 @@ $('#content').addEventListener('click', (e) => {
     const ta = box ? box.querySelector('textarea.xedit') : null;
     if (ta) q.explain = ta.value.trim();
     q.explainFor = q.answer;      /* 手改完也算「和当前答案对上了」 */
-    q.suspect = ''; q.suspectAns = '';
+    q.suspect = '';
     q.__explainEdit = false;
     renderView(); save();
     toast('第 ' + q.no + ' 题的解析已保存', 'ok');
@@ -6239,7 +6109,7 @@ $('#content').addEventListener('click', (e) => {
        若改回了原答案（explainFor 和 answer 又一致），就算对上了，标记清掉。 */
     if (!q.explainFor) q.explainFor = wasAns || '';
     if (String(q.explainFor) === String(q.answer)) q.explainFor = '';
-    q.suspect = ''; q.suspectAns = '';   /* 手改过答案 = 已经复核过，自检的黄签可以摘了 */
+    q.suspect = '';   /* 手改过答案 = 已经复核过，自检的黄签可以摘了 */
     toast('第 ' + q.no + ' 题答案已改为 ' + q.answer, 'ok');
     renderView(); save();
     /* 答案变了、解析还停在旧答案上 → 立刻按新答案重写（改答案时解析要跟着变） */
@@ -7153,8 +7023,7 @@ function cleanPassages() {
       questions: p.questions.map((q) => ({
         no: q.no, stem: q.stem, options: q.options, answer: q.answer,
         hint: q.hint, evidence: q.evidence, explain: q.explain, type: q.type,
-        explainFor: q.explainFor, suspect: q.suspect, suspectAns: q.suspectAns
-        /* 2026-10-01：解析对应的答案、自检黄签；2026-10-08 加 suspectAns（复核建议答案） */
+        explainFor: q.explainFor, suspect: q.suspect   /* 2026-10-01：解析对应的答案、自检黄签 */
       })),
       background: p.background,
       expressions: (p.expressions || []).map((e) => ({
@@ -10622,302 +10491,6 @@ function lsBind() {
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lsBind);
 else lsBind();
-
-/* =========================================================
-   语音讲解（2026-10-08 新增）
-   ---------------------------------------------------------
-   把本页已有的解析数据拼成一份中文讲解稿，逐段发给通义 TTS 合成，再顺序播放。
-   学生点左上角按钮就能听，老师上课也能直接放给全班。
-   · 讲解稿本地拼装 —— 不额外调大模型，零额外解析成本
-   · 语音走 ai-proxy 的 tts 分支（DASHSCOPE_API_KEY 留在服务端，前端不碰密钥）
-   · 通义 TTS 单段上限 512 tokens，所以稿件按 ~320 字切段、逐段合成；
-     一段在播的同时后台把下一段合成好 —— 听感上像连着播，也不用等整篇合成完
-   ========================================================= */
-const TTS_VOICE   = 'Cherry';  /* 音色：Cherry 芊悦（女声，吐字清楚）；男声可换 Ethan / Dylan */
-const TTS_SEG_MAX = 320;       /* 单段字符上限：接口限 512 tokens（≈500+ 汉字），320 字留足余量 */
-
-const TTS = {
-  wrap: null, btn: null,
-  segs: [],      /* 讲解稿分段（纯文本） */
-  urls: [],      /* 与 segs 等长：已合成好的音频地址；未合成 = null */
-  pending: {},   /* 段号 → 正在合成的 Promise，防止同一段被重复请求 */
-  idx: 0,        /* 当前播放 / 待播放的段号 */
-  audio: null,   /* 当前 <audio> 实例 */
-  playing: false,
-  loading: false,
-  key: '',       /* 当前讲解对应的「篇」标识，换篇即作废重来 */
-  dead: true     /* 停止 / 换篇后置位，用来掐断还在飞的异步流程 */
-};
-
-/* ---------- 合成一段（经 ai-proxy 的 tts 分支） ---------- */
-async function ttsSynth(text) {
-  const resp = await fetchWithTimeout(AI_PROXY, {
-    method: 'POST',
-    headers: { 'apikey': PUB_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tts: { text: text, voice: TTS_VOICE, language_type: 'Chinese' } })
-  }, 70000);
-  let j = null;
-  try { j = await resp.json(); }
-  catch (e) { throw new Error('语音接口返回异常（HTTP ' + resp.status + '）'); }
-  if (!resp.ok) {
-    /* 通义原生接口报错是 {code,message}；代理自己拦下的是 {error:"..."}，两种都取一下 */
-    const raw = (j && (j.message || j.error)) || ('HTTP ' + resp.status);
-    let m = typeof raw === 'string' ? raw : JSON.stringify(raw);
-    /* 旧版代理不认识 tts 字段，会回「缺少 model 字段」——这几乎一定是服务端还没重新部署。
-       把这层意思直接说破，省得老师误以为是网络或额度问题。 */
-    if (/model 字段/.test(m)) {
-      m = '服务端 ai-proxy 还是旧版（不认识语音请求），把新版部署到 Supabase 后即可使用';
-    }
-    throw new Error(m);
-  }
-  const u = j && j.output && j.output.audio && j.output.audio.url;
-  if (!u) throw new Error('语音接口没有返回音频地址');
-  return u;
-}
-
-/* 取第 i 段音频地址：没有就现合成，已合成直接复用（同一篇里重听不再花第二次钱） */
-function ttsEnsure(i) {
-  if (TTS.urls[i]) return Promise.resolve(TTS.urls[i]);
-  if (TTS.pending[i]) return TTS.pending[i];
-  const pr = ttsSynth(TTS.segs[i]).then(function (u) {
-    TTS.urls[i] = u;
-    delete TTS.pending[i];
-    return u;
-  }, function (e) {
-    delete TTS.pending[i];
-    throw e;
-  });
-  TTS.pending[i] = pr;
-  return pr;
-}
-
-/* ---------- 播放 ---------- */
-async function ttsPlayFrom(i) {
-  if (TTS.dead) return;
-  if (i >= TTS.segs.length) { TTS.playing = false; ttsPaint('done'); return; }
-  TTS.idx = i;
-  TTS.loading = true;
-  ttsPaint('loading');
-  let u;
-  try { u = await ttsEnsure(i); }
-  catch (e) { ttsFail(e); return; }
-  if (TTS.dead) return;
-  const a = new Audio(u);
-  TTS.audio = a;
-  a.onended = function () { if (!TTS.dead) ttsPlayFrom(i + 1); };
-  a.onerror = function () { if (!TTS.dead) ttsFail(new Error('音频加载失败，可能是网络问题')); };
-  try { await a.play(); }
-  catch (e) { ttsFail(new Error('浏览器拦截了自动播放，请再点一次按钮')); return; }
-  if (TTS.dead) { try { a.pause(); } catch (e) {} return; }
-  TTS.loading = false;
-  TTS.playing = true;
-  ttsPaint('playing');
-  /* 后台预合成下一段：这一段听完，下一段基本已就绪 */
-  if (i + 1 < TTS.segs.length) ttsEnsure(i + 1).catch(function () {});
-}
-
-function ttsToggle() {
-  if (TTS.loading) { toast('正在合成语音，请稍等…'); return; }
-  if (TTS.playing) {                          /* 播放中 → 暂停 */
-    if (TTS.audio) { try { TTS.audio.pause(); } catch (e) {} }
-    TTS.playing = false;
-    ttsPaint('paused');
-    return;
-  }
-  const a = TTS.audio;
-  if (a && !a.ended && a.currentTime > 0) {   /* 暂停中 → 接着放 */
-    TTS.playing = true;
-    a.play().then(function () { ttsPaint('playing'); }, function () {
-      TTS.playing = false; ttsPaint('paused');
-    });
-    return;
-  }
-  ttsBegin();
-}
-
-function ttsBegin() {
-  const p = S.passages[S.cur];
-  if (!p) return;
-  ttsSync();
-  if (!TTS.segs.length) { toast('这一篇暂时没有可朗读的内容'); return; }
-  if (TTS.urls.length !== TTS.segs.length) { TTS.urls = []; TTS.pending = {}; }
-  TTS.dead = false;
-  TTS.idx = 0;
-  ttsPlayFrom(0);
-}
-
-function ttsStopAll() {
-  TTS.dead = true;
-  if (TTS.audio) { try { TTS.audio.pause(); } catch (e) {} TTS.audio = null; }
-  TTS.playing = false;
-  TTS.loading = false;
-  TTS.idx = 0;
-  ttsPaint('idle');
-}
-
-function ttsFail(e) {
-  TTS.playing = false;
-  TTS.loading = false;
-  ttsPaint('idle');
-  const m = String((e && e.message) || e || '未知错误');
-  toast('语音讲解失败：' + m.slice(0, 46), 'err', 4600);
-}
-
-/* ---------- 讲解稿拼装（全部取自本页已有数据，不额外调模型） ---------- */
-function ttsBuildScript(p) {
-  const out = [];
-  const k = kindOf(p);
-  let name = '试题';
-  try { name = kindName(k); } catch (e) {}
-  const label = String(p.label || '').trim();
-
-  out.push('同学你好，下面用几分钟时间，把这一篇的重点讲一遍。这一篇属于' + name + '。'
-    + (label ? '（' + label + '）' : ''));
-  if (p.background) out.push('先交代一下背景。' + String(p.background).replace(/\s+/g, ''));
-
-  const paras = (p.paragraphs || []).filter(function (x) { return x && x.zh; });
-  if (paras.length) {
-    out.push('先看文章讲了什么。');
-    paras.forEach(function (x, i) {
-      out.push('第' + (i + 1) + '段，' + String(x.zh).replace(/\s+/g, ''));
-    });
-  }
-
-  const qs = p.questions || [];
-  if (qs.length) {
-    out.push('下面逐题分析。');
-    qs.forEach(function (q, i) {
-      const no = (q.no === 0 || q.no) ? q.no : (i + 1);
-      let s = '第' + no + '题。';
-      if (q.hint) s += '括号里的提示词是' + q.hint + '。';
-      const ans = String(q.answer == null ? '' : q.answer).trim();
-      if (ans) s += /^[A-Ga-g]$/.test(ans) ? ('正确答案选 ' + ans.toUpperCase() + '。') : ('正确答案是' + ans + '。');
-      if (q.explain) s += String(q.explain).replace(/\s+/g, '');
-      out.push(s);
-    });
-  }
-
-  if (isWriteKind(k)) {
-    if (p.task) out.push('这道写作题的要求是：' + String(p.task).replace(/\s*\n\s*/g, '，'));
-    (p.points || []).forEach(function (t) { out.push('审题要点：' + t); });
-    (p.outline || []).forEach(function (t) { out.push('段落安排：' + t); });
-    if (p.plotLine && p.plotLine.arc) out.push('情节走向：' + p.plotLine.arc);
-  }
-
-  const ex = (p.expressions || []).slice(0, 6);
-  if (ex.length) {
-    out.push('最后积累几个表达。');
-    ex.forEach(function (e) {
-      if (e && e.term) out.push(e.term + '，意思是' + (e.cn || '') + '。');
-    });
-  }
-
-  out.push('这一篇就讲到这里。有没听懂的地方，可以对照原文再看一遍。');
-  return out;
-}
-
-/* 把整篇拆成若干段：按句末标点断句，再攒到接近上限就切一段 ——
-   断点落在句子边界上，听起来才不会半句断掉。
-   （刻意不用后顾断言 (?<=)：老内核浏览器会在解析阶段就抛错，拖垮整个脚本。） */
-function ttsSplit(lines) {
-  const segs = [];
-  let cur = '';
-  function push(s) {
-    while (s.length > TTS_SEG_MAX) { segs.push(s.slice(0, TTS_SEG_MAX)); s = s.slice(TTS_SEG_MAX); }
-    if (!s) return;
-    if (cur && (cur.length + s.length) > TTS_SEG_MAX) { segs.push(cur); cur = ''; }
-    cur += s;
-  }
-  lines.forEach(function (line) {
-    const t = String(line == null ? '' : line).trim();
-    if (!t) return;
-    (t.match(/[^。！？?!；;\n]+[。！？?!；;]?/g) || [t]).forEach(push);
-  });
-  if (cur) segs.push(cur);
-  return segs;
-}
-
-/* ---------- 与页面联动 ---------- */
-function ttsKeyOf(p) {
-  if (!p) return '';
-  return [S.cur, kindOf(p), p.label || '', (p.questions || []).length].join('|');
-}
-
-/* 换篇 / 换题型就把上一份的播放停掉、稿件重拼 */
-function ttsSync() {
-  const p = S.passages[S.cur];
-  const key = ttsKeyOf(p);
-  if (key === TTS.key) return;
-  TTS.dead = true;
-  if (TTS.audio) { try { TTS.audio.pause(); } catch (e) {} TTS.audio = null; }
-  TTS.playing = false;
-  TTS.loading = false;
-  TTS.key = key;
-  TTS.urls = [];
-  TTS.pending = {};
-  TTS.idx = 0;
-  TTS.segs = p ? ttsSplit(ttsBuildScript(p)) : [];
-  ttsPaint('idle');
-}
-
-/* 每次重渲染都喊一次：没讲解结果时整个按钮收起来 */
-function ttsSyncBar() {
-  const wrap = $('#ttsWrap');
-  if (!wrap) return;
-  if (!S.passages.length) {
-    if (!wrap.hidden) { ttsStopAll(); wrap.hidden = true; }
-    return;
-  }
-  wrap.hidden = false;
-  ttsSync();
-}
-
-/* ---------- 按钮外观 ---------- */
-function ttsPaint(mode) {
-  const wrap = TTS.wrap || $('#ttsWrap');
-  const btn = TTS.btn || $('#ttsBtn');
-  if (!wrap || !btn) return;
-  const ico = $('#ttsIco'), lab = $('#ttsLabel'), panel = $('#ttsPanel');
-  const prog = $('#ttsProg'), meta = $('#ttsMeta');
-  const total = TTS.segs.length;
-  const at = Math.min(TTS.idx + 1, total || 1);
-
-  btn.classList.toggle('busy', mode === 'loading');
-  btn.classList.toggle('on', mode === 'playing');
-  wrap.classList.toggle('on', mode !== 'idle');
-  panel.hidden = (mode === 'idle');
-
-  if (prog) {
-    const done = (mode === 'done') ? total : TTS.idx;
-    prog.style.width = total ? Math.round(done / total * 100) + '%' : '0%';
-  }
-  if (mode === 'loading')      { ico.textContent = '⏳'; lab.textContent = '合成中…'; }
-  else if (mode === 'playing') { ico.textContent = '⏸'; lab.textContent = '暂停'; }
-  else if (mode === 'paused')  { ico.textContent = '▶'; lab.textContent = '继续'; }
-  else if (mode === 'done')    { ico.textContent = '🔊'; lab.textContent = '重听'; }
-  else                         { ico.textContent = '🔊'; lab.textContent = '语音讲解'; }
-
-  if (meta) {
-    if (mode === 'loading')      meta.textContent = '正在合成第 ' + at + ' / ' + total + ' 段…';
-    else if (mode === 'playing') meta.textContent = '正在播放第 ' + at + ' / ' + total + ' 段';
-    else if (mode === 'paused')  meta.textContent = '已暂停 · 第 ' + at + ' / ' + total + ' 段';
-    else if (mode === 'done')    meta.textContent = '讲解播放完毕，可点「重听」';
-    else                         meta.textContent = '';
-  }
-}
-
-/* ---------- 绑定 ---------- */
-function ttsBind() {
-  TTS.wrap = $('#ttsWrap');
-  TTS.btn = $('#ttsBtn');
-  if (!TTS.btn) return;
-  TTS.btn.addEventListener('click', function (e) { e.stopPropagation(); ttsToggle(); });
-  const stop = $('#ttsStop');
-  if (stop) stop.addEventListener('click', function (e) { e.stopPropagation(); ttsStopAll(); });
-  ttsSyncBar();
-}
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ttsBind);
-else ttsBind();
 </script>
 </body>
 </html>
