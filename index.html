@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'e00d9e89a9';
+  var APP_VER = '15df6682a7';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -2113,7 +2113,7 @@ const PARSE_PROMPT = [
 '【硬性规则】',
 '1. 每篇必须有 kind 字段，且只能取 reading / cloze / seven / grammar / appwrite / continuation 之一。这是最重要的一条，请先判断题型再动笔。',
 '2. paragraphs 按自然段切分。**段数必须和转写文本的空行分段完全一致**：转写文本里用空行分开了几段，paragraphs 就写几项，不许自己重新切、更不许把一段拆成几项。**挖空的横线（______ 1 ______）不是段落分界**：空是句子的一部分，一个自然段里可以连着出现好几个空（七选五的一段里常有空 2、空 3 两个空），千万不要见到空就另起一段、也不要把空单独写成一项。若原文是信息栏、表格、广告等非连续文本，按每个信息板块切为一段；**完形填空 / 语法填空的短文里，空号（如 ______ (41)）必须原样保留，一个都不许丢** —— 短文里只剩光秃秃的横线，老师上课就点不出「第 41 空」了。七选五的 A～G 选项句附在原文段落后单独成段（每行一个，格式「A. 选项原文」），方便学生对照。',
-'3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。',
+'3. questions 每个空/每题一条，no 用卷面上的真实题号（数字）。**卷面没印大题号、只有空号时（校本小练常这样），no 就直接用空号本身** —— 短文里 ______ (1) 那一题的 no 就是 1，绝不许自己另起一个号段（明明只有 1～15 个空，却编成 21～35）；连空号都没有时，才从 1 起顺序编号。',
 '4. 六种题型的字段差异照下面填：',
 '   · reading：options 四个选项齐全；type 从「细节理解 / 推理判断 / 主旨大意 / 词义猜测 / 观点态度 / 篇章结构」里选。',
 '   · cloze：options 是四个词或短语（A/B/C/D）；type 写该空考什么，如「动词辨析 / 名词辨析 / 形容词辨析 / 副词辨析 / 介词短语 / 上下文逻辑」；hint 填空串。',
@@ -3532,10 +3532,14 @@ function exerciseNosOf(seg) {
      完形的短文里也有 ___49___ 这种挖空，而完形另有独立题行（41. A. …）。
      以前两条路径混着数，短文挖空号（49～55）混进题号列表写进解析提示词，
      模型照着列表把不在本份的题也解析了、选项全靠编，输出爆量还会截断
-     （端到端实测：一份只带 3 题选项却输出 7 题 14k 字 → finish=length）。 */
+     （端到端实测：一份只带 3 题选项却输出 7 题 14k 字 → finish=length）。
+     2026-10-09 放宽下限 21→1（小练12）：校本小练的号段不是 21 起 —— 那份
+     完形的空号是 1～15，原来一刀切 21～75 把它们全滤掉了 → 模型拿不到
+     「本次题目列表」，就照着 JSON 示例 "no": 21 自己另起号段，编出 21～35。
+     放开是安全的：这条路径要求横线在前（______ (9)），段落序号没有横线。 */
   if (re1hits < 3) {
     const re2 = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?/g;
-    while ((m = re2.exec(t))) { const n = Number(m[1]); if (n >= 21 && n <= 75) set[n] = 1; }
+    while ((m = re2.exec(t))) { const n = Number(m[1]); if (n >= 1 && n <= 99) set[n] = 1; }
   }
   return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
 }
@@ -3548,13 +3552,78 @@ function missingNosOf(seg, kind, passages) {
     if (kindOf(p) !== kind) return;
     (p.questions || []).forEach(function (q) {
       const n = Number(q.no);
-      if (n >= 21 && n <= 75) got[n] = 1;
+      /* 2026-10-09：与 exerciseNosOf 同步放宽（校本小练的号段从 1 起） */
+      if (n >= 1 && n <= 99) got[n] = 1;
     });
   });
   const miss = want.filter(function (n) { return !got[n]; });
   /* 一个号都没对上 = 模型压根没按卷面题号写，不是「缺几题」，别瞎补 */
   if (miss.length >= want.length) return [];
   return miss;
+}
+
+/* ---------- 题号归位 + 题干串题兜底（2026-10-09）----------
+   案例（小练12）：校本小练的完形，卷面上印的空号是 1～15，短文转写照抄
+   没问题；可模型给 questions 的 no 时自己另起了号段（编成 21～35）——
+   表现就是「第 9 题顶上显示 29」。分块并发解析时题干还串了题：
+   第 9、13 题的 stem/evidence 整个抄成了第 1 空那句。
+   短文里的空号是最可靠的（空按题号从小到大排，第 k 个空 = 第 k 题），
+   所以这里在解析收尾做一次对齐，**空号序列与题目数一一对上时才动手**：
+     · 题号按空号归位（21～35 → 1～15）
+     · 顺手校验 stem/evidence 里有没有自己的空号，缺就从段落里重截那一句
+   对不上就一个字都不动（宁可不改，也不错改）。 */
+function blankNosOfPassage(p) {
+  const out = [];
+  const re = /_{2,}\s*[（(]\s*(\d{1,2})\s*[)）]/g;
+  (p.paragraphs || []).forEach(function (x) {
+    const t = String((x && x.en) || '');
+    let m; re.lastIndex = 0;
+    while ((m = re.exec(t))) out.push(Number(m[1]));
+  });
+  return out;
+}
+/* 段落里含指定空号的那一整句（题干串题时按原文重截） */
+function sentenceWithHole(p, no) {
+  const re = new RegExp('_{2,}\\s*[（(]\\s*' + no + '\\s*[)）]');
+  let hit = '';
+  (p.paragraphs || []).forEach(function (x) {
+    if (hit) return;
+    const sents = splitSentences(String((x && x.en) || ''));
+    for (let i = 0; i < sents.length; i++) {
+      if (re.test(sents[i])) { hit = sents[i].trim(); return; }
+    }
+  });
+  return hit;
+}
+function alignQuestionNos(passages) {
+  (passages || []).forEach(function (p) {
+    const k = kindOf(p);
+    if (k !== 'cloze' && k !== 'grammar' && k !== 'seven') return;
+    const qs = (p.questions || []).slice();
+    if (!qs.length) return;
+    const holes = blankNosOfPassage(p);
+    if (holes.length !== qs.length) return;            /* 空数≠题数：不猜 */
+    for (let i = 0; i < holes.length; i++) {
+      if (i && holes[i] <= holes[i - 1]) return;       /* 空号必须严格递增 */
+    }
+    const sorted = qs.slice().sort(function (a, b) { return Number(a.no) - Number(b.no); });
+    if (!sorted.some(function (q, i) { return Number(q.no) !== holes[i]; })) return;
+    console.log('[题号归位] ' + kindName(k) + '：'
+      + sorted.map(function (q) { return q.no; }).join(',') + ' → ' + holes.join(','));
+    sorted.forEach(function (q, i) { q.no = holes[i]; });
+    /* 题干/证据串题的兜底：不含自己的空号 = 抄错了，按原文重截那一句 */
+    sorted.forEach(function (q) {
+      const tag = '(' + q.no + ')';
+      const hasStem = String(q.stem || '').indexOf(tag) >= 0;
+      const hasEv = String(q.evidence || '').indexOf(tag) >= 0;
+      if (hasStem && hasEv) return;
+      const sent = sentenceWithHole(p, q.no);
+      if (!sent) return;
+      if (!hasStem) { q.stem = sent; console.warn('[题号归位] 第' + q.no + '题题干串了题，已按原文重截'); }
+      if (!hasEv) q.evidence = sent;
+    });
+  });
+  return passages;
 }
 /* 从大题原文里只抠出指定题号的那几题 —— 短文带上，模型要有上下文才选得对答案 */
 function sliceExerciseByNos(seg, nos) {
@@ -3985,6 +4054,8 @@ async function parseInChunks(transcript) {
   const data2 = await autoRescueMissing(transcript, merged);
   /* 最后一道：范文词数不达标的重写一遍（应用文<90 / 续写<160） */
   await rescueShortSamples(data2, transcript);
+  /* 最后一道闸：题号归位（校本小练的号段常和空号对不上，见 alignQuestionNos） */
+  alignQuestionNos(data2.passages);
   if (!data2.__missing || !data2.__missing.length) {
     if (!fails.length) showLostBtn(false);
   }
