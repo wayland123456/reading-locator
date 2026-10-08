@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = 'e2d3a93b05';
+  var APP_VER = 'e00d9e89a9';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1855,13 +1855,13 @@ const AI_PROXY = 'https://gqlwspxcyhjtzhikcexj.supabase.co/functions/v1/ai-proxy
 const PUB_KEY  = 'sb_publishable_PqN5m9yOrWZzBazFjO7Y_w_pfIMO1PI';
 
 /* ---------- 解析引擎（仅保留标准档） ----------
-   pro ：通义 qwen-vl-max + qwen-plus，实测识别最准，为唯一可用档位。
+   pro ：通义 qwen3.7-plus + qwen-plus，实测识别最准，为唯一可用档位。
    2026-09-29 移除 free（智谱 GLM-Flash）与 eco（通义 Flash）两档：
    实测另两档识别质量不稳定，已下线。
 ----------------------------------- */
 const ENGINES = {
   pro: {
-    transcribe: 'qwen-vl-max',
+    transcribe: 'qwen3.7-plus',
     parse: 'qwen-plus',
     label: '标准 · 通义 VL-Max + Plus'
   }
@@ -4232,7 +4232,7 @@ async function runPipeline() {
                  且 finish=stop、程序无从察觉。段落序号断档（如 1→6）= 跳读铁证，
                  换备用识图模型重转一次，谁更完整用谁（有断档的输给无断档的）。 */
               if (looksLikeSkippedParas(got)) {
-                const fbVl = ENGINES[S.engine].fbTranscribe || 'qwen-vl-max';
+                const fbVl = ENGINES[S.engine].fbTranscribe || 'qwen3.7-plus';
                 console.warn('[转写] 疑似双栏跳读（段落序号断档），换 ' + fbVl + ' 重转');
                 try {
                   const r2 = await proxyCallRetry(fbVl, [{ role: 'user', content: content }], 4000);
