@@ -1474,6 +1474,41 @@ body.ls-open .pen-bar{display:none}
 #content.onecol .pane-head,
 #content.onecol .pane-right > div[style*="font-size:.76rem"]{max-width:none;margin-left:0;margin-right:0}
 
+/* ============ 2026-11-01：解析进行中，进度必须看得见 ============
+   问题（浪浪报）：传了文档、点了「开始解析」之后，页面看着一动不动 ——
+   因为 .drop 那块上传说明（标题 + 两段解释 + 一行快捷键）在小窗口或大字号下
+   一个人就占满整屏，缩略图 / 开始解析 / 进度条和四步过程全被挤到折叠线以下，
+   而 .empty 是能滚的，但没人会想到去滚一个「看着没变化」的页面。
+   三点修法：
+   ① 解析中把上传说明收成窄条（.empty.busy），露出下面的进度；
+   ② 进度条 sticky 贴住滚动区底部，怎么滚都在视野里；
+   ③ renderProgress() 一打开就把进度滚进视野（JS 侧）。 */
+.empty.busy .drop{padding:16px 24px;border-radius:16px}
+.empty.busy .drop .ic{font-size:1.5rem;margin-bottom:4px}
+.empty.busy .drop h3{font-size:.95rem;margin-bottom:0;line-height:1.55}
+.empty.busy .drop p{display:none}
+.empty.busy .reup-bar{margin-bottom:10px}
+.empty.busy .thumbs{margin-top:12px}
+.empty.busy .runbar{margin-top:14px}
+.empty.busy > div[style*="margin-top:20px"]{margin-top:10px !important}
+.progress.on{
+  position:sticky;bottom:12px;z-index:8;
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:14px 18px 16px;box-shadow:0 10px 28px rgba(20,30,50,.14);
+}
+.progress.on .steps{margin-top:10px}
+
+/* 窗口不高时（笔记本 1366×768 开浏览器、或全屏讲解收回顶栏）把上传说明收紧一点，
+   让「开始解析 / 粘贴文本」这些真正要点的东西别落到屏幕外 */
+@media (max-height:780px){
+  .drop{padding:30px 26px}
+  .drop .ic{font-size:2.2rem;margin-bottom:8px}
+  .drop h3{font-size:1.06rem}
+  .drop p{font-size:.85rem;line-height:1.75}
+  .empty{padding:22px 24px 48px}
+  .reup-bar{margin-bottom:10px}
+}
+
 </style>
 </head>
 <body data-layout-preview class="gated" data-page-node-id="8SzDYVZjqHzrUFl83OsrDK">
@@ -3252,7 +3287,12 @@ let progressState = { show: false, done: [], active: -1 };
 
 function renderProgress() {
   const box = $('#progress');
+  const wasOn = box.classList.contains('on');
   box.classList.toggle('on', progressState.show);
+  /* 2026-11-01：解析中把上传说明收成窄条（CSS .empty.busy），
+     把缩略图 / 按钮 / 四步进度露出来；解析结束或出错就还原。 */
+  const es0 = $('#emptyState');
+  if (es0) es0.classList.toggle('busy', !!progressState.show);
   $('#barFill').style.width = (progressState.done.length / STEPS.length * 100) + '%';
   $('#steps').innerHTML = STEPS.map((s, i) => {
     let cls = 'step';
@@ -3260,6 +3300,11 @@ function renderProgress() {
     else if (progressState.active === i) cls += ' act';
     return '<div class="' + cls + '"><span class="dot2"></span><span>' + esc(s) + '</span></div>';
   }).join('');
+  /* 进度刚出现：滚进视野，别让老师对着"没动静"的页面干等。
+     （全屏讲解时顶栏是收起的，连 .top-hint 的状态行都看不到，这里更得主动滚。） */
+  if (progressState.show && !wasOn) {
+    setTimeout(function () { safeScroll(box, { behavior: 'smooth', block: 'nearest' }); }, 80);
+  }
 }
 function setStep(i) {
   if (i < 0) { progressState.active = -1; return; }
@@ -6567,6 +6612,10 @@ function pickDocs() {
 function markReup(msg) {
   const es = $('#emptyState');
   if (es) es.classList.remove('hidden');
+  /* 上一次跑完留下的满格进度条不能再挂在下面：重开这个覆盖层时
+     drop 还是完整的说明版，进度却是旧的 100%，看着像"解析好了却没结果" */
+  progressState = { show: false, done: [], active: -1 };
+  renderProgress();
   const bar = $('#reupBar');
   if (bar) bar.style.display = '';
   const rt = $('#reupText');
