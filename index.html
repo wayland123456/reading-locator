@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '7df1913559';
+  var APP_VER = '860d4e3d97';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -1824,11 +1824,54 @@ TEACHERS.forEach(function (n) { TEACHER_MAP[n] = n; });
 function authNorm(s) {
   return String(s == null ? '' : s).replace(/[\s\u3000\u00a0]+/g, '').trim();
 }
-function curUser() {
-  try { return localStorage.getItem(AUTH_LS) || ''; } catch (e) { return ''; }
+/* 登录状态存三处，任意一处能存住就不会「登录完又弹回登录框」：
+   ① localStorage      —— 正常情况，永久记住
+   ② sessionStorage    —— localStorage 被禁用/写满时的兜底，本标签页内有效
+   ③ Cookie            —— 上面两个都被拦（无痕、受限 webview、组策略）时的最后兜底
+   ④ 内存变量          —— reload 都拦得住时的会话内兜底
+   ★ 2026-11-24 修：以前只写 localStorage 且 catch 掉异常，一旦写不进去就
+     变成「点登录 → 整页重载 → 又回登录框」的死循环，而页面上一个提示都没有。 */
+const AUTH_SS  = AUTH_LS + '_sess';
+const AUTH_CK  = 'rl_user';
+let AUTH_MEM = '';
+
+function authFromCookie() {
+  try {
+    const m = new RegExp('(?:^|;\\s*)' + AUTH_CK + '=([^;]*)').exec(document.cookie || '');
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
 }
+function authValid(n) {
+  return n && Object.prototype.hasOwnProperty.call(TEACHER_MAP, n) ? n : '';
+}
+function curUser() {
+  let u = '';
+  try { u = localStorage.getItem(AUTH_LS) || ''; } catch (e) {}
+  if (!u) { try { u = sessionStorage.getItem(AUTH_SS) || ''; } catch (e) {} }
+  if (!u) u = authFromCookie();
+  if (!u) u = AUTH_MEM;
+  return authValid(u);   /* 不在名单里的值一律不认，防止被塞脏值 */
+}
+/* 返回 true = 至少有一处真存住了（可以安全地 reload） */
 function setCurUser(n) {
-  try { n ? localStorage.setItem(AUTH_LS, n) : localStorage.removeItem(AUTH_LS); } catch (e) {}
+  const name = authValid(n);
+  AUTH_MEM = name;
+  let saved = false;
+  try {
+    if (name) { localStorage.setItem(AUTH_LS, name); saved = localStorage.getItem(AUTH_LS) === name; }
+    else localStorage.removeItem(AUTH_LS);
+  } catch (e) {}
+  try {
+    if (name) { sessionStorage.setItem(AUTH_SS, name); saved = saved || sessionStorage.getItem(AUTH_SS) === name; }
+    else sessionStorage.removeItem(AUTH_SS);
+  } catch (e) {}
+  try {
+    document.cookie = name
+      ? AUTH_CK + '=' + encodeURIComponent(name) + '; path=/; max-age=31536000; SameSite=Lax'
+      : AUTH_CK + '=; path=/; max-age=0; SameSite=Lax';
+    if (name && authFromCookie() === name) saved = true;
+  } catch (e) {}
+  return saved;
 }
 function doLogin(name, pass) {
   const key = authNorm(name);
@@ -1861,9 +1904,28 @@ function hideGate() {
   document.body.classList.remove('gated');
   paintUser();
 }
+/* 三处存储是否至少有一处可用（用来给「无痕/受限浏览器」提前提示） */
+function authCanPersist() {
+  let ok = false;
+  try { localStorage.setItem('__rl_t', '1'); localStorage.removeItem('__rl_t'); ok = true; } catch (e) {}
+  if (!ok) { try { sessionStorage.setItem('__rl_t', '1'); sessionStorage.removeItem('__rl_t'); ok = true; } catch (e) {} }
+  if (!ok) {
+    try {
+      document.cookie = '__rl_t=1; path=/; max-age=60; SameSite=Lax';
+      ok = (document.cookie || '').indexOf('__rl_t=') !== -1;
+      document.cookie = '__rl_t=; path=/; max-age=0; SameSite=Lax';
+    } catch (e) {}
+  }
+  return ok;
+}
 function bootAuth() {
   if (curUser()) { hideGate(); return true; }
   showGate();
+  /* 存不住就别让人白点：直接在登录框里说明原因 */
+  if (!authCanPersist()) {
+    const e = document.getElementById('gateErr');
+    if (e) e.textContent = '这台浏览器不让保存登录状态（无痕模式 / 安全策略限制），登录后可能每次都要重新登一次。建议换 Edge 或 Chrome 的正常窗口打开。';
+  }
   return false;
 }
 /* 供 jsdom 测试用 */
@@ -1880,13 +1942,30 @@ document.addEventListener('DOMContentLoaded', function () {
   if (!enter) return;
 
   function submit() {
+    if (enter.disabled) return;         /* 连点两下不再重复触发 */
     err.textContent = '';
     const r = doLogin(iu.value, ip.value);
     if (!r.ok) { err.textContent = r.msg; ip.select(); return; }
+    const saved = setCurUser(r.user);
     enter.disabled = true;
     enter.textContent = '登录中…';
+    /* ★ 先把闸门拆掉、把用户名挂上：这样即使后面的 reload 被浏览器拦掉，
+       人也是进了界面的，不会对着「登录中…」干等（2026-11-24 修卡死）。 */
+    hideGate();
+    paintUser();
+    if (!saved) {
+      /* 三处存储全被拒：绝不能 reload —— reload 必然又弹回登录框，就是那个死循环 */
+      enter.disabled = false;
+      enter.textContent = '登 录';
+      try {
+        if (typeof toast === 'function') {
+          toast('已登录：' + r.user + '（本机浏览器不允许保存登录状态，关掉页面后需要重新登录）', 'warn', 9000);
+        }
+      } catch (e) {}
+      return;
+    }
     /* 换人登录后整页重载：按新登录人重新加载缓存，不残留上一个人的讲解内容 */
-    setTimeout(function () { location.reload(); }, 120);
+    setTimeout(function () { location.reload(); }, 100);
   }
   enter.addEventListener('click', submit);
   [iu, ip].forEach(function (el) {
