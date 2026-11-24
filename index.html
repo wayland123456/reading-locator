@@ -776,16 +776,19 @@ body.focus .topbar,body.focus .subbar{display:none}
 body.focus .main{height:100vh}
 body.focus #emptyState{height:100vh}
 
-/* ---------- 记号笔：整页画布 + 右侧竖排浮动工具条 ---------- */
+/* ---------- 记号笔：整页画布 + 左侧竖排浮动工具条 ---------- */
 #inkCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:60;pointer-events:none}
 body.pen-mode #inkCanvas{pointer-events:auto;cursor:crosshair;touch-action:none}
 body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 /* 2026-10-03 改：原来横在右下角，投影时压住题目正文和题目导航。
-   改成**竖排贴在最右侧中间**（right 贴边、top:50% 垂直居中）——
-   右侧本来就是页边留白，竖着站不挡字；90% 的讲解动作也不用再横向找按钮。
-   flex-direction:column 让所有子项依次向下排；gap 稍微收一点，竖着站更紧凑。 */
+   改成**竖排贴边 + top:50% 垂直居中**——
+   页边本来就是留白，竖着站不挡字；90% 的讲解动作也不用再横向找按钮。
+   flex-direction:column 让所有子项依次向下排；gap 稍微收一点，竖着站更紧凑。
+   ★ 2026-11-24 改：默认位置从「右侧」换成「左侧」（left:10px）。
+     浪浪上课站在屏幕左边，工具条贴左伸手就够得到，不用回身跨过整块屏去够右边。
+     拖动手柄、位置记忆、双击复位、顶栏「🖊 工具条」全部跟着以左侧为默认。 */
 .pen-bar{
-  position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:70;
+  position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:70;
   display:flex;flex-direction:column;align-items:center;gap:4px;
   background:#fff;border:1px solid var(--border);border-radius:16px;padding:8px 6px;
   box-shadow:0 10px 26px rgba(20,30,50,.16);
@@ -833,7 +836,7 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 .pen-bar .grip:hover{opacity:1;color:var(--brand,#4f46e5)}
 .pen-bar.dragging{opacity:1;transition:none;box-shadow:0 16px 38px rgba(20,30,50,.32)}
 /* 平时只显示图标（窄，少挡内容），鼠标移上去或正在用笔时才展开文字。
-   竖排后「展开文字」要往**左**长，不然会顶出屏幕右缘。 */
+   2026-11-24：工具条默认贴左，展开文字时向右长，不会顶出屏幕左缘。 */
 .pen-bar .lbl{display:none;margin-left:0;margin-right:4px}
 .pen-bar:hover .lbl,.pen-bar.busy .lbl{display:inline}
 /* 竖排时按钮：整排撑满工具条宽度，「图标 + 文字」朝左排 ——
@@ -871,6 +874,14 @@ body.pen-erase #inkCanvas{pointer-events:auto;cursor:cell;touch-action:none}
 }
 .pen-bar .zoom-pct:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
 .pen-bar .zoom-pct.max{background:#fff4e5;border-color:#f0d49a;color:#a9741a}
+/* ===== 比例锁（2026-11-24 新增） =====
+   问题：字号/比例调好以后，讲课手一碰滚轮（或触控板双指、希沃一体机双指）
+   比例就变了，正文和题目整体重排、之前画的笔迹也得清掉 —— 看着就是"到处乱窜"。
+   锁上以后：Ctrl+滚轮 / 双指 / Ctrl＋－0 / A＋A－ / 缩小放大按钮全部不生效，
+   再点一次解锁。锁定状态跟着老师走（写进缓存），下节课打开还是锁着的。
+   锁着时按钮用琥珀色，和「笔开着」的蓝色区分开，一眼看出现在是"定住"状态。 */
+.pen-bar .pb.lock.on{background:#fff4e5;border-color:#f0d49a;color:#a9741a}
+.pen-bar .zoom-pct.locked{opacity:.8;cursor:default}
 #btnExitFs{display:none}
 body.focus #btnExitFs{display:inline-flex}
 
@@ -1464,7 +1475,7 @@ body.ls-open .pen-bar{display:none}
    定宽 61 字符/行是给「整篇」左右分栏设计的：那一栏只有半屏宽，限宽正好。
    题型速览首页 + 原文 / 单段 / 文化背景 / 积累表达都是整屏宽的单栏 ——
    这里要的是铺满整个页面，所以把版式覆盖层加在它们身上的 max-width 全部放开，
-   正文按栏宽铺满；嫌行太长就用工具栏的 A＋/A－ 调字号，或用右下角缩放。
+   正文按栏宽铺满；嫌行太长就用工具栏的 A＋/A－ 调字号，或用左侧工具条的缩放。
    标记 onecol 由 renderView() 打在 #content 上（overview 也在里面）。 */
 #content.onecol .pane,
 #content.onecol .single-wrap,
@@ -1546,7 +1557,7 @@ body.ls-open .pen-bar{display:none}
   <span class="top-hint" id="topHint" data-page-node-id="nCAuFr8yCNXAANhcg6EKHi"></span>
   <span class="spacer" data-page-node-id="4i3u5Fo1EusVR26SHQot2n"></span>
   <span class="gate-me" id="gateMe" title="点击退出登录" data-page-node-id="4PWDVxuXPooGMWHYuHVuLR"><span data-page-node-id="iCVvkRo92Ed7pvEXBnhgK5">👤</span><span class="u" id="gateMeName" data-page-node-id="mHqGlDSukGfj7QwARW4sZX"></span></span>
-  <button class="tb-btn" id="btnPenShow" title="记号笔工具条（右侧竖着那一排：笔 / 荧光笔 / 橡皮 / 全屏 / 缩放）不见了？点这里把它拉回右侧中间">🖊 工具条</button>
+  <button class="tb-btn" id="btnPenShow" title="记号笔工具条（左侧竖着那一排：笔 / 荧光笔 / 橡皮 / 全屏 / 缩放）不见了？点这里把它拉回左侧中间">🖊 工具条</button>
   <button class="tb-btn" id="btnLibrary" title="云端课件库：家里做好，教室登录就能用" data-page-node-id="0YNEkN49GTzeJDYhlvn0b2">📚 课件库</button>
   <button class="tb-btn" id="btnFullTop" title="全屏讲解：地址栏消失，原文和题目占满整屏（ESC 或右下角按钮退出）">⛶ 全屏</button>
   <button class="tb-btn" id="btnFsMinus" title="减小字号" data-page-node-id="qQxjR0OcsA3MCsQs1oZsWx">A－</button>
@@ -1629,10 +1640,10 @@ body.ls-open .pen-bar{display:none}
 
 <div class="toast" id="toast" data-page-node-id="DCCst4Fyl2NNJonECUORnO"></div>
 
-<!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 右侧竖排浮动工具条 -->
+<!-- 记号笔：整页画布（默认不挡点击，开笔后才接管）+ 左侧竖排浮动工具条 -->
 <canvas id="inkCanvas" aria-hidden="true"></canvas>
 <div class="pen-bar" id="penBar">
-  <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到右侧居中）">⋮⋮</span>
+  <span class="grip" id="penGrip" title="按住我可以把这排按钮拖到别处（挡住内容时挪开它；双击回到左侧居中）">⋮⋮</span>
   <button class="pb" data-ink="pen" title="记号笔：红/蓝两色细笔">🖊<span class="lbl">笔</span></button>
   <button class="pb" data-ink="highlight" title="荧光笔：粗、半透明，划句子用">▨<span class="lbl">荧光</span></button>
   <button class="pb" data-ink="erase" title="橡皮擦：擦到哪擦哪，整笔擦净即消失">🧽<span class="lbl">橡皮</span></button>
@@ -1642,7 +1653,7 @@ body.ls-open .pen-bar{display:none}
   <button class="dot" data-ink-color="blue" title="蓝色"></button>
   <button class="dot" data-ink-color="yellow" title="黄色（荧光笔色）"></button>
   <span class="sep"></span>
-  <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏（进去后右下角可以整页放大）">⛶<span class="lbl">全屏</span></button>
+  <button class="pb" id="btnFull" title="全屏讲解：地址栏消失，原文和题目占满整屏（进去后工具条上可以整页放大）">⛶<span class="lbl">全屏</span></button>
   <button class="pb" id="btnExitFs" title="退出全屏（ESC 也行）">✕<span class="lbl">退出全屏</span></button>
   <button class="pb" id="btnHome" title="回到首页：重新传卷 / 开课件库。当前讲解不会丢，首页顶上点「返回当前讲解」就回来">🏠<span class="lbl">首页</span></button>
   <span class="sep"></span>
@@ -1651,6 +1662,9 @@ body.ls-open .pen-bar{display:none}
   <button class="pb" id="btnZoomOut" title="整页缩小（Ctrl + 滚轮 / 双指内捏）">−<span class="lbl">缩小</span></button>
   <button class="zoom-pct" id="zoomPct" title="当前整页缩放比例，点一下复位到 100%">🔍 100%</button>
   <button class="pb" id="btnZoomIn" title="整页放大，后排也看得清（Ctrl + 滚轮 / 双指外拨）">＋<span class="lbl">放大</span></button>
+  <!-- 比例锁（2026-11-24）：调好大小以后按这个，字号和整页比例就定住了，
+       滚轮/双指/A＋A－都不会再动版面，正文不再到处乱窜。 -->
+  <button class="pb lock" id="btnZoomLock" title="锁定字号与整页比例：锁上以后 Ctrl+滚轮、双指缩放、A＋A－、缩小/放大按钮都不再生效，版面定住不动。再点一次解锁"><span class="ico" id="zoomLockIco">🔓</span><span class="lbl">锁定</span></button>
 </div>
 
 <div class="qnav" id="qnav" data-page-node-id="vGCKOiNwgZHDiPSnHKamG6">
@@ -2499,6 +2513,9 @@ const S = {
   picking: null,     // {pi, qi} 正在为该题指定对应句
   fs: 1,
   zoom: 1,           // 整页缩放（后排看不清时用；和 fs 只管文字不同，这个是连排版一起放大）
+  /* 比例锁：调好字号/比例后锁住，滚轮·双指·快捷键·按钮都不再改动版面。
+     写进缓存，下节课打开还是锁着的（不然每次上课都得重新锁一遍）。 */
+  zoomLock: false,
   /* 左右分栏比例（0.22~0.78）；0 = 用 CSS 里的默认 52%（左栏）。
      拖动分隔条时写进这里，重渲染（显示答案、点题目、改答案…）照着它还原 ——
      2026-10-01 之前比例只写在内联样式上，一重渲染就跳回默认值。 */
@@ -7107,11 +7124,14 @@ $$('#modelSel, #modelSelTop').forEach((el) => el.addEventListener('change', (e) 
 $('#docTitle').addEventListener('input', (e) => { S.title = e.target.value; save(); });
 
 $('#btnFsPlus').addEventListener('click', () => {
+  /* 比例锁也管字号：A＋ 一样会让全文重排、笔迹清空，锁着时先让老师解锁 */
+  if (S.zoomLock) { lockHint(); return; }
   S.fs = Math.min(1.8, +(S.fs + 0.1).toFixed(2));
   renderView(); save();
   toast('字号 ' + Math.round(S.fs * 100) + '%');
 });
 $('#btnFsMinus').addEventListener('click', () => {
+  if (S.zoomLock) { lockHint(); return; }
   S.fs = Math.max(0.7, +(S.fs - 0.1).toFixed(2));
   renderView(); save();
   toast('字号 ' + Math.round(S.fs * 100) + '%');
@@ -7281,7 +7301,7 @@ function save() {
   try {
     localStorage.setItem(cacheKey(), JSON.stringify({
       title: S.title, engine: S.engine, fs: S.fs, zoom: S.zoom, split: S.split, showZh: S.showZh, view: S.view,
-      cur: S.cur, activeQ: S.activeQ, passages: cleanPassages()
+      cur: S.cur, activeQ: S.activeQ, passages: cleanPassages(), zoomLock: S.zoomLock
     }));
   } catch (e) { /* 超配额忽略 */ }
 }
@@ -7302,6 +7322,8 @@ function restore() {
     /* 整页缩放也一起还原：上次调到 150% 的班，下次打开还是 150%，不用每节课重调 */
     S.zoom = (typeof d.zoom === 'number' && d.zoom >= PAGE_ZOOM.min && d.zoom <= PAGE_ZOOM.max)
       ? zoomRound(d.zoom) : 1;
+    /* 比例锁也一起还原：上节课锁着，这节课打开还是锁着的（默认不锁） */
+    S.zoomLock = !!d.zoomLock;
     S.showZh = !!d.showZh;
     S.engine = ENGINES[d.engine] ? d.engine : 'pro';
     syncEngineUI();
@@ -8077,8 +8099,54 @@ let zoomToastTimer = null;
 /* 数字取整到 1 位小数，避免 0.1 累加浮点误差（1.2000000000000002 这种） */
 function zoomRound(v) { return Math.round(v * 100) / 100; }
 
+/* =========================================================
+   比例锁 🔒（2026-11-24）
+   ------------------------------------------------------------------
+   浪浪上课的痛点：字号/比例调好以后，手在触控板上一带、或者希沃一体机上
+   两根手指碰到屏，比例就变了 —— 正文整体重排、题目跳到别处、之前画的笔迹
+   也得清掉（applyPageZoom 里会 clearInk），看着就是"到处乱窜"。
+   所以给一组"调好就锁住"的开关：锁上后所有能改比例的路都堵死，只留解锁这一条。
+   要改比例 → 点 🔓 → 调 → 再锁上。
+   ========================================================= */
+let lockHintTimer = 0;
+/* 连续滚轮会连着触发，提示做一个短节流，别刷屏 */
+function lockHint() {
+  if (lockHintTimer) return;
+  lockHintTimer = setTimeout(function () { lockHintTimer = 0; }, 1400);
+  toast('比例已锁定 —— 先点工具条上的 🔒 解锁');
+}
+function syncZoomLockUI() {
+  const btn = document.getElementById('btnZoomLock');
+  const ico = document.getElementById('zoomLockIco');
+  if (ico) ico.textContent = S.zoomLock ? '🔒' : '🔓';
+  if (btn) {
+    btn.classList.toggle('on', !!S.zoomLock);
+    btn.title = S.zoomLock
+      ? '比例已锁定（点一下解锁，解锁后才能调字号和整页比例）'
+      : '锁定字号与整页比例：锁上以后 Ctrl+滚轮、双指缩放、A＋A－、缩小/放大按钮都不再生效，版面定住不动';
+  }
+  const pct = document.getElementById('zoomPct');
+  if (pct) {
+    pct.classList.toggle('locked', !!S.zoomLock);
+    pct.title = S.zoomLock
+      ? '整页比例已锁定（先解锁才能调 / 复位到 100%）'
+      : '当前整页缩放比例，点一下复位到 100%';
+  }
+  syncZoomUI();
+}
+function toggleZoomLock() {
+  S.zoomLock = !S.zoomLock;
+  syncZoomLockUI();
+  save();
+  toast(S.zoomLock
+    ? '🔒 已锁定：字号和整页比例定住，滚轮 / 双指 / A＋A－ 都不会再动版面'
+    : '🔓 已解锁：可以重新调字号和整页比例了', 'ok');
+}
+
 function setPageZoom(v, opts) {
   const o = opts || {};
+  /* 锁着就一律不改 —— 按钮、滚轮、双指、快捷键最后都汇到这里，一处拦住就全拦住了 */
+  if (S.zoomLock && !o.force) { lockHint(); return false; }
   const next = Math.min(PAGE_ZOOM.max, Math.max(PAGE_ZOOM.min, zoomRound(v)));
   const changed = next !== S.zoom;
   S.zoom = next;
@@ -8114,17 +8182,20 @@ function syncZoomUI() {
   el.classList.toggle('max', pct >= 250);
   const out = document.getElementById('btnZoomOut');
   const inB = document.getElementById('btnZoomIn');
-  if (out) out.disabled = S.zoom <= PAGE_ZOOM.min;
-  if (inB) inB.disabled = S.zoom >= PAGE_ZOOM.max;
+  /* 锁着时两个缩放按钮直接置灰：比"点了没反应"更明确，一眼看出现在改不了 */
+  if (out) out.disabled = S.zoomLock || S.zoom <= PAGE_ZOOM.min;
+  if (inB) inB.disabled = S.zoomLock || S.zoom >= PAGE_ZOOM.max;
 }
 
 (function wirePageZoom() {
   const bar = document.getElementById('penBar');
   if (bar) {
     bar.addEventListener('click', function (e) {
+      if (e.target.closest('#btnZoomLock')) { toggleZoomLock(); return; }
       if (e.target.closest('#btnZoomIn'))  { stepPageZoom(1);  return; }
       if (e.target.closest('#btnZoomOut')) { stepPageZoom(-1); return; }
       if (e.target.closest('#zoomPct')) {
+        if (S.zoomLock) { lockHint(); return; }
         if (S.zoom === 1) { toast('已经是 100%'); return; }
         setPageZoom(1);
         toast('整页缩放已复位 100%', 'ok');
@@ -8149,6 +8220,9 @@ function syncZoomUI() {
     if (document.getElementById('modal').classList.contains('on')) return;
     e.preventDefault();
     e.stopPropagation();
+    /* ★ 锁着的时候也必须先 preventDefault 再退出：
+       不拦的话浏览器会自己把整页缩放掉（地址栏那儿那个比例），锁就等于白设了。 */
+    if (S.zoomLock) { zoomAccum = 0; lockHint(); return; }
     /* deltaY < 0 = 往外拨 / 往上滚 = 放大 */
     zoomAccum += -e.deltaY;
     let guard = 0;
@@ -8173,6 +8247,7 @@ function syncZoomUI() {
     if (k === '-' || k === '_' || e.code === 'NumpadSubtract') { e.preventDefault(); stepPageZoom(-1); return; }
     if (k === '0' || e.code === 'Numpad0') {
       e.preventDefault();
+      if (S.zoomLock) { lockHint(); return; }
       setPageZoom(1);
       toast('整页缩放已复位 100%', 'ok');
     }
@@ -8186,10 +8261,15 @@ function syncZoomUI() {
   document.addEventListener('touchstart', function (e) {
     if (e.touches.length !== 2) { pinch = null; return; }
     if (document.getElementById('modal').classList.contains('on')) { pinch = null; return; }
+    if (S.zoomLock) { pinch = null; lockHint(); return; }
     pinch = { d0: touchDist(e.touches), z0: S.zoom };
   }, { passive: true });
   document.addEventListener('touchmove', function (e) {
-    if (!pinch || e.touches.length !== 2) return;
+    if (!pinch || e.touches.length !== 2) {
+      /* 锁着时双指也别让浏览器自己缩放（希沃一体机上很容易误碰） */
+      if (S.zoomLock && e.touches.length === 2) e.preventDefault();
+      return;
+    }
     const d = touchDist(e.touches);
     if (!pinch.d0) return;
     e.preventDefault();
@@ -8206,19 +8286,22 @@ function syncZoomUI() {
 restore();
 /* 整页缩放：把恢复出来的比例真正应用到页面上（restore 里只恢复数值） */
 applyPageZoom();
-syncZoomUI();
+syncZoomLockUI();   /* 锁的图标 / 按钮置灰 / 读数的状态一起刷一遍 */
 paintUser();
 window.addEventListener('beforeunload', save);
 
 /* ===== 记号笔工具条：竖排 + 可拖动 =====
    2026-10-03 改版：原来是横排在右下角，投屏时正好压住题目正文和题目导航 ——
-   改成**竖排贴在最右侧中间**（右侧本来就是页边留白）。
-   手柄按住仍能整条挪走；位置记在本机，下次打开还在原处；双击手柄回到右侧居中。 */
+   改成**竖排贴边居中**。
+   2026-11-24 改版：默认贴**左边**（浪浪上课站屏幕左侧，伸手就够得到）。
+   手柄按住仍能整条挪走；位置记在本机，下次打开还在原处；双击手柄回到左侧居中。 */
 function initPenBarDrag() {
   var bar = document.getElementById('penBar');
   var grip = document.getElementById('penGrip');
   if (!bar || !grip) return;
-  var LS = 'reading_locator_penbar_pos';
+  /* ★ 换成 v2：旧键里存的是「右侧」那套坐标，若继续沿用，改版后第一节课
+     工具条还会停在右边缘，老师会以为没改成功。换键 = 老位置作废，直接吃新默认（左侧）。 */
+  var LS = 'reading_locator_penbar_pos_v2';
   var dragging = false, offX = 0, offY = 0;
 
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -8239,7 +8322,7 @@ function initPenBarDrag() {
   }
   window.addEventListener('resize', clampIntoView);
 
-  /* 回到默认位置 = 右侧垂直居中（顺手清掉存的 left/top 和 transform）；
+  /* 回到默认位置 = 左侧垂直居中（顺手清掉存的 left/top 和 transform）；
      flash=true 时闪一圈，让人看到它在哪 */
   function resetPenBar(flash) {
     bar.style.left = ''; bar.style.top = '';
@@ -8267,12 +8350,12 @@ function initPenBarDrag() {
     }
   } catch (e) {}
 
-  /* 顶栏「🖊 工具条」：跑出屏幕 / 找不着了，一键拉回右侧居中 */
+  /* 顶栏「🖊 工具条」：跑出屏幕 / 找不着了，一键拉回左侧居中 */
   var showBtn = document.getElementById('btnPenShow');
   if (showBtn) {
     showBtn.addEventListener('click', function () {
       resetPenBar(true);
-      toast('记号笔工具条已回到右侧居中', 'ok');
+      toast('记号笔工具条已回到左侧居中', 'ok');
     });
   }
 
@@ -8316,7 +8399,7 @@ function initPenBarDrag() {
 
   /* 拖出屏幕外（换小显示器、改投影分辨率…）自动拉回来 —— 统一走上面的 clampIntoView */
 
-  /* 双击手柄 = 复位到默认位置（右侧居中） */
+  /* 双击手柄 = 复位到默认位置（左侧居中） */
   grip.addEventListener('dblclick', function (ev) {
     ev.stopPropagation();
     resetPenBar(false);
