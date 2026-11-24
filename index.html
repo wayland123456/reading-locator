@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '860d4e3d97';
+  var APP_VER = '462ec17ac5';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -153,11 +153,19 @@ input,select,textarea{font-family:inherit;color:inherit}
 .vtab.on{background:var(--primary);color:#fff;box-shadow:0 1px 4px rgba(43,95,168,.28)}
 
 /* ---------------- 主体 ---------------- */
-.main{height:calc(100vh - 92px);overflow:hidden;position:relative}
+/* 主体高度 = 视口 - 顶部两条栏的【真实】高度。
+   ★ 2026-11-24 修：这里以前写死 92px（那是只有一条 navline 时的老数据）。
+     加了「视图」那一行后头部变成 170 多，主体就比屏幕高出 80 多像素 ——
+     底部一直被裁掉一条，而且 overflow:hidden 的容器虽然看不见滚动条，
+     scrollIntoView() 照样能把它滚起来（点「积累表达」里的「第 N 段 · 第 K 句」就会），
+     滚完没有滚动条可以拉回来，表现就是「上面的题目选项被遮挡」。
+     → 高度改成读 --head-h（JS 实测顶栏+子栏，见 syncHeadH）；
+     → overflow 追加 clip：clip 不是滚动容器，程序也滚不动它。 */
+.main{height:calc(100vh - var(--head-h, 92px));overflow:hidden;overflow:clip;position:relative}
 /* 整页缩放只作用在内容区：工具条 / 题目导航在 .main 之外，保持原大小不跟着变大。
    高度就写 100% 即可 —— 实测在 zoom 之下，元素自身的高度会被当成【视觉高度】直接生效，
    若再除一次 --zoom 会小掉一个倍率，屏幕下方留出一大片空白。 */
-#content{height:100%;overflow:hidden;display:flex;zoom:var(--zoom)}
+#content{height:100%;overflow:hidden;overflow:clip;display:flex;zoom:var(--zoom)}
 
 .pane{height:100%;overflow-y:auto;padding:18px 20px 80px;scroll-behavior:smooth}
 .pane-left{flex:1 1 52%;min-width:280px;background:var(--panel)}
@@ -3408,9 +3416,10 @@ function showNotice(html, kind, actionLabel, actionFn) {
     act.style.display = 'none';
     act.onclick = null;
   }
-  try {
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } catch (e) {}
+  /* 2026-11-24：这里以前是 box.scrollIntoView() —— 它会把 overflow:hidden 的
+     #content / .main / body 一起滚掉，整块内容被顶上去、顶部题目被遮挡。
+     统一走 safeScroll（只滚内容栏自己）。 */
+  safeScroll(box, { block: 'nearest' });
 }
 function hideNotice() {
   const box = $('#notice');
@@ -5157,6 +5166,10 @@ function render() {
   if (p0 && isWriteKind(kindOf(p0)) && S.view !== 'overview' && S.view !== 'split') S.view = 'split';
   renderTabs();
   renderView();
+  /* 子栏可能刚显示出来 / 题型标签换行导致头部变高 —— 每次重排都对一次高度，
+     否则主体又会按旧高度多算出几十像素（底部被裁）。顺手把最外层被误滚的偏移归零。 */
+  syncHeadH();
+  resetOuterScroll();
 }
 
 function renderTabs() {
@@ -5343,6 +5356,7 @@ function renderView() {
 
   c.dataset.viewKey = key;
   if (keep) restorePaneTops(keep);
+  else resetPaneTops();
   renderQNav();
 }
 
@@ -5356,6 +5370,21 @@ function restorePaneTops(tops) {
     const el = panes[i];
     el.style.scrollBehavior = 'auto';
     el.scrollTop = tops[i];
+    el.style.scrollBehavior = '';
+  }
+}
+/* 换视图 / 换篇：所有内容栏一律回到顶部（瞬时）。
+   ★ 2026-11-24：以前「不保留滚动位置」时什么都不做，指望新内容天然从 0 开始。
+     但如果上一屏正有一条平滑滚动在动画中（找原句、跳到某题），
+     内容一换，那条动画会接着作用在新内容上 —— 新视图一出来就停在中段，
+     顶部的题目/选项被切掉。这里逐个显式归零，等于把那条例动画掐掉。 */
+function resetPaneTops() {
+  const list = document.querySelectorAll('#content .pane, #content .full-wrap, #content .single-wrap, #content .empty');
+  for (let i = 0; i < list.length; i++) {
+    const el = list[i];
+    if (!el.scrollTop) continue;
+    el.style.scrollBehavior = 'auto';
+    el.scrollTop = 0;
     el.style.scrollBehavior = '';
   }
 }
@@ -6454,10 +6483,88 @@ $('#content').addEventListener('click', (e) => {
   }
 });
 
-/* 安全滚动（部分环境没有 scrollIntoView，避免中断后续视觉反馈） */
+/* ============ 顶部两栏的真实高度（2026-11-24） ============
+   主体高度以前写死 calc(100vh - 92px)，那是「只有一条 navline」时代的数据；
+   加了「视图」那一行后头部 170 多，主体就比屏幕高出 80 多像素：
+   底部一条永远看不见，而且超出的部分让 .main/#content 变成了可被程序滚动的容器。
+   这里实测一次写进 --head-h，CSS 那边直接用它。 */
+function syncHeadH() {
+  try {
+    const tb = document.querySelector('.topbar');
+    const sb = document.getElementById('subbar');
+    let h = tb ? tb.offsetHeight : 0;
+    if (sb && getComputedStyle(sb).display !== 'none') h += sb.offsetHeight;
+    if (h > 0) document.documentElement.style.setProperty('--head-h', h + 'px');
+  } catch (e) { /* 忽略 */ }
+}
+window.addEventListener('resize', function () { syncHeadH(); resetOuterScroll(); });
+window.addEventListener('orientationchange', syncHeadH);
+
+/* 把最外层（body / .main / #content）被误滚出来的偏移归零。
+   这几个容器都是 overflow:hidden —— 看不见滚动条，但 scrollIntoView() 照样滚得动，
+   滚完没有任何办法拉回来，老师看到的就是「上面那截被挡住了」。
+   CSS 那边已经追加 overflow:clip（clip 压根不是滚动容器），这里再兜一层。 */
+function resetOuterScroll() {
+  ['#main', '#content'].forEach(function (sel) {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    if (el.scrollTop) el.scrollTop = 0;
+    if (el.scrollLeft) el.scrollLeft = 0;
+  });
+  if (document.body && (document.body.scrollTop || document.body.scrollLeft)) {
+    document.body.scrollTop = 0; document.body.scrollLeft = 0;
+  }
+  const de = document.documentElement;
+  if (de && (de.scrollTop || de.scrollLeft)) { de.scrollTop = 0; de.scrollLeft = 0; }
+}
+
+/* 找 el 最近的那一层「真正用来滚的内容栏」（.pane / .full-wrap / .single-wrap …）。
+   顶层的 .main / #content / body 是栅栏：到这儿就停，绝不滚它们。 */
+function scrollHost(el) {
+  let n = el && el.parentElement;
+  while (n && n !== document.body) {
+    if (n.id === 'content' || n.id === 'main' || n.classList.contains('main')) return null;
+    let st = null;
+    try { st = getComputedStyle(n); } catch (e) { st = null; }
+    if (st && (st.overflowY === 'auto' || st.overflowY === 'scroll' || st.overflowY === 'hidden')
+        && n.scrollHeight > n.clientHeight + 2) return n;
+    n = n.parentElement;
+  }
+  return null;
+}
+
+/* 安全滚动：只滚内容栏自己，不再用 scrollIntoView。
+   ★ 2026-11-24 修：以前是 el.scrollIntoView({block:'center'}) —— 它会把**所有**可滚祖先
+     （含 overflow:hidden 的 #content/.main/body）一起滚，于是整块内容被顶上去，
+     顶部题目被「遮挡」，而且怎么拉都拉不回来。
+     现在自己量、自己设 scrollTop，语义不变：nearest / center / start。 */
 function safeScroll(el, opts) {
-  if (!el || typeof el.scrollIntoView !== 'function') return;
-  try { el.scrollIntoView(opts); } catch (e) { /* 忽略 */ }
+  if (!el) return;
+  try {
+    const host = scrollHost(el);
+    if (host) {
+      const block = (opts && opts.block) || 'nearest';
+      const z = (S && S.zoom) || 1;
+      const hr = host.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      const top = (er.top - hr.top) / z;
+      const h = er.height / z;
+      const ch = host.clientHeight;
+      let want = host.scrollTop;
+      if (block === 'center') want += top - (ch - h) / 2;
+      else if (block === 'start') want += top - 10;
+      else if (top < 4) want += top - 10;
+      else if (top + h > ch - 4) want += top + h - ch + 10;
+      const max = Math.max(0, host.scrollHeight - ch);
+      want = Math.max(0, Math.min(max, want));
+      if (Math.abs(want - host.scrollTop) >= 2) {
+        host.style.scrollBehavior = 'auto';
+        host.scrollTop = want;
+        host.style.scrollBehavior = '';
+      }
+    }
+  } catch (e) { /* 忽略 */ }
+  resetOuterScroll();
 }
 
 /* ============ 定位左侧高亮句（「找原句」） ============
@@ -8367,6 +8474,12 @@ restore();
 applyPageZoom();
 syncZoomLockUI();   /* 锁的图标 / 按钮置灰 / 读数的状态一起刷一遍 */
 paintUser();
+/* 量一次顶部两栏的真实高度（字体还在加载时高度会变，加载完再量一次） */
+syncHeadH();
+window.addEventListener('load', syncHeadH);
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(function () { syncHeadH(); resetOuterScroll(); }).catch(function () {});
+}
 window.addEventListener('beforeunload', save);
 
 /* ===== 记号笔工具条：竖排 + 可拖动 =====
