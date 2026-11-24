@@ -13,7 +13,7 @@
    版本号由 publish.js 自动维护（内容 hash），不要手改。
    本地双击 file:// 打开时取不到 version.txt，会静默跳过，不影响使用。 */
 (function () {
-  var APP_VER = '1319ec2ef4';
+  var APP_VER = '60d6ce83a0';
   try {
     var x = new XMLHttpRequest();
     x.open('GET', './version.txt?t=' + Date.now(), true);
@@ -2082,7 +2082,8 @@ function missingHolesOverall(t) {
   if (marks.length < 5) return [];
   const qnos = marks.map(function (m) { return m.no; })
     .filter(function (n, i, a) { return a.indexOf(n) === i; })
-    .filter(function (n) { return n >= 21 && n <= 75; })
+    /* 2026-11-24：号段 21～75 → 1～99。校本小练从 1 起编号，写死 21 起就永远不触发漏读检测。 */
+    .filter(function (n) { return n >= 1 && n <= 99; })
     .sort(function (a, b) { return a - b; });
   const miss = [];
   let i = 0;
@@ -3171,6 +3172,21 @@ async function autoRescueMissing(transcript, data) {
             if (sub.length) got = got.concat(sub);
             if (j < parts.length - 1) await sleep(200);
           }
+        } else if (k === 'grammar') {
+          /* 2026-11-24：语法填空没有 A/B/C/D 选项，splitBigExercise 永远拆不开 ——
+             补解析以前只能整段重试，次次截断、次次失败。
+             改按挖空号切：每份带整篇短文，只解析 5 个空。 */
+          const gp = splitGrammarExercise(seg);
+          if (gp) {
+            setRunLabel('' + kindName(k) + '内容较长，改成按挖空分段补解析…');
+            for (let j = 0; j < gp.length; j++) {
+              const note = '\n\n【本次题目列表】只解析第 ' + gp[j].nos.join('、') + ' 空。'
+                + '整篇短文照抄并配中文翻译，questions 里只写这几个空号，不要出现列表以外的空。';
+              const sub = pruneOffListQuestions(await rescueOne(k, gp[j].text, note), gp[j].nos);
+              if (sub.length) got = got.concat(sub);
+              if (j < gp.length - 1) await sleep(200);
+            }
+          }
         }
       }
     } catch (err) {
@@ -3556,7 +3572,7 @@ function guessKindOfChunk(text) {
   return '';
 }
 /* 分块解析用的提示词：通用 PARSE_PROMPT + 本题型的强提示（没预判出来就用通用版） */
-function chunkPromptOf(text) {
+function chunkPromptOf(text, explicitNos) {
   const base = PARSE_PROMPT.replace('{{TEXT}}', text);
   const k = guessKindOfChunk(text);
   if (!k || !CHUNK_KIND_HINT[k]) return base;
@@ -3564,12 +3580,17 @@ function chunkPromptOf(text) {
     + CHUNK_KIND_HINT[k];
   /* 2026-09-27 加：把本份题号列表直接点名。实测 glm-4.7-flash 无视泛泛的
      「只解析列表题号」，拿着短文里的挖空编号把整卷题都解析了、选项全靠编 ——
-     明确到具体题号 + 讲清短文挖空的性质来压制；后置过滤（pruneOffListQuestions）仍兜底。 */
-  const nos = exerciseNosOf(text);
+     明确到具体题号 + 讲清短文挖空的性质来压制；后置过滤（pruneOffListQuestions）仍兜底。
+     2026-11-24：explicitNos 由调用方直接给（语法填空按挖空号切分时，
+     每份文本是同一篇短文，从文本里数只会数出全部空号，必须由外面指定本份范围）。 */
+  const nos = (explicitNos && explicitNos.length) ? explicitNos.slice() : exerciseNosOf(text);
   if ((k === 'cloze' || k === 'grammar') && nos.length >= 3) {
     extra += '\n【本次题目列表】只有这几题：' + nos.join('、') + '。'
       + '短文里嵌着的其他编号（如 ___49___）是别的批次的挖空，不是本份的题目——'
-      + '绝对不要给它们编造选项，questions 里绝不要出现列表以外的题号。';
+      + '绝对不要给它们编造选项，questions 里绝不要出现列表以外的题号。'
+      + ((explicitNos && explicitNos.length)
+        ? '**短文仍要一字不少地完整转录并配中文翻译**，只是 questions 收窄到上面这几个空。'
+        : '');
   }
   return base + extra + '（若你通读后证据确实相反，以正文为准。）';
 }
@@ -3718,6 +3739,28 @@ function splitBigExercise(text) {
   return out.length > 1 ? out : null;
 }
 
+/* ---------- 语法填空的切分（2026-11-24 补）----------
+   语法填空的「题」就是短文里的空，卷面上没有 A/B/C/D 选项 ——
+   所以 splitBigExercise 那套「找题行」对它永远返回 null，这道大题**从来没被切过**，
+   只能靠运气：10 空一次写完，短文 + 逐段翻译 + 10 题解析，字数一大就撞模型上限被截断。
+   （训练10 那份刚好没超，所以看着没问题；换一份空更多的卷子就整块消失。）
+   这里按「挖空号」切：每份都带**整篇短文**（上下文不能丢，否则空 8 以后的题没法判断），
+   只把题目范围收窄到 5 个空，模型多写的由 pruneOffListQuestions 扔掉。 */
+const GRAMMAR_PER_CHUNK = 5;
+function splitGrammarExercise(text) {
+  const t = normalizeQText(text);
+  const holes = holeMarksOf(t);
+  if (holes.length < 6) return null;                     /* 空太少，切了不划算 */
+  const nos = holes.map(function (h) { return h.no; });
+  /* 号必须严格递增：短文里出现重复号/乱序号说明这不是规范的逐空编号，别猜 */
+  for (let i = 1; i < nos.length; i++) { if (nos[i] <= nos[i - 1]) return null; }
+  const out = [];
+  for (let i = 0; i < nos.length; i += GRAMMAR_PER_CHUNK) {
+    out.push({ text: t, nos: nos.slice(i, i + GRAMMAR_PER_CHUNK) });
+  }
+  return out.length > 1 ? out : null;
+}
+
 /* =========================================================
    题号级补漏（2026-09-25）
    完形 15 空按 6 题一份拆成 6/6/3 三份并发解析，只要**末尾那一份**被限流或截断，
@@ -3785,23 +3828,22 @@ function missingNosOf(seg, kind, passages) {
    对不上就一个字都不动（宁可不改，也不错改）。 */
 function blankNosOfPassage(p) {
   const out = [];
-  const re = /_{2,}\s*[（(]\s*(\d{1,2})\s*[)）]/g;
   (p.paragraphs || []).forEach(function (x) {
-    const t = String((x && x.en) || '');
-    let m; re.lastIndex = 0;
-    while ((m = re.exec(t))) out.push(Number(m[1]));
+    /* 2026-11-24：改用统一的 holeMarksOf —— 以前只认「__(41)」带括号的写法，
+       校本小练的 __1__ 一个都数不出来，题号归位等于没开。 */
+    holeMarksOf(String((x && x.en) || '')).forEach(function (h) { out.push(h.no); });
   });
   return out;
 }
 /* 段落里含指定空号的那一整句（题干串题时按原文重截） */
 function sentenceWithHole(p, no) {
-  const re = new RegExp('_{2,}\\s*[（(]\\s*' + no + '\\s*[)）]');
   let hit = '';
   (p.paragraphs || []).forEach(function (x) {
     if (hit) return;
     const sents = splitSentences(String((x && x.en) || ''));
     for (let i = 0; i < sents.length; i++) {
-      if (re.test(sents[i])) { hit = sents[i].trim(); return; }
+      const has = holeMarksOf(sents[i]).some(function (h) { return h.no === Number(no); });
+      if (has) { hit = sents[i].trim(); return; }
     }
   });
   return hit;
@@ -3824,9 +3866,13 @@ function alignQuestionNos(passages) {
     sorted.forEach(function (q, i) { q.no = holes[i]; });
     /* 题干/证据串题的兜底：不含自己的空号 = 抄错了，按原文重截那一句 */
     sorted.forEach(function (q) {
-      const tag = '(' + q.no + ')';
-      const hasStem = String(q.stem || '').indexOf(tag) >= 0;
-      const hasEv = String(q.evidence || '').indexOf(tag) >= 0;
+      /* 2026-11-24：原来只认「(12)」这种带括号的写法，校本小练的 __12__ 一律判成「不含空号」，
+         于是每道题的题干都被重截一遍（日志刷 15 条「题干串了题」）。改用 holeMarksOf 统一判。 */
+      const hasNo = function (s) {
+        return holeMarksOf(s).some(function (h) { return h.no === Number(q.no); });
+      };
+      const hasStem = hasNo(q.stem);
+      const hasEv = hasNo(q.evidence);
       if (hasStem && hasEv) return;
       const sent = sentenceWithHole(p, q.no);
       if (!sent) return;
@@ -3907,24 +3953,44 @@ async function rescueMissingQuestions(kind, seg, passages) {
    第三级：逐号核对每个挖空是否能在 paragraphs 里找到，
    缺了就拿转录原文把短文单独重新转录一遍（只转录段落，输出短，必不截断）。
    ========================================================= */
-/* 数出一段文本里出现过的挖空号（______41______ / ___46___ / ______ (56) 都算） */
+/* 挖空号的统一识别（2026-11-24）。
+   卷面上挖空有三种排法，校本小练和高考卷完全不是一个样：
+     ① ______ (41)        高考卷语法填空常见
+     ② __1__ / ___41___   校本小练、Word 卷最常见（数字被横线夹在中间）
+     ③ (41)______
+   这一版之前只认 ① 和 ③，② 一律看不见。后果是三条兜底全部失效：
+     · 题号归位（blankNosOfPassage）对 __1__ 完全不管用 → 模型自己另起号段也没人纠
+     · 段落盘点（blankNosIn）数不出挖空 → 一直以为短文完整
+     · 漏读检测（missingHolesOverall）永远不触发
+   返回 [{at, no}]，按在文本里出现的顺序。 */
+const HOLE_RE_SRC = '_{2,}\\s*(\\d{1,2})\\s*_{2,}'
+  + '|_{2,}\\s*[（(]\\s*(\\d{1,2})\\s*[)）]'
+  + '|[（(]\\s*(\\d{1,2})\\s*[)）]\\s*_{2,}';
+function holeMarksOf(t0) {
+  const t = normalizeQText(String(t0 || ''));
+  const re = new RegExp(HOLE_RE_SRC, 'g');
+  const out = []; let m;
+  while ((m = re.exec(t))) out.push({ at: m.index, no: Number(m[1] || m[2] || m[3]) });
+  return out;
+}
+/* 数出一段文本里出现过的挖空号（三种排法都算）。
+   号段放宽到 1～99：校本小练从 1 起编号，原来写死 21～75 会把 1～15 全滤掉。 */
 function blankNosIn(text) {
-  const t = normalizeQText(String(text || ''));
   const set = {};
-  let m; const re = /_{2,}\s*[（(]?\s*(\d{1,2})\s*[)）]?|[（(]?\s*(\d{1,2})\s*[)）]?\s*_{2,}/g;
-  while ((m = re.exec(t))) {
-    const n = Number(m[1] || m[2]);
-    if (n >= 21 && n <= 75) set[n] = 1;
-  }
+  holeMarksOf(text).forEach(function (h) { if (h.no >= 1 && h.no <= 99) set[h.no] = 1; });
   return set;
 }
 /* 只补段落：把短文从转录原文里单独重新转录成 paragraphs（配中文翻译） */
 async function rescueMissingParas(kind, seg, passages) {
+  /* 只有「短文里挖空」的题型才有逐号核对的必要（阅读/写作没有带号挖空，
+     放进来只会白转一遍短文） */
+  if (kind !== 'cloze' && kind !== 'grammar' && kind !== 'seven') return 0;
   let target = null;
   (passages || []).forEach(function (p) { if (!target && kindOf(p) === kind) target = p; });
   if (!target) return 0;
+  /* 2026-11-24：号段 21～75 → 1～99（校本小练从 1 起编号） */
   const nos = (target.questions || []).map(function (q) { return Number(q.no); })
-    .filter(function (n) { return n >= 21 && n <= 75; });
+    .filter(function (n) { return n >= 1 && n <= 99; });
   if (nos.length < 5) return 0;
   const parasText = (target.paragraphs || []).map(function (x) { return String(x.en || ''); }).join('\n');
   const have = blankNosIn(parasText);
@@ -3981,6 +4047,16 @@ function expandBigChunks(list) {
       const parts = splitBigExercise(b.text);
       if (parts) {
         parts.forEach(function (x) { out.push({ text: x, sec: b.sec, nos: exerciseNosOf(x) }); });
+        return;
+      }
+    }
+    /* 2026-11-24：语法填空没有 A/B/C/D 选项，splitBigExercise 必然返回 null，
+       这道大题以前从来没被切过 —— 补一条「按挖空号切」的通路。
+       每份文本是同一篇短文，题目范围靠 nos 显式带进去（见 chunkPromptOf）。 */
+    if (k === 'grammar') {
+      const gp = splitGrammarExercise(b.text);
+      if (gp) {
+        gp.forEach(function (x) { out.push({ text: x.text, sec: b.sec, nos: x.nos }); });
         return;
       }
     }
@@ -4151,8 +4227,8 @@ const WRITE_RETRY_NOTE = '\n\n【本次特别要求 · 上一遍不合格】上�
   + '\nkind / label / questions 仍按上面的要求：写作题 questions 必须是空数组 []。';
 
 /* 解析一块，返回 { d, got }。extraNote 用于「写作题重做」时追加更硬的要求 */
-async function parseOneChunk(text, extraNote) {
-  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text) + (extraNote || '') }], parseBudget(text));
+async function parseOneChunk(text, extraNote, nos) {
+  const raw = await aiCallSmart('parse', [{ role: 'user', content: chunkPromptOf(text, nos) + (extraNote || '') }], parseBudget(text));
   const d = jsonFromText(raw);
   return { d: d, got: (d && d.passages) || [] };
 }
@@ -4189,7 +4265,7 @@ async function parseInChunks(transcript) {
   let doneN = 0;
   const results = await mapLimited(chunks, PARSE_CONC, async function (chunk, i) {
     try {
-      let r = await parseOneChunk(chunk.text);
+      let r = await parseOneChunk(chunk.text, '', chunk.nos);
       /* 写作块解析成「空壳」（缺写作要求 / 范文）→ 立刻换强提示重做一次。
          以前这种情况直接落地，页面上就是「作文内容没解析出来」+ 右栏几条好词好句。 */
       if (hasThinWrite(r.got)) {
@@ -4237,7 +4313,8 @@ async function parseInChunks(transcript) {
     setRunLabel('有 ' + fails.length + ' 部分没解析出来，正在自动重试…');
     const again = await mapLimited(fails, 2, async function (f) {
       try {
-        const r = await parseOneChunk(f.text);
+        /* 重试也要把本份题号带进去（语法填空按挖空切分的块，不带 nos 就会把整篇空都解析一遍） */
+        const r = await parseOneChunk(f.text, '', f.nos);
         return { ok: pruneOffListQuestions(r.got, f.nos), d: r.d };
       } catch (e) { return { ok: [], err: e }; }
     });
