@@ -2484,14 +2484,27 @@ function looksLikeGrammar(p) {
 }
 
 function groupByKind(passages) {
+  /* 2026-11-26：分桶键从「题型」改成「题型 + 大题块号 blk」。
+     以前只按题型分桶 —— 一份文件里放 8 篇独立的语法填空小练（或小练册），
+     会被强行并成一篇：段落全拼在一条里、题号重复的后面 7 篇被 uniqQuestions 直接丢掉，
+     页面上就是「80 个空只剩 10 个」。
+     现在只有**同一次大题切分出来的那几条**（blk 相同）才合并，不同篇各自独立成篇。
+     老数据没有 blk 字段时 blk 取空串，行为和以前完全一致。 */
   const bucket = {};
   passages.forEach(function (p) {
     const k = kindOf(p);
-    (bucket[k] = bucket[k] || []).push(p);
+    const bk = k + '@' + (p.blk == null ? '' : p.blk);
+    (bucket[bk] = bucket[bk] || { k: k, arr: [] }).arr.push(p);
   });
   const out = [];
   KIND_ORDER.forEach(function (k) {
-    const arr = bucket[k];
+    const keys = Object.keys(bucket)
+      .filter(function (bk) { return bucket[bk].k === k; })
+      .sort(function (a, b) {
+        return (Number(bucket[a].arr[0].blk) || 0) - (Number(bucket[b].arr[0].blk) || 0);
+      });
+    keys.forEach(function (bk) {
+    const arr = bucket[bk].arr;
     if (!arr || !arr.length) return;
     if (k === 'reading') { out.push.apply(out, arr); return; }   // A/B/C/D 各自独立，不合并
     const merged = {
@@ -2532,9 +2545,12 @@ function groupByKind(passages) {
       analysis: arr.map(function (p) { return p.analysis; }).filter(Boolean)[0] || null,
       sample: arr.map(function (p) { return p.sample; }).filter(function (s) { return s && s.length; })[0] || [],
       sampleSource: arr.map(function (p) { return p.sampleSource; }).filter(Boolean)[0] || '',
-      listen: arr.map(function (p) { return p.listen; }).filter(Boolean)[0] || null
+      listen: arr.map(function (p) { return p.listen; }).filter(Boolean)[0] || null,
+      /* 2026-11-26：块号要跟着走，否则合并结果存进课件再打开又会被重新拼成一条 */
+      blk: (arr[0].blk == null ? '' : arr[0].blk)
     };
     out.push(merged);
+    });
   });
   return out;
 }
@@ -2584,8 +2600,12 @@ function mergeSameKind(passages) {
   /* 先做阅读的同名合并 —— 它独立于下面的「同题型合并」（阅读本来就不合并） */
   passages = mergeSameLabelReading(passages);
   const keys = {};
-  passages.forEach(function (p) { const k = kindOf(p); keys[k] = (keys[k] || 0) + 1; });
-  const dup = Object.keys(keys).some(function (k) { return k !== 'reading' && keys[k] > 1; });
+  /* 2026-11-26：判重也按「题型 + 块号」——同题型不同块（8 篇独立小练）不该被合并 */
+  passages.forEach(function (p) {
+    const k = kindOf(p) + '@' + (p.blk == null ? '' : p.blk);
+    keys[k] = (keys[k] || 0) + 1;
+  });
+  const dup = Object.keys(keys).some(function (k) { return k.indexOf('reading@') !== 0 && keys[k] > 1; });
   if (!dup) return passages;
   return groupByKind(passages);
 }
@@ -4041,12 +4061,15 @@ async function rescueMissingParas(kind, seg, passages) {
 /* 只对「完形 / 语法填空」这类一道大题装很多空、输出特别长的块做细分 */
 function expandBigChunks(list) {
   const out = [];
-  (list || []).forEach(function (b) {
+  /* 2026-11-26：给每一块打上「大题块号」blk（原始大题序号）。
+     同一块被拆成的几份 nos 不同、但 blk 相同 —— 用来判断「这几条是同篇的碎片，该合并」
+     还是「这是另一篇独立的小练，不许合并」。 */
+  (list || []).forEach(function (b, bi) {
     const k = guessKindOfChunk(b.text);
     if (k === 'cloze' || k === 'grammar') {
       const parts = splitBigExercise(b.text);
       if (parts) {
-        parts.forEach(function (x) { out.push({ text: x, sec: b.sec, nos: exerciseNosOf(x) }); });
+        parts.forEach(function (x) { out.push({ text: x, sec: b.sec, nos: exerciseNosOf(x), blk: bi }); });
         return;
       }
     }
@@ -4056,11 +4079,11 @@ function expandBigChunks(list) {
     if (k === 'grammar') {
       const gp = splitGrammarExercise(b.text);
       if (gp) {
-        gp.forEach(function (x) { out.push({ text: x.text, sec: b.sec, nos: x.nos }); });
+        gp.forEach(function (x) { out.push({ text: x.text, sec: b.sec, nos: x.nos, blk: bi }); });
         return;
       }
     }
-    out.push(b);
+    out.push({ text: b.text, sec: b.sec, nos: b.nos, blk: bi });
   });
   return out;
 }
@@ -4295,17 +4318,21 @@ async function parseInChunks(transcript) {
     if (!r || r.err) {
       const why = (r && r.err && r.err.message) || '未知错误';
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块失败：' + why);
-      fails.push({ i: i + 1, why: why, text: chunk.text, nos: chunk.nos });
+      fails.push({ i: i + 1, why: why, text: chunk.text, nos: chunk.nos, blk: chunk.blk });
       return;
     }
     if (r.d && r.d.title && !merged.title) merged.title = r.d.title;
     /* 关键：这一块一个字都没解析出来时必须记下来，否则语法填空/完形会静默消失 */
     if (!r.got.length) {
       console.warn('[分批解析] 第 ' + (i + 1) + ' 块解析出 0 篇，原文开头：' + chunk.text.slice(0, 80));
-      fails.push({ i: i + 1, why: '没解析出内容', text: chunk.text, nos: chunk.nos });
+      fails.push({ i: i + 1, why: '没解析出内容', text: chunk.text, nos: chunk.nos, blk: chunk.blk });
       return;
     }
-    r.got.forEach(function (p) { merged.passages.push(p); });
+    r.got.forEach(function (p) {
+      /* 2026-11-26：打上块号，落地时同一块内的碎片才合并，8 篇小练各自独立 */
+      if (p && typeof p === 'object') p.blk = (chunk.blk == null ? '' : chunk.blk);
+      merged.passages.push(p);
+    });
   });
   /* 失败的块自动重试一轮（并发 2）—— 完形块输出最重，第一轮偶发截断/超时 */
   if (fails.length) {
@@ -4322,7 +4349,10 @@ async function parseInChunks(transcript) {
     again.forEach(function (r, i) {
       if (r && r.ok && r.ok.length) {
         if (r.d && r.d.title && !merged.title) merged.title = r.d.title;
-        r.ok.forEach(function (p) { merged.passages.push(p); });
+        r.ok.forEach(function (p) {
+          if (p && typeof p === 'object') p.blk = (fails[i] && fails[i].blk != null ? fails[i].blk : '');
+          merged.passages.push(p);
+        });
         console.log('[分批解析] 重试成功，补回第 ' + fails[i].i + ' 块（' + r.ok.length + ' 篇）');
       } else still.push(fails[i]);
     });
@@ -5070,6 +5100,8 @@ function normalizePassage(p) {
   const raw = {
     kind: p.kind || '',
     label: p.label || 'A',
+    /* 2026-11-26：大题块号 —— 同一块拆出来的碎片才合并，不同篇各自独立 */
+    blk: (p.blk == null ? '' : p.blk),
     genre: p.genre || '',
     topic: p.topic || '',
     /* 先把段内换行拆成独立段落（写作题范文用宽松口径，其余只认空行），
@@ -5281,12 +5313,20 @@ function renderTabs() {
     /* 同题型有多篇（如阅读 A/B/C）：每篇单独一个标签，点了直接切过去。
        以前整组挤在一个标签里、点击只会跳第一篇，第二篇往后永远看不到。 */
     if (g.items.length > 1) {
-      g.items.forEach(function (it) {
+      /* 2026-11-26：一份文件里 8 篇独立的语法填空小练，label 全是「语法填空」——
+         标签会变成一排一模一样的字，看不出讲到第几篇。重名时改用两位序号（01…08），
+         鼠标悬停仍给出该篇开头几个字，认篇不费劲。 */
+      const firstLbl = String(g.items[0].p.label || '');
+      const sameLbl = g.items.every(function (it) { return String(it.p.label || '') === firstLbl; });
+      g.items.forEach(function (it, gi) {
         const on = S.view !== 'overview' && it.pi === S.cur;
-        const nm = it.p.label || ('第' + (it.pi + 1) + '篇');
+        const nm = sameLbl
+          ? ('0' + (gi + 1)).slice(-2)
+          : (it.p.label || ('第' + (it.pi + 1) + '篇'));
+        const head = String(((it.p.paragraphs || [])[0] || {}).en || '').slice(0, 18);
         html += '<span class="ptab ' + kindCls(g.kind) + (on ? ' on' : '') + '"'
           + ' data-pi="' + it.pi + '"'
-          + ' title="' + esc(nm + ' · ' + kindDesc(g.kind)) + '">'
+          + ' title="' + esc((sameLbl ? '第 ' + (gi + 1) + ' 篇 · ' : '') + (head || nm) + ' · ' + kindDesc(g.kind)) + '">'
           + '<span class="tk">' + esc(kindShort(g.kind)) + '</span>' + esc(nm)
           + '<span class="meta">' + (isWriteKind(g.kind) ? '讲解' : (it.p.questions.length ? it.p.questions.length + '题' : '0题')) + '</span>'
           + '</span>';
@@ -5317,11 +5357,19 @@ function viewOverview() {
     + '<span class="chip orange">共 ' + S.passages.reduce(function (n, p) { return n + p.questions.length; }, 0) + ' 题</span>'
     + '<span class="chip gray">' + groups.length + ' 种题型</span></div>'
     + '<div class="ov-sub">点下面任意一张卡片，直接进入该题型的讲解。' +
-      '同一题型被切成几篇的，程序会自动合成一篇。</div>'
+      '同一道大题被切成几段的会自动合成一篇；不同的篇目各自独立成标签。</div>'
     + '<div class="ov-grid">';
   groups.forEach(function (g) {
     const st = kindStats(g.kind);
-    const labels = g.items.map(function (it) { return it.p.label || ''; }).filter(Boolean).join(' / ');
+    /* 2026-11-26：8 篇独立小练的 label 都一样，去重后不再印一串「语法填空 / 语法填空」 */
+    const labels = (function () {
+      const seen = {}, out = [];
+      g.items.forEach(function (it) {
+        const s = String(it.p.label || '').trim();
+        if (s && !seen[s]) { seen[s] = 1; out.push(s); }
+      });
+      return out.join(' / ');
+    })();
     /* 考点分布取前 4 个，讲评课时最关心高频考点 */
     const top = st.types.slice(0, 4).map(function (x) { return x.t + '×' + x.n; }).join('、');
     html += '<div class="ov-card ' + kindCls(g.kind) + '" data-overview-go="' + g.kind + '" data-pi="' + g.items[0].pi + '">'
@@ -7502,6 +7550,8 @@ function cleanPassages() {
   return S.passages.map((p) => {
     const o = {
       kind: kindOf(p), label: p.label, genre: p.genre, topic: p.topic,
+      /* 2026-11-26：块号不存下来，重新打开课件时又会被当成「同题型碎片」拼回一条 */
+      blk: (p.blk == null ? '' : p.blk),
       paragraphs: p.paragraphs.map((x) => ({ en: x.en, zh: x.zh })),
       questions: p.questions.map((q) => ({
         no: q.no, stem: q.stem, options: q.options, answer: q.answer,
